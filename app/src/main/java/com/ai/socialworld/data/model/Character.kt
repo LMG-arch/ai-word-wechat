@@ -1,31 +1,30 @@
-package com.ai.socialworld.data.model
+﻿package com.ai.socialworld.data.model
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
-import java.io.Serializable
+import java.time.Instant
 
-enum class LifeStage : Serializable {
-    CHILD,
-    TEEN,
-    ADULT,
-    MIDDLE_AGED,
-    SENIOR
-}
-
+/**
+ * 角色实体（Room 数据库）
+ */
 @Entity(tableName = "characters")
 data class Character(
-    @PrimaryKey
-    val id: String,
+    @PrimaryKey(autoGenerate = true)
+    val id: Long = 0,
+    
     val name: String,
-    val age: Int,
-    val gender: String,
-    val occupation: String,
-    val personality: String,
-    val money: Double = 50.0,
-    val createdAt: Long = System.currentTimeMillis(),
+    
+    val description: String = "",
+    
     val avatarUrl: String? = null,
-    val signature: String? = null,
-    val currentMood: String? = null,
-    val lifeStage: LifeStage = LifeStage.ADULT
-) : Serializable
-) : Serializable
+    
+    val personality: String = "",
+    
+    val background: String = "",
+    
+    val createdAt: Instant = Instant.now(),
+    
+    val updatedAt: Instant = Instant.now(),
+    
+    val isDeleted: Boolean = false
+)

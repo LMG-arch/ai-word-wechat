@@ -1,29 +1,35 @@
-package com.ai.socialworld.data.database.dao
+﻿package com.ai.socialworld.data.database.dao
 
 import androidx.room.*
 import com.ai.socialworld.data.model.Character
 import kotlinx.coroutines.flow.Flow
 
+/**
+ * Character 数据访问对象
+ */
 @Dao
 interface CharacterDao {
-
-    @Insert
-    suspend fun insert(character: Character)
-
-    @Update
-    suspend fun update(character: Character)
-
-    @Delete
-    suspend fun delete(character: Character)
+    @Query("SELECT * FROM characters WHERE isDeleted = 0")
+    fun getAllCharacters(): Flow<List<Character>>
 
     @Query("SELECT * FROM characters WHERE id = :id")
-    suspend fun getById(id: String): Character?
+    suspend fun getCharacterById(id: Long): Character?
 
-    @Query("SELECT * FROM characters")
-    fun getAll(): Flow<List<Character>>
+    @Query("SELECT * FROM characters WHERE name LIKE :name LIMIT 1")
+    suspend fun getCharacterByName(name: String): Character?
 
-    @Query("SELECT * FROM characters WHERE age >= :minAge AND age <= :maxAge")
-    fun getByAgeRange(minAge: Int, maxAge: Int): Flow<List<Character>>
-}
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertCharacter(character: Character): Long
 
+    @Update
+    suspend fun updateCharacter(character: Character)
+
+    @Delete
+    suspend fun deleteCharacter(character: Character)
+
+    @Query("UPDATE characters SET isDeleted = 1 WHERE id = :id")
+    suspend fun softDeleteCharacter(id: Long)
+
+    @Query("SELECT COUNT(*) FROM characters")
+    suspend fun getCharacterCount(): Int
 }
