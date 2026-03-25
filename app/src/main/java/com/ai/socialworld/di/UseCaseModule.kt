@@ -1,5 +1,6 @@
-﻿package com.ai.socialworld.di
+package com.ai.socialworld.di
 
+import com.ai.socialworld.domain.engine.MemoryEngine
 import com.ai.socialworld.domain.usecase.memory.GetHistoryStateUseCase
 import com.ai.socialworld.domain.usecase.memory.RecallMemoriesUseCase
 import com.ai.socialworld.domain.usecase.memory.SaveMemoryUseCase
@@ -11,29 +12,29 @@ import javax.inject.Singleton
 
 @Module
 @InstallIn(SingletonComponent::class)
-class UseCaseModule {
+object UseCaseModule {
 
     @Provides
     @Singleton
     fun provideSaveMemoryUseCase(
-        saveMemoryUseCase: SaveMemoryUseCase
+        memoryEngine: MemoryEngine
     ): SaveMemoryUseCase {
-        return saveMemoryUseCase
+        return SaveMemoryUseCase(memoryEngine)
     }
 
     @Provides
     @Singleton
     fun provideRecallMemoriesUseCase(
-        recallMemoriesUseCase: RecallMemoriesUseCase
+        memoryEngine: MemoryEngine
     ): RecallMemoriesUseCase {
-        return recallMemoriesUseCase
+        return RecallMemoriesUseCase(memoryEngine)
     }
 
     @Provides
     @Singleton
     fun provideGetHistoryStateUseCase(
-        getHistoryStateUseCase: GetHistoryStateUseCase
+        memoryEngine: MemoryEngine
     ): GetHistoryStateUseCase {
-        return getHistoryStateUseCase
+        return GetHistoryStateUseCase(memoryEngine)
     }
 }

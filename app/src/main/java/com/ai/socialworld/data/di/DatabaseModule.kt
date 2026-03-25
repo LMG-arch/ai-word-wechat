@@ -3,7 +3,7 @@ package com.ai.socialworld.data.di
 import android.content.Context
 import androidx.room.Room
 import com.ai.socialworld.data.database.CharacterDatabase
-import com.ai.socialworld.data.database.dao.CharacterDao
+import com.ai.socialworld.data.database.dao.*
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -34,6 +34,36 @@ object DatabaseModule {
     ): CharacterDao {
         return database.characterDao()
     }
-}
-
+    
+    @Provides
+    @Singleton
+    fun provideTaskDao(
+        database: CharacterDatabase
+    ): TaskDao {
+        return database.taskDao()
+    }
+    
+    @Provides
+    @Singleton
+    fun provideCompanyDao(
+        database: CharacterDatabase
+    ): CompanyDao {
+        return database.companyDao()
+    }
+    
+    @Provides
+    @Singleton
+    fun provideScheduleDao(
+        database: CharacterDatabase
+    ): ScheduleDao {
+        return database.scheduleDao()
+    }
+    
+    @Provides
+    @Singleton
+    fun provideSocialDao(
+        database: CharacterDatabase
+    ): SocialDao {
+        return database.socialDao()
+    }
 }

@@ -1,11 +1,11 @@
-﻿package com.ai.socialworld.data.di
+package com.ai.socialworld.data.di
 
+import com.ai.socialworld.data.database.Neo4jDatabaseManager
 import com.ai.socialworld.data.model.Neo4jConfig
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
-import org.neo4j.driver.Driver
 import javax.inject.Singleton
 
 @Module
@@ -25,10 +25,7 @@ object Neo4jModule {
 
     @Provides
     @Singleton
-    fun provideNeo4jDriver(config: Neo4jConfig): Driver {
-        return org.neo4j.driver.GraphDatabase.driver(
-            config.uri,
-            org.neo4j.driver.AuthTokens.basic(config.username, config.password)
-        )
+    fun provideNeo4jDatabaseManager(config: Neo4jConfig): Neo4jDatabaseManager {
+        return Neo4jDatabaseManager(config)
     }
 }

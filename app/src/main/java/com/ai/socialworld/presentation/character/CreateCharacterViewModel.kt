@@ -1,8 +1,12 @@
-﻿package com.ai.socialworld.presentation.character
+package com.ai.socialworld.presentation.character
 
 import androidx.lifecycle.viewModelScope
 import com.ai.socialworld.data.model.Character
+import com.ai.socialworld.data.model.Gender
+import com.ai.socialworld.data.model.GrowthStage
 import com.ai.socialworld.domain.repository.CharacterRepository
+import com.ai.socialworld.domain.service.ImageGenerationResult
+import com.ai.socialworld.domain.service.ImageGenerationService
 import com.ai.socialworld.presentation.base.BaseViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.StateFlow
@@ -11,7 +15,8 @@ import javax.inject.Inject
 
 @HiltViewModel
 class CreateCharacterViewModel @Inject constructor(
-    private val characterRepository: CharacterRepository
+    private val characterRepository: CharacterRepository,
+    private val imageGenerationService: ImageGenerationService
 ) : BaseViewModel<CreateCharacterUiState>() {
 
     override fun createInitialState(): CreateCharacterUiState = CreateCharacterUiState()
@@ -23,7 +28,12 @@ class CreateCharacterViewModel @Inject constructor(
     }
 
     fun updateAge(age: Int) {
-        updateState { copy(age = age.coerceIn(1, 150)) }
+        updateState { 
+            copy(
+                age = age.coerceIn(1, 150),
+                growthStage = GrowthStage.fromAge(age)
+            ) 
+        }
     }
 
     fun updateGender(gender: String) {
@@ -38,6 +48,9 @@ class CreateCharacterViewModel @Inject constructor(
         updateState { copy(personality = personality) }
     }
 
+    /**
+     * 生成角色头像
+     */
     fun generateAvatar() {
         if (!currentState.canGenerateMoreAvatars) return
 
@@ -45,13 +58,55 @@ class CreateCharacterViewModel @Inject constructor(
             updateState { copy(isLoading = true, error = null) }
             
             try {
-                val avatarUrl = callImageModelAPI()
-                updateState { 
-                    copy(
-                        avatarUrl = avatarUrl,
-                        avatarGenerationCount = avatarGenerationCount + 1,
-                        isLoading = false
-                    ) 
+                // 构建角色描述
+                val description = buildString {
+                    append("A ${currentState.age} year old ${currentState.gender.lowercase()}")
+                    append(" working as ${currentState.occupation}")
+                    if (currentState.personality.isNotBlank()) {
+                        append(" with ${currentState.personality} personality")
+                    }
+                }
+                
+                // 调用图像生成服务
+                val result = imageGenerationService.generateCharacterAvatar(
+                    characterDescription = description,
+                    age = currentState.age,
+                    gender = currentState.gender,
+                    occupation = currentState.occupation,
+                    personality = currentState.personality
+                )
+                
+                when (result) {
+                    is ImageGenerationResult.Success -> {
+                        val avatarUrl = result.imageUrl 
+                            ?: result.base64Image?.let { "data:image/png;base64,$it" }
+                            ?: ""
+                        
+                        if (avatarUrl.isNotEmpty()) {
+                            updateState { 
+                                copy(
+                                    avatarUrl = avatarUrl,
+                                    avatarGenerationCount = avatarGenerationCount + 1,
+                                    isLoading = false
+                                ) 
+                            }
+                        } else {
+                            updateState { 
+                                copy(
+                                    isLoading = false,
+                                    error = "头像生成失败：未获取到图像"
+                                ) 
+                            }
+                        }
+                    }
+                    is ImageGenerationResult.Error -> {
+                        updateState { 
+                            copy(
+                                isLoading = false,
+                                error = "头像生成失败：${result.message}"
+                            ) 
+                        }
+                    }
                 }
             } catch (e: Exception) {
                 updateState { 
@@ -71,16 +126,24 @@ class CreateCharacterViewModel @Inject constructor(
             updateState { copy(isLoading = true, error = null) }
             
             try {
+                val gender = when (currentState.gender) {
+                    "MALE" -> Gender.MALE
+                    "FEMALE" -> Gender.FEMALE
+                    else -> Gender.MALE
+                }
+                
                 val character = Character(
                     name = currentState.name,
                     age = currentState.age,
-                    gender = currentState.gender,
+                    gender = gender,
                     occupation = currentState.occupation,
                     personality = currentState.personality,
-                    avatarUrl = currentState.avatarUrl!!
+                    avatarUrl = currentState.avatarUrl,
+                    growthStage = currentState.growthStage,
+                    money = 50 // 初始资金50
                 )
                 
-                characterRepository.createCharacter(character)
+                characterRepository.insertCharacter(character)
                 
                 updateState { copy(isLoading = false) }
                 onCharacterCreatedSuccess()
@@ -97,13 +160,6 @@ class CreateCharacterViewModel @Inject constructor(
 
     fun clearError() {
         updateState { copy(error = null) }
-    }
-
-    private suspend fun callImageModelAPI(): String {
-        delay(1500)
-        val prompts = listOf("anime_character_1", "anime_character_2", "anime_character_3")
-        val randomPrompt = prompts.random()
-        return "https://api.example.com/avatars/$randomPrompt_${System.currentTimeMillis()}.jpg"
     }
 
     private fun onCharacterCreatedSuccess() {

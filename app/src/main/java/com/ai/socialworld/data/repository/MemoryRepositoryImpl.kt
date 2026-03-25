@@ -1,36 +1,91 @@
-﻿package com.ai.socialworld.data.repository
+package com.ai.socialworld.data.repository
 
-import com.ai.socialworld.data.model.Memory
+import com.ai.socialworld.data.local.*
+import com.ai.socialworld.data.model.*
 import com.ai.socialworld.domain.repository.MemoryRepository
+import kotlinx.coroutines.flow.Flow
+import javax.inject.Inject
+import javax.inject.Singleton
 
-class MemoryRepositoryImpl : MemoryRepository {
-    private val memories = mutableMapOf<String, Memory>()
-
-    override suspend fun saveMemory(memory: Memory): Result<Unit> {
-        return try {
-            memories[memory.id] = memory
-            Result.success(Unit)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
+/**
+ * 记忆仓库实现
+ */
+@Singleton
+class MemoryRepositoryImpl @Inject constructor(
+    private val memoryDao: MemoryDao,
+    private val reflectionDao: ReflectionDao
+) : MemoryRepository {
+    
+    // ==================== 记忆相关 ====================
+    
+    override suspend fun insertMemory(memory: Memory): Long {
+        return memoryDao.insert(memory)
     }
-
-    override suspend fun getMemoryById(id: String): Result<Memory> {
-        return memories[id]?.let { Result.success(it) }
-            ?: Result.failure(NoSuchElementException("Memory not found: $id"))
+    
+    override fun getMemoriesByCharacter(characterId: String): Flow<List<Memory>> {
+        return memoryDao.getMemoriesByCharacter(characterId)
     }
-
-    override suspend fun getMemoriesByCharacterId(characterId: String): Result<List<Memory>> {
-        return Result.success(
-            memories.values.filter { it.characterId == characterId }
-        )
+    
+    override suspend fun getMemoriesByCharacterSync(characterId: String): List<Memory> {
+        return memoryDao.getMemoriesByCharacterSync(characterId)
     }
-
-    override suspend fun deleteMemory(id: String): Result<Unit> {
-        return if (memories.remove(id) != null) {
-            Result.success(Unit)
-        } else {
-            Result.failure(NoSuchElementException("Memory not found: $id"))
-        }
+    
+    override fun getMemoriesByType(characterId: String, type: MemoryType): Flow<List<Memory>> {
+        return memoryDao.getMemoriesByType(characterId, type)
+    }
+    
+    override suspend fun getMemoriesByTypeSync(characterId: String, type: MemoryType): List<Memory> {
+        return memoryDao.getMemoriesByTypeSync(characterId, type)
+    }
+    
+    override suspend fun getMemoriesForRetrieval(
+        characterId: String,
+        limit: Int,
+        types: List<MemoryType>?,
+        since: Long?
+    ): List<Memory> {
+        return memoryDao.getMemoriesForRetrieval(characterId, limit, types, since)
+    }
+    
+    override suspend fun getMemoryById(memoryId: String): Memory? {
+        return memoryDao.getMemoryById(memoryId)
+    }
+    
+    override suspend fun deleteMemoryById(memoryId: String) {
+        memoryDao.deleteById(memoryId)
+    }
+    
+    override suspend fun updateMemoryImportance(memoryId: String, importance: Float) {
+        memoryDao.updateImportance(memoryId, importance)
+    }
+    
+    override suspend fun searchMemoriesByContent(
+        characterId: String,
+        keyword: String,
+        limit: Int
+    ): List<Memory> {
+        return memoryDao.searchByContent(characterId, keyword, limit)
+    }
+    
+    // ==================== 反思相关 ====================
+    
+    override suspend fun insertReflection(reflection: Reflection): Long {
+        return reflectionDao.insert(reflection)
+    }
+    
+    override fun getReflectionsByCharacter(characterId: String): Flow<List<Reflection>> {
+        return reflectionDao.getReflectionsByCharacter(characterId)
+    }
+    
+    override suspend fun getReflectionsByTask(taskId: String): List<Reflection> {
+        return reflectionDao.getReflectionsByTask(taskId)
+    }
+    
+    override suspend fun getReflectionById(reflectionId: String): Reflection? {
+        return reflectionDao.getById(reflectionId)
+    }
+    
+    override suspend fun getRecentReflections(characterId: String, limit: Int): List<Reflection> {
+        return reflectionDao.getRecentReflections(characterId, limit)
     }
 }
