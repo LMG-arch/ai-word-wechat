@@ -19,60 +19,136 @@ import com.ai.socialworld.presentation.components.TopAppBar
 import java.text.SimpleDateFormat
 import java.util.*
 
-/**
- * 朋友圈页面
- */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MomentsScreen(
     viewModel: MomentsViewModel = hiltViewModel(),
     onNavigateBack: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    
+    var showCreateDialog by remember { mutableStateOf(false) }
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = "朋友圈",
                 onNavigateBack = onNavigateBack,
                 actions = {
-                    IconButton(onClick = { /* TODO: 发布动态 */ }) {
+                    IconButton(onClick = { showCreateDialog = true }) {
                         Icon(Icons.Default.CameraAlt, contentDescription = "发布")
                     }
                 }
             )
         }
     ) { paddingValues ->
-        LazyColumn(
-            modifier = Modifier.padding(paddingValues)
-        ) {
-            items(uiState.moments) { moment ->
-                MomentItem(
-                    moment = moment,
-                    onLike = { viewModel.likeMoment(moment.id) },
-                    onComment = { viewModel.commentMoment(moment.id, it) }
-                )
-                Divider()
+        if (uiState.isLoading) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator()
+            }
+        } else if (uiState.moments.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(
+                        imageVector = Icons.Default.PhotoCamera,
+                        contentDescription = null,
+                        modifier = Modifier.size(64.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = "暂无动态",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier.padding(paddingValues)
+            ) {
+                items(uiState.moments) { moment ->
+                    MomentItem(
+                        moment = moment,
+                        onLike = { viewModel.likeMoment(moment.id) },
+                        onComment = { viewModel.commentMoment(moment.id, it) }
+                    )
+                    HorizontalDivider()
+                }
             }
         }
+    }
+
+    if (showCreateDialog) {
+        CreateMomentDialog(
+            onDismiss = { showCreateDialog = false },
+            onCreate = { content, imageUrl ->
+                viewModel.createMoment(content, imageUrl)
+                showCreateDialog = false
+            }
+        )
     }
 }
 
 @Composable
+private fun CreateMomentDialog(
+    onDismiss: () -> Unit,
+    onCreate: (String, String?) -> Unit
+) {
+    var content by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("发布动态") },
+        text = {
+            OutlinedTextField(
+                value = content,
+                onValueChange = { content = it },
+                placeholder = { Text("分享你的想法...") },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(150.dp),
+                maxLines = 5
+            )
+        },
+        confirmButton = {
+            Button(
+                onClick = { onCreate(content, null) },
+                enabled = content.isNotBlank()
+            ) {
+                Text("发布")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("取消")
+            }
+        }
+    )
+}
+
+@Composable
 private fun MomentItem(
-    moment: Moment,
+    moment: MomentItem,
     onLike: () -> Unit,
     onComment: (String) -> Unit
 ) {
     var showCommentInput by remember { mutableStateOf(false) }
     var commentText by remember { mutableStateOf("") }
-    
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(16.dp)
     ) {
-        // 头部：头像和昵称
         Row(
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -97,9 +173,9 @@ private fun MomentItem(
                     }
                 }
             }
-            
+
             Spacer(modifier = Modifier.width(12.dp))
-            
+
             Column {
                 Text(
                     text = moment.authorName,
@@ -112,15 +188,13 @@ private fun MomentItem(
                 )
             }
         }
-        
-        // 内容
+
         Text(
             text = moment.content,
             style = MaterialTheme.typography.bodyLarge,
             modifier = Modifier.padding(vertical = 12.dp)
         )
-        
-        // 图片
+
         if (moment.imageUrl != null) {
             Image(
                 painter = rememberAsyncImagePainter(moment.imageUrl),
@@ -131,8 +205,7 @@ private fun MomentItem(
                 contentScale = ContentScale.Crop
             )
         }
-        
-        // 点赞和评论按钮
+
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -148,15 +221,14 @@ private fun MomentItem(
                 Spacer(modifier = Modifier.width(4.dp))
                 Text("${moment.likes}")
             }
-            
+
             TextButton(onClick = { showCommentInput = true }) {
                 Icon(Icons.Default.Comment, contentDescription = "评论")
                 Spacer(modifier = Modifier.width(4.dp))
                 Text("${moment.comments.size}")
             }
         }
-        
-        // 点赞列表
+
         if (moment.likedBy.isNotEmpty()) {
             Surface(
                 color = MaterialTheme.colorScheme.surfaceVariant,
@@ -181,8 +253,7 @@ private fun MomentItem(
                 }
             }
         }
-        
-        // 评论列表
+
         if (moment.comments.isNotEmpty()) {
             Surface(
                 color = MaterialTheme.colorScheme.surfaceVariant,
@@ -201,8 +272,7 @@ private fun MomentItem(
                 }
             }
         }
-        
-        // 评论输入框
+
         if (showCommentInput) {
             Row(
                 modifier = Modifier
@@ -238,26 +308,3 @@ private fun formatTime(timestamp: Long): String {
     val sdf = SimpleDateFormat("MM-dd HH:mm", Locale.getDefault())
     return sdf.format(Date(timestamp))
 }
-
-// 数据类
-data class Moment(
-    val id: String,
-    val authorId: String,
-    val authorName: String,
-    val authorAvatar: String? = null,
-    val content: String,
-    val imageUrl: String? = null,
-    val timestamp: Long = System.currentTimeMillis(),
-    val likes: Int = 0,
-    val likedBy: List<String> = emptyList(),
-    val isLiked: Boolean = false,
-    val comments: List<Comment> = emptyList()
-)
-
-data class Comment(
-    val id: String,
-    val authorId: String,
-    val authorName: String,
-    val content: String,
-    val timestamp: Long = System.currentTimeMillis()
-)

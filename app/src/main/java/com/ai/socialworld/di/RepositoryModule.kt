@@ -1,6 +1,6 @@
 package com.ai.socialworld.di
 
-import com.ai.socialworld.data.local.*
+import com.ai.socialworld.data.database.dao.SocialDao
 import com.ai.socialworld.data.repository.*
 import com.ai.socialworld.domain.repository.*
 import dagger.Module
@@ -9,9 +9,6 @@ import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 
-/**
- * Repository模块 - 提供所有仓库实现
- */
 @Module
 @InstallIn(SingletonComponent::class)
 object RepositoryModule {
@@ -74,5 +71,17 @@ object RepositoryModule {
     @Singleton
     fun provideApiConfigRepository(apiConfigDao: ApiConfigDao): ApiConfigRepository {
         return ApiConfigRepositoryImpl(apiConfigDao)
+    }
+
+    @Provides
+    @Singleton
+    fun provideMomentRepository(socialDao: SocialDao): MomentRepository {
+        return MomentRepositoryImpl(socialDao)
+    }
+
+    @Provides
+    @Singleton
+    fun provideSocialRepository(socialDao: SocialDao): SocialRepository {
+        return SocialRepositoryImpl(socialDao)
     }
 }

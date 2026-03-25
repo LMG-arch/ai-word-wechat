@@ -22,6 +22,7 @@ import com.ai.socialworld.presentation.profile.ProfileScreen
 import com.ai.socialworld.presentation.character.CreateCharacterScreen
 import com.ai.socialworld.presentation.character.CharacterDetailScreen
 import com.ai.socialworld.presentation.settings.ApiConfigScreen
+import com.ai.socialworld.presentation.discover.MomentsScreen
 
 /**
  * 主界面
@@ -148,6 +149,13 @@ fun MainApp() {
                 )
             }
             
+            // 朋友圈页面
+            composable(Screen.Moments.route) {
+                MomentsScreen(
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
+
             // 角色详情页
             composable(
                 route = Screen.CharacterDetail.route,
@@ -163,11 +171,11 @@ fun MainApp() {
                         navController.navigate(Screen.ChatDetail.createRoute(characterId))
                     },
                     onNavigateToMoments = {
-                        // TODO: 导航到朋友圈
+                        navController.navigate(Screen.Moments.route)
                     }
                 )
             }
-            
+
             // TODO: 添加其他子页面路由
         }
     }
