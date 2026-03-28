@@ -1658,9 +1658,17 @@
                     let errorMsg = `❌ ${result.error}`;
                     if (result.details) {
                         if (result.details.type === 'network_error') {
-                            errorMsg += `\n\n无法连接到 API 地址:\n${result.details.url}`;
+                            errorMsg += `\n\n无法连接到 API 地址:\n${result.details.url}\n\n错误信息:\n${result.details.message}`;
                         } else if (result.details.raw_response) {
                             errorMsg += `\n\n服务器响应:\n${result.details.raw_response.substring(0, 500)}`;
+                            if (result.details.parse_error) {
+                                errorMsg += `\n\n解析错误:\n${result.details.parse_error}`;
+                            }
+                        } else if (result.details.exception) {
+                            errorMsg += `\n\n异常类型：${result.details.type}\n异常信息:\n${result.details.exception}`;
+                            if (result.details.traceback) {
+                                errorMsg += `\n\n堆栈跟踪:\n${result.details.traceback.substring(0, 500)}`;
+                            }
                         } else {
                             errorMsg += `\n\n详情:\n${JSON.stringify(result.details, null, 2).substring(0, 500)}`;
                         }

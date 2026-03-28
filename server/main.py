@@ -624,10 +624,10 @@ async def test_api_config(request: TestApiConfigRequest):
                 # 尝试解析响应
                 try:
                     result = await response.json()
-                except:
+                except Exception as e:
                     # 如果不是 JSON，获取文本
                     text = await response.text()
-                    result = {"raw_response": text}
+                    result = {"raw_response": text, "parse_error": str(e)}
                 
                 if response.status == 200:
                     return {
@@ -648,18 +648,23 @@ async def test_api_config(request: TestApiConfigRequest):
     except aiohttp.ClientError as e:
         return {
             "success": False,
-            "error": f"网络错误：{str(e)}",
+            "error": f"网络错误：{type(e).__name__}",
             "details": {
                 "type": "network_error",
-                "url": request.api_url
+                "url": request.api_url,
+                "message": str(e)
             }
         }
     except Exception as e:
+        # 返回详细的异常信息
+        import traceback
         return {
             "success": False,
-            "error": f"测试失败：{str(e)}",
+            "error": f"测试失败：{type(e).__name__}",
             "details": {
-                "type": "unknown_error"
+                "type": "unknown_error",
+                "exception": str(e),
+                "traceback": traceback.format_exc()
             }
         }
 
