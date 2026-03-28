@@ -2,7 +2,31 @@
 
 一款基于 Android 平台的社交模拟应用，采用微信风格的 UI 设计，核心玩法是创建一个由 AI 角色自主运行的虚拟世界。
 
-## 项目结构
+## 🚀 快速开始
+
+### Web 版（推荐用于测试）
+
+**启动服务器:**
+```bash
+cd server
+# Windows
+start.bat
+# 或手动启动
+pip install -r requirements.txt
+python main.py
+```
+
+**访问地址:**
+- 电脑浏览器：http://localhost:8080
+- 手机访问：http://你的电脑 IP:8080
+
+**功能特性:**
+- ✅ 完整的 RESTful API
+- ✅ 数据持久化（JSON 文件）
+- ✅ 手机端优化 UI
+- ✅ 实时日志面板
+- ✅ API 配置管理
+- ✅ 后台年龄增长任务
 
 ```
 app/
@@ -252,6 +276,52 @@ python main.py
 ```bash
 ./gradlew assembleDebug
 ```
+
+---
+
+## ⚙️ API 配置指南
+
+### 支持的模型类型
+
+| 类型 | 用途 | 示例 API 端点 |
+|------|------|--------------|
+| **语言模型 (LLM)** | 对话/文本生成 | `/v1/chat/completions` |
+| **图像模型** | 绘画/图片生成 | `/v1/images/generations` |
+| **向量模型** | 嵌入/向量检索 | `/v1/embeddings` |
+| **重排模型** | 记忆精排 | `/reranker` |
+
+### 常用服务商配置
+
+#### OpenAI
+- **语言模型**: `https://api.openai.com/v1/chat/completions`
+- **图像模型**: `https://api.openai.com/v1/images/generations`
+- **向量模型**: `https://api.openai.com/v1/embeddings`
+- **模型名称**: `gpt-4`, `gpt-3.5-turbo`, `dall-e-3`
+
+#### Azure OpenAI
+- **语言模型**: `https://{resource}.openai.azure.com/openai/deployments/{deployment}/chat/completions?api-version=2024-02-15-preview`
+- **图像模型**: `https://{resource}.openai.azure.com/openai/deployments/{deployment}/images/generations?api-version=2024-02-15-preview`
+- **向量模型**: `https://{resource}.openai.azure.com/openai/deployments/{deployment}/embeddings?api-version=2024-02-15-preview`
+
+#### 百度文心
+- **语言模型**: `https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/completions`
+- **图像模型**: `https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/text2image/sd_xl`
+- **向量模型**: `https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/embeddings/embedding-v1`
+- **重排模型**: `https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/reranker/reranker`
+
+#### 阿里云通义
+- **语言模型**: `https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation`
+- **图像模型**: `https://dashscope.aliyuncs.com/api/v1/services/aigc/text-to-image/generation`
+- **向量模型**: `https://dashscope.aliyuncs.com/api/v1/services/embeddings/text-embedding/text-embedding`
+
+#### Stability AI
+- **图像模型**: `https://api.stability.ai/v2beta/stable-image/generate/core`
+- **模型名称**: `stable-diffusion-xl`, `stable-image-core`
+
+#### 本地部署 (Ollama 等)
+- **语言模型**: `http://localhost:11434/v1/chat/completions`
+- **图像模型**: `http://localhost:11434/v1/images/generations`
+- **向量模型**: `http://localhost:11434/v1/embeddings`
 
 ### 运行
 在 Android Studio 中点击 Run 按钮，或使用：

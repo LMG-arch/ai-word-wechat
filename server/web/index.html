@@ -868,16 +868,16 @@
                 </div>
                 <div class="form-group">
                     <label>模型类型 *</label>
-                    <select id="api-config-type">
-                        <option value="llm">语言模型 (LLM)</option>
-                        <option value="image">图像模型</option>
-                        <option value="vector">向量模型</option>
-                        <option value="rerank">重排模型</option>
+                    <select id="api-config-type" onchange="updateApiUrl()">
+                        <option value="llm">语言模型 (LLM) - 对话/文本生成</option>
+                        <option value="image">图像模型 - 绘画/图片生成</option>
+                        <option value="vector">向量模型 - 嵌入/向量检索</option>
+                        <option value="rerank">重排模型 - 记忆精排</option>
                     </select>
                 </div>
                 <div class="form-group">
                     <label>服务商 *</label>
-                    <select id="api-config-provider">
+                    <select id="api-config-provider" onchange="updateApiUrl()">
                         <option value="openai">OpenAI</option>
                         <option value="azure">Azure</option>
                         <option value="baidu">百度文心</option>
@@ -889,7 +889,7 @@
                 </div>
                 <div class="form-group">
                     <label>API 地址 *</label>
-                    <input type="text" id="api-config-url" placeholder="https://api.openai.com/v1/chat/completions">
+                    <input type="text" id="api-config-url" placeholder="根据模型类型自动填充">
                 </div>
                 <div class="form-group">
                     <label>API 密钥 *</label>
@@ -897,7 +897,7 @@
                 </div>
                 <div class="form-group">
                     <label>模型名称 *</label>
-                    <input type="text" id="api-config-model" placeholder="gpt-4, gpt-3.5-turbo, etc.">
+                    <input type="text" id="api-config-model" placeholder="gpt-4, gpt-3.5-turbo, sd-xl, etc.">
                 </div>
                 <div class="form-group">
                     <label>优先级</label>
@@ -1555,15 +1555,81 @@
             document.getElementById('api-config-name').value = '';
             document.getElementById('api-config-type').value = 'llm';
             document.getElementById('api-config-provider').value = 'openai';
-            document.getElementById('api-config-url').value = '';
+            document.getElementById('api-config-url').value = getDefaultApiUrl('openai', 'llm');
             document.getElementById('api-config-key').value = '';
             document.getElementById('api-config-model').value = '';
             document.getElementById('api-config-priority').value = '0';
             document.getElementById('api-config-enabled').checked = true;
         }
 
+        function getDefaultApiUrl(provider, apiType) {
+            const urls = {
+                'openai': {
+                    'llm': 'https://api.openai.com/v1/chat/completions',
+                    'image': 'https://api.openai.com/v1/images/generations',
+                    'vector': 'https://api.openai.com/v1/embeddings',
+                    'rerank': ''
+                },
+                'azure': {
+                    'llm': 'https://{resource}.openai.azure.com/openai/deployments/{deployment}/chat/completions?api-version=2024-02-15-preview',
+                    'image': 'https://{resource}.openai.azure.com/openai/deployments/{deployment}/images/generations?api-version=2024-02-15-preview',
+                    'vector': 'https://{resource}.openai.azure.com/openai/deployments/{deployment}/embeddings?api-version=2024-02-15-preview',
+                    'rerank': ''
+                },
+                'baidu': {
+                    'llm': 'https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/completions',
+                    'image': 'https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/text2image/sd_xl',
+                    'vector': 'https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/embeddings/embedding-v1',
+                    'rerank': 'https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/reranker/reranker'
+                },
+                'aliyun': {
+                    'llm': 'https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation',
+                    'image': 'https://dashscope.aliyuncs.com/api/v1/services/aigc/text-to-image/generation',
+                    'vector': 'https://dashscope.aliyuncs.com/api/v1/services/embeddings/text-embedding/text-embedding',
+                    'rerank': ''
+                },
+                'tencent': {
+                    'llm': 'https://hunyuan.tencentcloudapi.com',
+                    'image': 'https://hunyuan.tencentcloudapi.com',
+                    'vector': '',
+                    'rerank': ''
+                },
+                'stability': {
+                    'llm': '',
+                    'image': 'https://api.stability.ai/v2beta/stable-image/generate/core',
+                    'vector': '',
+                    'rerank': ''
+                },
+                'local': {
+                    'llm': 'http://localhost:11434/v1/chat/completions',
+                    'image': 'http://localhost:11434/v1/images/generations',
+                    'vector': 'http://localhost:11434/v1/embeddings',
+                    'rerank': ''
+                }
+            };
+            return urls[provider]?.[apiType] || '';
+        }
+
         function closeAddApiConfigModal() {
             document.getElementById('api-config-modal').classList.remove('show');
+        }
+
+        // 自动更新 API 地址
+        function updateApiUrl() {
+            const provider = document.getElementById('api-config-provider').value;
+            const apiType = document.getElementById('api-config-type').value;
+            const urlInput = document.getElementById('api-config-url');
+            const defaultUrl = getDefaultApiUrl(provider, apiType);
+            
+            // 只在用户未手动修改过时才更新
+            if (!urlInput.value || urlInput.value.includes('placeholder')) {
+                urlInput.value = defaultUrl;
+            } else {
+                // 询问用户是否要更新
+                if (confirm(`是否要根据当前服务商和模型类型自动填充 API 地址？\n\n建议地址：${defaultUrl}`)) {
+                    urlInput.value = defaultUrl;
+                }
+            }
         }
 
         async function saveApiConfig() {

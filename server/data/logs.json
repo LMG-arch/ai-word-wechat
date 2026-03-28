@@ -1,5 +1,33 @@
 [
   {
+    "id": "6c39ef00-9fe8-468a-aaf5-45161b36ced5",
+    "timestamp": "17:57:25",
+    "character_name": "测试角色",
+    "action_type": "成长",
+    "description": "年龄增长到31岁"
+  },
+  {
+    "id": "f0f075e2-b975-4f3e-b53d-0ecfe94cd18c",
+    "timestamp": "17:57:13",
+    "character_name": "系统",
+    "action_type": "API 配置",
+    "description": "创建 API 配置\"nvidia\" (openai)"
+  },
+  {
+    "id": "515d316b-8744-441f-8c67-44ce1afecdfe",
+    "timestamp": "17:55:25",
+    "character_name": "测试角色",
+    "action_type": "成长",
+    "description": "年龄增长到30岁"
+  },
+  {
+    "id": "1ee669a9-06e3-4c04-9027-e3067744f9e3",
+    "timestamp": "17:55:25",
+    "character_name": "小李",
+    "action_type": "成长",
+    "description": "年龄增长到27岁"
+  },
+  {
     "id": "f0f48099-4733-49da-ace3-efa2dc5059c2",
     "timestamp": "17:52:25",
     "character_name": "小李",
