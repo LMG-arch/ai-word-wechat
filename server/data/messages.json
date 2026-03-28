@@ -1,0 +1,24 @@
+[
+  {
+    "id": "30d57044-58d6-4737-b0e9-0ce11db66cf9",
+    "conversation_id": "51619fb2-487c-42a6-b344-9a398291419e",
+    "sender_id": "user",
+    "content": "你好，测试聊天",
+    "message_type": "text",
+    "image_url": null,
+    "timestamp": 1774691017583,
+    "is_read": false,
+    "is_from_user": true
+  },
+  {
+    "id": "6fb93cf8-7863-4a4a-b914-c13f3ec9551d",
+    "conversation_id": "51619fb2-487c-42a6-b344-9a398291419e",
+    "sender_id": "51619fb2-487c-42a6-b344-9a398291419e",
+    "content": "从温柔的角度来看，你好，测试聊天确实有道理。",
+    "message_type": "text",
+    "image_url": null,
+    "timestamp": 1774691017586,
+    "is_read": false,
+    "is_from_user": false
+  }
+]

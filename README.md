@@ -190,9 +190,35 @@ NEO4J_PASSWORD=password
 
 ## 运行方式
 
-### Web 测试版 (推荐用于快速测试)
+### 后端服务 + 手机 UI（推荐）
 
-无需安装 Android Studio，直接在浏览器中运行：
+完整的测试环境，数据存储在本地 JSON 文件。
+
+**启动服务器:**
+```bash
+cd server
+# Windows
+start.bat
+# 或手动启动
+pip install -r requirements.txt
+python main.py
+```
+
+**访问地址:**
+- 电脑浏览器：http://localhost:8080
+- 手机访问：http://你的电脑 IP:8080
+
+**功能特性:**
+- ✅ 完整的 RESTful API
+- ✅ 数据持久化（JSON 文件）
+- ✅ 手机端优化 UI
+- ✅ 实时日志面板
+- ✅ 后台年龄增长任务
+- ✅ 支持多设备访问
+
+### Web 测试版 (离线版)
+
+无需安装，直接在浏览器运行。
 
 1. **直接打开**
    ```

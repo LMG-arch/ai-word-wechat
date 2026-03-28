@@ -1,0 +1,23 @@
+[
+  {
+    "id": "4b8ec089-2cc9-4eb2-9059-648737a38c04",
+    "timestamp": "17:43:37",
+    "character_name": "测试角色",
+    "action_type": "对话",
+    "description": "回复：\"从温柔的角度来看，你好，测试聊天确实有道理。...\""
+  },
+  {
+    "id": "99351518-0caf-47a4-8dc6-c538b3e0addb",
+    "timestamp": "17:43:31",
+    "character_name": "测试角色",
+    "action_type": "创建",
+    "description": "角色\"测试角色\"被创建，28岁，设计师"
+  },
+  {
+    "id": "01125f96-af68-428a-94dc-7063548fc708",
+    "timestamp": "17:42:44",
+    "character_name": "小李",
+    "action_type": "创建",
+    "description": "角色\"小李\"被创建，25岁，学生"
+  }
+]

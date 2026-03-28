@@ -1,0 +1,1373 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>AI 社交世界</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        :root {
+            --wechat-green: #07C160;
+            --wechat-green-dark: #06AD56;
+            --bg-color: #f5f5f5;
+            --card-bg: #ffffff;
+            --text-primary: #191919;
+            --text-secondary: #7f7f7f;
+            --text-hint: #b2b2b2;
+            --divider: #e5e5e5;
+            --chat-sent: #95EC69;
+            --chat-received: #ffffff;
+            --error: #ff3b30;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            background: var(--bg-color);
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* 顶部导航栏 */
+        .header {
+            background: var(--wechat-green);
+            color: white;
+            padding: 12px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            z-index: 100;
+        }
+
+        .header h1 {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .header-btn {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 13px;
+            cursor: pointer;
+        }
+
+        /* 主内容区 */
+        .main-container {
+            flex: 1;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .tab-content {
+            display: none;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        .tab-content.active {
+            display: flex;
+        }
+
+        /* 列表样式 */
+        .list-container {
+            flex: 1;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .list-item {
+            display: flex;
+            padding: 12px 16px;
+            background: var(--card-bg);
+            border-bottom: 1px solid var(--divider);
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .list-item:active {
+            background: #ebebeb;
+        }
+
+        .avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 6px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 20px;
+            flex-shrink: 0;
+        }
+
+        .item-content {
+            flex: 1;
+            margin-left: 12px;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .item-title {
+            font-size: 16px;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .item-subtitle {
+            font-size: 13px;
+            color: var(--text-secondary);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .item-time {
+            font-size: 11px;
+            color: var(--text-hint);
+            margin-top: 2px;
+        }
+
+        .badge {
+            background: var(--error);
+            color: white;
+            font-size: 11px;
+            padding: 2px 6px;
+            border-radius: 10px;
+            margin-left: 8px;
+        }
+
+        /* 详情页样式 */
+        .detail-page {
+            display: none;
+            flex-direction: column;
+            height: 100%;
+            background: var(--bg-color);
+        }
+
+        .detail-page.active {
+            display: flex;
+        }
+
+        .detail-header {
+            background: var(--wechat-green);
+            color: white;
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .back-btn {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
+            padding: 4px;
+        }
+
+        .detail-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 6px;
+            background: rgba(255,255,255,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+
+        .detail-name {
+            font-size: 17px;
+            font-weight: 500;
+        }
+
+        .detail-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+        }
+
+        .info-card {
+            background: var(--card-bg);
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+
+        .info-card-title {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-bottom: 12px;
+            text-transform: uppercase;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+
+        .info-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .info-label {
+            font-size: 12px;
+            color: var(--text-hint);
+            margin-bottom: 4px;
+        }
+
+        .info-value {
+            font-size: 15px;
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+
+        /* 聊天界面 */
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .message-row {
+            display: flex;
+            align-items: flex-start;
+        }
+
+        .message-row.user {
+            justify-content: flex-end;
+        }
+
+        .message-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 6px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+
+        .message-bubble {
+            max-width: 70%;
+            padding: 10px 14px;
+            border-radius: 6px;
+            font-size: 15px;
+            line-height: 1.5;
+            word-wrap: break-word;
+        }
+
+        .message-row.user .message-bubble {
+            background: var(--chat-sent);
+            color: var(--text-primary);
+        }
+
+        .message-row.ai .message-bubble {
+            background: var(--chat-received);
+            color: var(--text-primary);
+            border: 1px solid var(--divider);
+        }
+
+        .chat-input-area {
+            padding: 10px 16px;
+            background: var(--card-bg);
+            border-top: 1px solid var(--divider);
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .chat-input {
+            flex: 1;
+            padding: 10px 14px;
+            border: 1px solid var(--divider);
+            border-radius: 20px;
+            font-size: 15px;
+            outline: none;
+        }
+
+        .chat-input:focus {
+            border-color: var(--wechat-green);
+        }
+
+        .send-btn {
+            background: var(--wechat-green);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .send-btn:active {
+            background: var(--wechat-green-dark);
+        }
+
+        /* 底部导航 */
+        .bottom-nav {
+            background: var(--card-bg);
+            border-top: 1px solid var(--divider);
+            display: flex;
+            padding: 6px 0;
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+
+        .nav-item {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 4px 0;
+            cursor: pointer;
+            color: var(--text-secondary);
+            transition: color 0.2s;
+        }
+
+        .nav-item.active {
+            color: var(--wechat-green);
+        }
+
+        .nav-item:active {
+            opacity: 0.6;
+        }
+
+        .nav-icon {
+            font-size: 22px;
+            margin-bottom: 2px;
+        }
+
+        .nav-label {
+            font-size: 11px;
+        }
+
+        /* 空状态 */
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: var(--text-secondary);
+            padding: 40px 20px;
+            text-align: center;
+        }
+
+        .empty-state-icon {
+            font-size: 64px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        .empty-state-text {
+            font-size: 15px;
+        }
+
+        /* 模态框 */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal-overlay.show {
+            display: flex;
+        }
+
+        .modal {
+            background: var(--card-bg);
+            border-radius: 12px;
+            width: 90%;
+            max-width: 400px;
+            max-height: 80vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .modal-header {
+            padding: 16px;
+            border-bottom: 1px solid var(--divider);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-title {
+            font-size: 17px;
+            font-weight: 500;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 24px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            padding: 4px;
+        }
+
+        .modal-body {
+            padding: 16px;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 14px;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--divider);
+            border-radius: 8px;
+            font-size: 15px;
+            outline: none;
+            background: var(--card-bg);
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus {
+            border-color: var(--wechat-green);
+        }
+
+        .modal-footer {
+            padding: 16px;
+            border-top: 1px solid var(--divider);
+            display: flex;
+            gap: 12px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        .btn:active {
+            opacity: 0.7;
+        }
+
+        .btn-primary {
+            background: var(--wechat-green);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: var(--bg-color);
+            color: var(--text-primary);
+        }
+
+        .btn-danger {
+            background: var(--error);
+            color: white;
+        }
+
+        /* 日志面板 */
+        .log-panel {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 60%;
+            background: #1a1a1a;
+            border-radius: 16px 16px 0 0;
+            box-shadow: 0 -4px 12px rgba(0,0,0,0.3);
+            transform: translateY(100%);
+            transition: transform 0.3s;
+            z-index: 999;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .log-panel.show {
+            transform: translateY(0);
+        }
+
+        .log-panel-header {
+            background: #2a2a2a;
+            color: white;
+            padding: 12px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-radius: 16px 16px 0 0;
+        }
+
+        .log-panel-title {
+            font-size: 15px;
+            font-weight: 500;
+        }
+
+        .log-panel-close {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            padding: 4px;
+        }
+
+        .log-panel-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            color: #00ff00;
+        }
+
+        .log-entry {
+            padding: 6px 0;
+            border-bottom: 1px solid #333;
+        }
+
+        .log-time {
+            color: #888;
+            margin-right: 8px;
+        }
+
+        .log-tag {
+            color: #00ffff;
+            margin-right: 8px;
+        }
+
+        /* 加载动画 */
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .spinner {
+            width: 24px;
+            height: 24px;
+            border: 3px solid var(--divider);
+            border-top-color: var(--wechat-green);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* 操作按钮栏 */
+        .action-bar {
+            padding: 12px 16px;
+            background: var(--card-bg);
+            border-top: 1px solid var(--divider);
+            display: flex;
+            gap: 12px;
+        }
+
+        /* 搜索框 */
+        .search-box {
+            padding: 10px 16px;
+            background: var(--card-bg);
+            border-bottom: 1px solid var(--divider);
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 10px 14px;
+            border: 1px solid var(--divider);
+            border-radius: 20px;
+            font-size: 14px;
+            background: var(--bg-color);
+            outline: none;
+        }
+
+        .search-input:focus {
+            border-color: var(--wechat-green);
+        }
+
+        /* 添加角色按钮 */
+        .fab {
+            position: fixed;
+            bottom: 80px;
+            right: 20px;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: var(--wechat-green);
+            color: white;
+            border: none;
+            font-size: 28px;
+            box-shadow: 0 4px 12px rgba(7, 193, 96, 0.4);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 90;
+        }
+
+        .fab:active {
+            transform: scale(0.95);
+        }
+    </style>
+</head>
+<body>
+    <!-- 顶部 -->
+    <header class="header">
+        <h1 id="header-title">AI 社交世界</h1>
+        <button class="header-btn" onclick="toggleLogPanel()">📋 日志</button>
+    </header>
+
+    <!-- 主内容区 -->
+    <div class="main-container">
+        <!-- 聊天列表 -->
+        <div id="tab-chat" class="tab-content active">
+            <div class="list-container" id="chat-list">
+                <!-- 动态生成 -->
+            </div>
+        </div>
+
+        <!-- 通讯录 -->
+        <div id="tab-contacts" class="tab-content">
+            <div class="search-box">
+                <input type="text" class="search-input" placeholder="搜索联系人" id="contact-search" oninput="filterContacts()">
+            </div>
+            <div class="list-container" id="contact-list">
+                <!-- 动态生成 -->
+            </div>
+            <button class="fab" onclick="showAddCharacterModal()">+</button>
+        </div>
+
+        <!-- 群聊 -->
+        <div id="tab-groups" class="tab-content">
+            <div class="empty-state">
+                <div class="empty-state-icon">👥</div>
+                <div class="empty-state-text">群聊功能开发中...</div>
+            </div>
+        </div>
+
+        <!-- 任务 -->
+        <div id="tab-tasks" class="tab-content">
+            <div class="empty-state">
+                <div class="empty-state-icon">📝</div>
+                <div class="empty-state-text">任务功能开发中...</div>
+            </div>
+        </div>
+
+        <!-- 发现 -->
+        <div id="tab-discover" class="tab-content">
+            <div class="empty-state">
+                <div class="empty-state-icon">🧭</div>
+                <div class="empty-state-text">发现功能开发中...</div>
+            </div>
+        </div>
+
+        <!-- 我 -->
+        <div id="tab-mine" class="tab-content">
+            <div class="list-container">
+                <div style="padding: 16px;">
+                    <div class="info-card">
+                        <div class="info-card-title">设置</div>
+                        <div class="list-item" onclick="showApiConfigModal()">
+                            <div class="item-content">
+                                <div class="item-title">AI 模型配置</div>
+                                <div class="item-subtitle">配置 AI 服务商</div>
+                            </div>
+                            <span>→</span>
+                        </div>
+                    </div>
+
+                    <div class="info-card">
+                        <div class="info-card-title">时间设置</div>
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label>时间倍速</label>
+                            <select id="time-speed" onchange="updateTimeSpeed(this.value)" style="width: 100%;">
+                                <option value="1">1x (实时)</option>
+                                <option value="5">5x</option>
+                                <option value="10">10x</option>
+                                <option value="30" selected>30x (1 天=1 月)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="info-card">
+                        <div class="info-card-title">系统信息</div>
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <div class="info-label">角色数量</div>
+                                <div class="info-value" id="stat-characters">0</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">消息数量</div>
+                                <div class="info-value" id="stat-messages">0</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 底部导航 -->
+    <nav class="bottom-nav">
+        <div class="nav-item active" data-tab="chat" onclick="switchTab('chat')">
+            <span class="nav-icon">💬</span>
+            <span class="nav-label">聊天</span>
+        </div>
+        <div class="nav-item" data-tab="contacts" onclick="switchTab('contacts')">
+            <span class="nav-icon">👥</span>
+            <span class="nav-label">通讯录</span>
+        </div>
+        <div class="nav-item" data-tab="groups" onclick="switchTab('groups')">
+            <span class="nav-icon">👨‍👩‍👧</span>
+            <span class="nav-label">群聊</span>
+        </div>
+        <div class="nav-item" data-tab="tasks" onclick="switchTab('tasks')">
+            <span class="nav-icon">📝</span>
+            <span class="nav-label">任务</span>
+        </div>
+        <div class="nav-item" data-tab="discover" onclick="switchTab('discover')">
+            <span class="nav-icon">🧭</span>
+            <span class="nav-label">发现</span>
+        </div>
+        <div class="nav-item" data-tab="mine" onclick="switchTab('mine')">
+            <span class="nav-icon">👤</span>
+            <span class="nav-label">我</span>
+        </div>
+    </nav>
+
+    <!-- 角色详情页 -->
+    <div id="character-detail-page" class="detail-page">
+        <div class="detail-header">
+            <button class="back-btn" onclick="closeCharacterDetail()">←</button>
+            <div class="detail-avatar" id="detail-avatar">?</div>
+            <div class="detail-name" id="detail-name">角色名</div>
+        </div>
+        <div class="detail-body" id="character-detail-body">
+            <!-- 动态生成 -->
+        </div>
+        <div class="action-bar">
+            <button class="btn btn-primary" onclick="openChatFromDetail()">发消息</button>
+            <button class="btn btn-secondary" onclick="deleteCurrentCharacter()">删除</button>
+        </div>
+    </div>
+
+    <!-- 聊天详情页 -->
+    <div id="chat-detail-page" class="detail-page">
+        <div class="detail-header">
+            <button class="back-btn" onclick="closeChatDetail()">←</button>
+            <div class="detail-avatar" id="chat-detail-avatar">?</div>
+            <div class="detail-name" id="chat-detail-name">角色名</div>
+        </div>
+        <div class="chat-messages" id="chat-messages-container">
+            <!-- 动态生成 -->
+        </div>
+        <div class="chat-input-area">
+            <input type="text" class="chat-input" id="chat-input" placeholder="输入消息..." onkeypress="if(event.key==='Enter') sendChatMessage()">
+            <button class="send-btn" onclick="sendChatMessage()">发送</button>
+        </div>
+    </div>
+
+    <!-- 添加角色模态框 -->
+    <div class="modal-overlay" id="add-character-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <span class="modal-title">创建新角色</span>
+                <button class="modal-close" onclick="closeAddCharacterModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>昵称 *</label>
+                    <input type="text" id="char-name" placeholder="输入角色昵称">
+                </div>
+                <div class="form-group">
+                    <label>年龄</label>
+                    <input type="number" id="char-age" value="25" min="0" max="100">
+                </div>
+                <div class="form-group">
+                    <label>性别</label>
+                    <select id="char-gender">
+                        <option value="男">男</option>
+                        <option value="女">女</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>职业 *</label>
+                    <input type="text" id="char-occupation" placeholder="例如：程序员、教师、医生">
+                </div>
+                <div class="form-group">
+                    <label>性格描述</label>
+                    <textarea id="char-personality" rows="2" placeholder="例如：开朗、内向、幽默"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeAddCharacterModal()">取消</button>
+                <button class="btn btn-primary" onclick="createCharacter()">创建</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 日志面板 -->
+    <div class="log-panel" id="log-panel">
+        <div class="log-panel-header">
+            <span class="log-panel-title">实时日志</span>
+            <button class="log-panel-close" onclick="toggleLogPanel()">×</button>
+        </div>
+        <div class="log-panel-content" id="log-content">
+            <!-- 日志内容 -->
+        </div>
+    </div>
+
+    <script>
+        // API 基础地址
+        const API_BASE = window.location.origin + '/api';
+
+        // 当前选中的角色
+        let currentCharacter = null;
+        let currentConversation = null;
+
+        // ==================== 导航切换 ====================
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.classList.remove('active');
+            });
+
+            document.getElementById(`tab-${tabName}`).classList.add('active');
+            document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+
+            // 更新标题
+            const titles = {
+                'chat': '聊天',
+                'contacts': '通讯录',
+                'groups': '群聊',
+                'tasks': '任务',
+                'discover': '发现',
+                'mine': '我'
+            };
+            document.getElementById('header-title').textContent = titles[tabName];
+
+            // 加载数据
+            if (tabName === 'contacts') {
+                loadCharacters();
+            } else if (tabName === 'chat') {
+                loadChatList();
+            } else if (tabName === 'mine') {
+                loadStats();
+                loadSettings();
+            }
+        }
+
+        // ==================== 角色管理 ====================
+        async function loadCharacters() {
+            const container = document.getElementById('contact-list');
+            container.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+
+            try {
+                const response = await fetch(`${API_BASE}/characters`);
+                const result = await response.json();
+
+                if (result.success && result.data.length === 0) {
+                    container.innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-state-icon">👤</div>
+                            <div class="empty-state-text">暂无联系人</div>
+                            <div class="empty-state-text" style="font-size: 12px; margin-top: 8px;">点击右下角 + 添加角色</div>
+                        </div>
+                    `;
+                    return;
+                }
+
+                container.innerHTML = result.data.map(char => `
+                    <div class="list-item" onclick="showCharacterDetail('${char.id}')">
+                        <div class="avatar">${char.get_avatar_initials || char.name[0]}</div>
+                        <div class="item-content">
+                            <div class="item-title">${char.name}</div>
+                            <div class="item-subtitle">${char.occupation} · ${char.age}岁</div>
+                            <div class="item-time">${getAgeStage(char.age)}</div>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                container.innerHTML = `<div class="empty-state"><div class="empty-state-text">加载失败：${error.message}</div></div>`;
+            }
+        }
+
+        function showAddCharacterModal() {
+            document.getElementById('add-character-modal').classList.add('show');
+        }
+
+        function closeAddCharacterModal() {
+            document.getElementById('add-character-modal').classList.remove('show');
+            document.getElementById('char-name').value = '';
+            document.getElementById('char-age').value = '25';
+            document.getElementById('char-occupation').value = '';
+            document.getElementById('char-personality').value = '';
+        }
+
+        async function createCharacter() {
+            const name = document.getElementById('char-name').value.trim();
+            const age = parseInt(document.getElementById('char-age').value);
+            const gender = document.getElementById('char-gender').value;
+            const occupation = document.getElementById('char-occupation').value.trim();
+            const personality = document.getElementById('char-personality').value.trim();
+
+            if (!name) {
+                alert('请输入昵称');
+                return;
+            }
+
+            if (!occupation) {
+                alert('请输入职业');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/characters`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, age, gender, occupation, personality })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    closeAddCharacterModal();
+                    loadCharacters();
+                    showToast('角色创建成功');
+                }
+            } catch (error) {
+                alert('创建失败：' + error.message);
+            }
+        }
+
+        async function showCharacterDetail(characterId) {
+            try {
+                const response = await fetch(`${API_BASE}/characters/${characterId}`);
+                const result = await response.json();
+
+                if (result.success) {
+                    currentCharacter = result.data;
+
+                    document.getElementById('detail-avatar').textContent = currentCharacter.name[0];
+                    document.getElementById('detail-name').textContent = currentCharacter.name;
+
+                    document.getElementById('character-detail-body').innerHTML = `
+                        <div class="info-card">
+                            <div class="info-card-title">基本信息</div>
+                            <div class="info-grid">
+                                <div class="info-item">
+                                    <div class="info-label">年龄</div>
+                                    <div class="info-value">${currentCharacter.age}岁</div>
+                                </div>
+                                <div class="info-item">
+                                    <div class="info-label">性别</div>
+                                    <div class="info-value">${currentCharacter.gender}</div>
+                                </div>
+                                <div class="info-item">
+                                    <div class="info-label">职业</div>
+                                    <div class="info-value">${currentCharacter.occupation}</div>
+                                </div>
+                                <div class="info-item">
+                                    <div class="info-label">性格</div>
+                                    <div class="info-value">${currentCharacter.personality}</div>
+                                </div>
+                                <div class="info-item">
+                                    <div class="info-label">年龄段</div>
+                                    <div class="info-value">${getAgeStage(currentCharacter.age)}</div>
+                                </div>
+                                <div class="info-item">
+                                    <div class="info-label">资金</div>
+                                    <div class="info-value">¥${currentCharacter.money}</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="info-card">
+                            <div class="info-card-title">签名</div>
+                            <div class="info-value">${currentCharacter.signature || '暂无签名'}</div>
+                        </div>
+                    `;
+
+                    document.getElementById('character-detail-page').classList.add('active');
+                }
+            } catch (error) {
+                alert('加载失败：' + error.message);
+            }
+        }
+
+        function closeCharacterDetail() {
+            document.getElementById('character-detail-page').classList.remove('active');
+            currentCharacter = null;
+        }
+
+        function openChatFromDetail() {
+            if (currentCharacter) {
+                closeCharacterDetail();
+                showChatDetail(currentCharacter.id);
+            }
+        }
+
+        async function deleteCurrentCharacter() {
+            if (!currentCharacter) return;
+
+            if (!confirm(`确定要删除角色"${currentCharacter.name}"吗？`)) return;
+
+            try {
+                const response = await fetch(`${API_BASE}/characters/${currentCharacter.id}`, {
+                    method: 'DELETE'
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    closeCharacterDetail();
+                    loadCharacters();
+                    showToast('角色已删除');
+                }
+            } catch (error) {
+                alert('删除失败：' + error.message);
+            }
+        }
+
+        // ==================== 聊天功能 ====================
+        async function loadChatList() {
+            const container = document.getElementById('chat-list');
+            container.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+
+            try {
+                const charsResponse = await fetch(`${API_BASE}/characters`);
+                const charsResult = await charsResponse.json();
+
+                if (!charsResult.success || charsResult.data.length === 0) {
+                    container.innerHTML = `<div class="empty-state"><div class="empty-state-text">暂无消息</div></div>`;
+                    return;
+                }
+
+                // 获取所有会话的最后一条消息
+                const conversations = {};
+                for (const char of charsResult.data) {
+                    const msgsResponse = await fetch(`${API_BASE}/messages/${char.id}`);
+                    const msgsResult = await msgsResponse.json();
+
+                    if (msgsResult.success && msgsResult.data.length > 0) {
+                        const lastMsg = msgsResult.data[msgsResult.data.length - 1];
+                        conversations[char.id] = {
+                            character: char,
+                            lastMessage: lastMsg,
+                            unreadCount: msgsResult.data.filter(m => !m.is_read && !m.is_from_user).length
+                        };
+                    } else {
+                        conversations[char.id] = {
+                            character: char,
+                            lastMessage: null,
+                            unreadCount: 0
+                        };
+                    }
+                }
+
+                // 按时间排序
+                const sorted = Object.values(conversations).sort((a, b) => {
+                    const timeA = a.lastMessage ? a.lastMessage.timestamp : 0;
+                    const timeB = b.lastMessage ? b.lastMessage.timestamp : 0;
+                    return timeB - timeA;
+                });
+
+                if (sorted.length === 0) {
+                    container.innerHTML = `<div class="empty-state"><div class="empty-state-text">暂无消息</div></div>`;
+                    return;
+                }
+
+                container.innerHTML = sorted.map(conv => `
+                    <div class="list-item" onclick="showChatDetail('${conv.character.id}')">
+                        <div class="avatar">${conv.character.name[0]}</div>
+                        <div class="item-content">
+                            <div class="item-title">
+                                ${conv.character.name}
+                                ${conv.unreadCount > 0 ? `<span class="badge">${conv.unreadCount}</span>` : ''}
+                            </div>
+                            <div class="item-subtitle">${conv.lastMessage ? conv.lastMessage.content : '开始聊天吧'}</div>
+                            <div class="item-time">${conv.lastMessage ? formatTime(conv.lastMessage.timestamp) : ''}</div>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                container.innerHTML = `<div class="empty-state"><div class="empty-state-text">加载失败：${error.message}</div></div>`;
+            }
+        }
+
+        async function showChatDetail(characterId) {
+            try {
+                const charResponse = await fetch(`${API_BASE}/characters/${characterId}`);
+                const charResult = await charResponse.json();
+
+                if (!charResult.success) return;
+
+                currentConversation = characterId;
+                const character = charResult.data;
+
+                document.getElementById('chat-detail-avatar').textContent = character.name[0];
+                document.getElementById('chat-detail-name').textContent = character.name;
+
+                document.getElementById('chat-detail-page').classList.add('active');
+
+                await loadMessages(characterId);
+            } catch (error) {
+                alert('加载失败：' + error.message);
+            }
+        }
+
+        function closeChatDetail() {
+            document.getElementById('chat-detail-page').classList.remove('active');
+            currentConversation = null;
+        }
+
+        async function loadMessages(conversationId) {
+            const container = document.getElementById('chat-messages-container');
+            container.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+
+            try {
+                const response = await fetch(`${API_BASE}/messages/${conversationId}`);
+                const result = await response.json();
+
+                if (result.success && result.data.length === 0) {
+                    container.innerHTML = `<div class="empty-state"><div class="empty-state-text">开始聊天吧</div></div>`;
+                    return;
+                }
+
+                container.innerHTML = result.data.map(msg => `
+                    <div class="message-row ${msg.is_from_user ? 'user' : 'ai'}">
+                        ${!msg.is_from_user ? '<div class="message-avatar">' + (currentConversation ? currentConversation[0].toUpperCase() : '?') + '</div>' : ''}
+                        <div class="message-bubble">${msg.content}</div>
+                    </div>
+                `).join('');
+
+                container.scrollTop = container.scrollHeight;
+            } catch (error) {
+                container.innerHTML = `<div class="empty-state"><div class="empty-state-text">加载失败：${error.message}</div></div>`;
+            }
+        }
+
+        async function sendChatMessage() {
+            const input = document.getElementById('chat-input');
+            const content = input.value.trim();
+            if (!content || !currentConversation) return;
+
+            input.value = '';
+
+            try {
+                const response = await fetch(`${API_BASE}/messages/send`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        conversation_id: currentConversation,
+                        content: content
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    // 重新加载消息
+                    await loadMessages(currentConversation);
+                    loadChatList();
+                }
+            } catch (error) {
+                alert('发送失败：' + error.message);
+            }
+        }
+
+        // ==================== 设置和统计 ====================
+        async function loadStats() {
+            try {
+                const response = await fetch(`${API_BASE}/stats`);
+                const result = await response.json();
+
+                if (result.success) {
+                    document.getElementById('stat-characters').textContent = result.data.character_count;
+                    document.getElementById('stat-messages').textContent = result.data.message_count;
+                }
+            } catch (error) {
+                console.error('加载统计失败:', error);
+            }
+        }
+
+        async function loadSettings() {
+            try {
+                const response = await fetch(`${API_BASE}/settings`);
+                const result = await response.json();
+
+                if (result.success) {
+                    document.getElementById('time-speed').value = result.data.time_speed;
+                }
+            } catch (error) {
+                console.error('加载设置失败:', error);
+            }
+        }
+
+        async function updateTimeSpeed(speed) {
+            try {
+                const response = await fetch(`${API_BASE}/settings`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ time_speed: parseInt(speed) })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showToast(`时间倍速已调整为${speed}x`);
+                }
+            } catch (error) {
+                alert('设置失败：' + error.message);
+            }
+        }
+
+        // ==================== 日志面板 ====================
+        async function loadLogs() {
+            try {
+                const response = await fetch(`${API_BASE}/logs`);
+                const result = await response.json();
+
+                const container = document.getElementById('log-content');
+                if (result.success && result.data.length > 0) {
+                    container.innerHTML = result.data.map(log => `
+                        <div class="log-entry">
+                            <span class="log-time">[${log.timestamp}]</span>
+                            <span class="log-tag">[${log.character_name}]</span>
+                            <span>[${log.action_type}]</span>
+                            <span>${log.description}</span>
+                        </div>
+                    `).join('');
+                } else {
+                    container.innerHTML = '<div style="color: #666; text-align: center; padding: 20px;">暂无日志</div>';
+                }
+            } catch (error) {
+                console.error('加载日志失败:', error);
+            }
+        }
+
+        function toggleLogPanel() {
+            const panel = document.getElementById('log-panel');
+            panel.classList.toggle('show');
+            if (panel.classList.contains('show')) {
+                loadLogs();
+            }
+        }
+
+        // ==================== 工具函数 ====================
+        function getAgeStage(age) {
+            if (age <= 12) return '儿童';
+            if (age <= 17) return '青少年';
+            if (age <= 40) return '青年';
+            if (age <= 60) return '中年';
+            return '老年';
+        }
+
+        function formatTime(timestamp) {
+            const now = Date.now() / 1000;
+            const diff = now - timestamp;
+
+            if (diff < 60) return '刚刚';
+            if (diff < 3600) return `${Math.floor(diff / 60)}分钟前`;
+            if (diff < 86400) return `${Math.floor(diff / 3600)}小时前`;
+            return `${Math.floor(diff / 86400)}天前`;
+        }
+
+        function showToast(message) {
+            const toast = document.createElement('div');
+            toast.style.cssText = `
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background: rgba(0,0,0,0.7);
+                color: white;
+                padding: 12px 24px;
+                border-radius: 8px;
+                font-size: 14px;
+                z-index: 2000;
+            `;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 2000);
+        }
+
+        function filterContacts() {
+            const query = document.getElementById('contact-search').value.toLowerCase();
+            const items = document.querySelectorAll('#contact-list .list-item');
+
+            items.forEach(item => {
+                const name = item.querySelector('.item-title').textContent.toLowerCase();
+                const subtitle = item.querySelector('.item-subtitle').textContent.toLowerCase();
+
+                if (name.includes(query) || subtitle.includes(query)) {
+                    item.style.display = 'flex';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+        }
+
+        function showApiConfigModal() {
+            alert('AI 模型配置功能开发中...');
+        }
+
+        // ==================== 初始化 ====================
+        document.addEventListener('DOMContentLoaded', () => {
+            loadCharacters();
+            loadLogs();
+
+            // 定期刷新日志
+            setInterval(loadLogs, 5000);
+        });
+    </script>
+</body>
+</html>
