@@ -6,9 +6,9 @@ AI 社交世界 - 后端服务
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, Field
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from datetime import datetime
 import json
 import os
@@ -35,6 +35,7 @@ CHARACTERS_FILE = os.path.join(DATA_DIR, "characters.json")
 MESSAGES_FILE = os.path.join(DATA_DIR, "messages.json")
 LOGS_FILE = os.path.join(DATA_DIR, "logs.json")
 SETTINGS_FILE = os.path.join(DATA_DIR, "settings.json")
+API_CONFIGS_FILE = os.path.join(DATA_DIR, "api_configs.json")
 
 
 # ==================== 数据模型 ====================
@@ -118,6 +119,31 @@ class ChatResponse(BaseModel):
     timestamp: int
 
 
+class ApiConfig(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str
+    api_type: str  # llm, image, vector, rerank
+    provider: str  # openai, azure, baidu, etc.
+    api_url: str
+    api_key: str
+    model_name: str
+    is_enabled: bool = True
+    priority: int = 0
+    created_at: int = Field(default_factory=lambda: int(time.time() * 1000))
+    updated_at: int = Field(default_factory=lambda: int(time.time() * 1000))
+
+
+class CreateApiConfigRequest(BaseModel):
+    name: str
+    api_type: str
+    provider: str
+    api_url: str
+    api_key: str
+    model_name: str
+    is_enabled: bool = True
+    priority: int = 0
+
+
 # ==================== 数据存储函数 ====================
 
 def load_json(filename: str, default=None):
@@ -146,7 +172,7 @@ def get_characters() -> List[Character]:
 
 
 def save_characters(characters: List[Character]):
-    save_json(CHARACTERS_FILE, [char.dict() for char in characters])
+    save_json(CHARACTERS_FILE, [char.model_dump() for char in characters])
 
 
 def get_messages() -> List[ChatMessage]:
@@ -155,7 +181,7 @@ def get_messages() -> List[ChatMessage]:
 
 
 def save_messages(messages: List[ChatMessage]):
-    save_json(MESSAGES_FILE, [msg.dict() for msg in messages])
+    save_json(MESSAGES_FILE, [msg.model_dump() for msg in messages])
 
 
 def get_logs() -> List[LogEntry]:
@@ -164,7 +190,7 @@ def get_logs() -> List[LogEntry]:
 
 
 def save_logs(logs: List[LogEntry]):
-    save_json(LOGS_FILE, [log.dict() for log in logs])
+    save_json(LOGS_FILE, [log.model_dump() for log in logs])
 
 
 def get_settings() -> Settings:
@@ -173,7 +199,24 @@ def get_settings() -> Settings:
 
 
 def save_settings(settings: Settings):
-    save_json(SETTINGS_FILE, settings.dict())
+    save_json(SETTINGS_FILE, settings.model_dump())
+
+
+def get_api_configs() -> List[ApiConfig]:
+    data = load_json(API_CONFIGS_FILE, [])
+    return [ApiConfig(**config) for config in data]
+
+
+def save_api_configs(configs: List[ApiConfig]):
+    save_json(API_CONFIGS_FILE, [config.model_dump() for config in configs])
+
+
+def get_api_config_by_id(config_id: str) -> Optional[ApiConfig]:
+    configs = get_api_configs()
+    for config in configs:
+        if config.id == config_id:
+            return config
+    return None
 
 
 def add_log(character_name: str, action_type: str, description: str):
@@ -230,7 +273,7 @@ async def root():
 async def list_characters():
     """获取所有角色列表"""
     characters = get_characters()
-    return {"success": True, "data": [char.dict() for char in characters]}
+    return {"success": True, "data": [char.model_dump() for char in characters]}
 
 
 @app.get("/api/characters/{character_id}")
@@ -239,7 +282,7 @@ async def get_character(character_id: str):
     characters = get_characters()
     for char in characters:
         if char.id == character_id:
-            return {"success": True, "data": char.dict()}
+            return {"success": True, "data": char.model_dump()}
     raise HTTPException(status_code=404, detail="角色不存在")
 
 
@@ -247,7 +290,7 @@ async def get_character(character_id: str):
 async def create_character(request: CreateCharacterRequest):
     """创建新角色"""
     characters = get_characters()
-    
+
     character = Character(
         name=request.name,
         age=request.age,
@@ -255,13 +298,13 @@ async def create_character(request: CreateCharacterRequest):
         occupation=request.occupation,
         personality=request.personality
     )
-    
+
     characters.append(character)
     save_characters(characters)
-    
+
     add_log(character.name, "创建", f"角色\"{character.name}\"被创建，{character.age}岁，{character.occupation}")
-    
-    return {"success": True, "data": character.dict()}
+
+    return {"success": True, "data": character.model_dump()}
 
 
 @app.delete("/api/characters/{character_id}")
@@ -303,9 +346,9 @@ async def update_character(character_id: str, request: CreateCharacterRequest):
             save_characters(characters)
             
             add_log(char.name, "更新", f"角色信息已更新")
-            
-            return {"success": True, "data": char.dict()}
-    
+
+            return {"success": True, "data": char.model_dump()}
+
     raise HTTPException(status_code=404, detail="角色不存在")
 
 
@@ -315,7 +358,7 @@ async def get_conversation_messages(conversation_id: str):
     messages = get_messages()
     conv_messages = [msg for msg in messages if msg.conversation_id == conversation_id]
     conv_messages.sort(key=lambda x: x.timestamp)
-    return {"success": True, "data": [msg.dict() for msg in conv_messages]}
+    return {"success": True, "data": [msg.model_dump() for msg in conv_messages]}
 
 
 @app.post("/api/messages/send")
@@ -359,12 +402,12 @@ async def send_message(request: SendMessageRequest):
     
     # 记录日志
     add_log(character.name, "对话", f"回复：\"{reply_content[:30]}...\"")
-    
+
     return {
         "success": True,
         "data": {
-            "user_message": user_message.dict(),
-            "ai_message": ai_message.dict()
+            "user_message": user_message.model_dump(),
+            "ai_message": ai_message.model_dump()
         }
     }
 
@@ -396,7 +439,7 @@ async def clear_logs():
 async def get_app_settings():
     """获取应用设置"""
     settings = get_settings()
-    return {"success": True, "data": settings.dict()}
+    return {"success": True, "data": settings.model_dump()}
 
 
 @app.put("/api/settings")
@@ -404,7 +447,124 @@ async def update_app_settings(settings: Settings):
     """更新应用设置"""
     save_settings(settings)
     add_log("系统", "设置", f"时间倍速调整为{settings.time_speed}x")
-    return {"success": True, "data": settings.dict()}
+    return {"success": True, "data": settings.model_dump()}
+
+
+# ==================== API 配置接口 ====================
+
+@app.get("/api/api-configs")
+async def list_api_configs():
+    """获取所有 API 配置"""
+    configs = get_api_configs()
+    # 不返回 api_key 以保护敏感信息
+    result = []
+    for config in configs:
+        config_dict = config.model_dump()
+        config_dict['api_key'] = '***' + config.api_key[-4:] if len(config.api_key) > 4 else '***'
+        result.append(config_dict)
+    return {"success": True, "data": result}
+
+
+@app.get("/api/api-configs/{config_id}")
+async def get_api_config(config_id: str):
+    """获取 API 配置详情"""
+    config = get_api_config_by_id(config_id)
+    if not config:
+        raise HTTPException(status_code=404, detail="配置不存在")
+    return {"success": True, "data": config.model_dump()}
+
+
+@app.post("/api/api-configs")
+async def create_api_config(request: CreateApiConfigRequest):
+    """创建 API 配置"""
+    configs = get_api_configs()
+
+    config = ApiConfig(
+        name=request.name,
+        api_type=request.api_type,
+        provider=request.provider,
+        api_url=request.api_url,
+        api_key=request.api_key,
+        model_name=request.model_name,
+        is_enabled=request.is_enabled,
+        priority=request.priority
+    )
+
+    configs.append(config)
+    save_api_configs(configs)
+
+    add_log("系统", "API 配置", f"创建 API 配置\"{config.name}\" ({config.provider})")
+
+    return {"success": True, "data": config.model_dump()}
+
+
+@app.put("/api/api-configs/{config_id}")
+async def update_api_config(config_id: str, request: CreateApiConfigRequest):
+    """更新 API 配置"""
+    configs = get_api_configs()
+
+    for i, config in enumerate(configs):
+        if config.id == config_id:
+            config.name = request.name
+            config.api_type = request.api_type
+            config.provider = request.provider
+            config.api_url = request.api_url
+            if request.api_key and request.api_key != '***':
+                config.api_key = request.api_key
+            config.model_name = request.model_name
+            config.is_enabled = request.is_enabled
+            config.priority = request.priority
+            config.updated_at = int(time.time() * 1000)
+            configs[i] = config
+            save_api_configs(configs)
+
+            add_log("系统", "API 配置", f"更新 API 配置\"{config.name}\"")
+
+            return {"success": True, "data": config.model_dump()}
+
+    raise HTTPException(status_code=404, detail="配置不存在")
+
+
+@app.delete("/api/api-configs/{config_id}")
+async def delete_api_config(config_id: str):
+    """删除 API 配置"""
+    configs = get_api_configs()
+
+    config_to_delete = None
+    for config in configs:
+        if config.id == config_id:
+            config_to_delete = config
+            break
+
+    if not config_to_delete:
+        raise HTTPException(status_code=404, detail="配置不存在")
+
+    configs.remove(config_to_delete)
+    save_api_configs(configs)
+
+    add_log("系统", "API 配置", f"删除 API 配置\"{config_to_delete.name}\"")
+
+    return {"success": True}
+
+
+@app.post("/api/api-configs/{config_id}/toggle")
+async def toggle_api_config(config_id: str):
+    """切换 API 配置启用状态"""
+    configs = get_api_configs()
+
+    for i, config in enumerate(configs):
+        if config.id == config_id:
+            config.is_enabled = not config.is_enabled
+            config.updated_at = int(time.time() * 1000)
+            configs[i] = config
+            save_api_configs(configs)
+
+            status = "启用" if config.is_enabled else "禁用"
+            add_log("系统", "API 配置", f"{status} API 配置\"{config.name}\"")
+
+            return {"success": True, "data": config.model_dump()}
+
+    raise HTTPException(status_code=404, detail="配置不存在")
 
 
 @app.get("/api/stats")

@@ -1,5 +1,40 @@
 [
   {
+    "id": "9cf12b35-7836-4c72-9a33-645c4f46b973",
+    "timestamp": "17:50:35",
+    "character_name": "系统",
+    "action_type": "API 配置",
+    "description": "创建 API 配置\"OpenAI GPT-4\" (openai)"
+  },
+  {
+    "id": "236df613-22f7-4b4b-9dc6-50c66da93f07",
+    "timestamp": "17:44:02",
+    "character_name": "测试角色",
+    "action_type": "对话",
+    "description": "回复：\"从温柔的角度来看，在干嘛确实有道理。...\""
+  },
+  {
+    "id": "892ec40b-b08f-4d84-98f1-f380eeb2df6e",
+    "timestamp": "17:44:00",
+    "character_name": "测试角色",
+    "action_type": "对话",
+    "description": "回复：\"哈哈，怎么样，让我想起了之前的经历。...\""
+  },
+  {
+    "id": "6a277484-7d12-41ab-a8a4-69858810f6c9",
+    "timestamp": "17:43:55",
+    "character_name": "测试角色",
+    "action_type": "对话",
+    "description": "回复：\"哈哈，你是谁，让我想起了之前的经历。...\""
+  },
+  {
+    "id": "d179be9a-12eb-4171-9998-fb11be449abe",
+    "timestamp": "17:43:50",
+    "character_name": "测试角色",
+    "action_type": "对话",
+    "description": "回复：\"作为设计师，我觉得你好值得思考。...\""
+  },
+  {
     "id": "4b8ec089-2cc9-4eb2-9059-648737a38c04",
     "timestamp": "17:43:37",
     "character_name": "测试角色",

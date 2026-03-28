@@ -853,6 +853,70 @@
         </div>
     </div>
 
+    <!-- API 配置模态框 -->
+    <div class="modal-overlay" id="api-config-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <span class="modal-title">配置 AI 模型</span>
+                <button class="modal-close" onclick="closeAddApiConfigModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="api-config-id">
+                <div class="form-group">
+                    <label>配置名称 *</label>
+                    <input type="text" id="api-config-name" placeholder="例如：OpenAI GPT-4">
+                </div>
+                <div class="form-group">
+                    <label>模型类型 *</label>
+                    <select id="api-config-type">
+                        <option value="llm">语言模型 (LLM)</option>
+                        <option value="image">图像模型</option>
+                        <option value="vector">向量模型</option>
+                        <option value="rerank">重排模型</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>服务商 *</label>
+                    <select id="api-config-provider">
+                        <option value="openai">OpenAI</option>
+                        <option value="azure">Azure</option>
+                        <option value="baidu">百度文心</option>
+                        <option value="aliyun">阿里云</option>
+                        <option value="tencent">腾讯混元</option>
+                        <option value="stability">Stability AI</option>
+                        <option value="local">本地部署</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>API 地址 *</label>
+                    <input type="text" id="api-config-url" placeholder="https://api.openai.com/v1/chat/completions">
+                </div>
+                <div class="form-group">
+                    <label>API 密钥 *</label>
+                    <input type="password" id="api-config-key" placeholder="sk-...">
+                </div>
+                <div class="form-group">
+                    <label>模型名称 *</label>
+                    <input type="text" id="api-config-model" placeholder="gpt-4, gpt-3.5-turbo, etc.">
+                </div>
+                <div class="form-group">
+                    <label>优先级</label>
+                    <input type="number" id="api-config-priority" value="0" min="0">
+                </div>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="api-config-enabled" checked>
+                        启用此配置
+                    </label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeAddApiConfigModal()">取消</button>
+                <button class="btn btn-primary" onclick="saveApiConfig()">保存</button>
+            </div>
+        </div>
+    </div>
+
     <!-- 日志面板 -->
     <div class="log-panel" id="log-panel">
         <div class="log-panel-header">
@@ -1357,7 +1421,229 @@
         }
 
         function showApiConfigModal() {
-            alert('AI 模型配置功能开发中...');
+            showApiConfigPage();
+        }
+
+        // ==================== API 配置管理 ====================
+        async function showApiConfigPage() {
+            document.getElementById('header-title').textContent = 'AI 模型配置';
+            document.getElementById('tab-mine').classList.remove('active');
+
+            const container = document.getElementById('tab-mine');
+            container.innerHTML = `
+                <div class="detail-header" style="background: var(--wechat-green);">
+                    <button class="back-btn" onclick="backToMine()">←</button>
+                    <div class="detail-name">AI 模型配置</div>
+                    <button class="header-btn" onclick="showAddApiConfigModal()">+</button>
+                </div>
+                <div class="list-container" id="api-config-list">
+                    <div class="loading"><div class="spinner"></div></div>
+                </div>
+            `;
+
+            loadApiConfigs();
+        }
+
+        function backToMine() {
+            document.getElementById('header-title').textContent = '我';
+            document.getElementById('tab-mine').innerHTML = `
+                <div class="list-container">
+                    <div style="padding: 16px;">
+                        <div class="info-card">
+                            <div class="info-card-title">设置</div>
+                            <div class="list-item" onclick="showApiConfigPage()">
+                                <div class="item-content">
+                                    <div class="item-title">AI 模型配置</div>
+                                    <div class="item-subtitle">配置 AI 服务商</div>
+                                </div>
+                                <span>→</span>
+                            </div>
+                        </div>
+                        <div class="info-card">
+                            <div class="info-card-title">时间设置</div>
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label>时间倍速</label>
+                                <select id="time-speed" onchange="updateTimeSpeed(this.value)" style="width: 100%;">
+                                    <option value="1">1x (实时)</option>
+                                    <option value="5">5x</option>
+                                    <option value="10">10x</option>
+                                    <option value="30" selected>30x (1 天=1 月)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="info-card">
+                            <div class="info-card-title">系统信息</div>
+                            <div class="info-grid">
+                                <div class="info-item">
+                                    <div class="info-label">角色数量</div>
+                                    <div class="info-value" id="stat-characters">0</div>
+                                </div>
+                                <div class="info-item">
+                                    <div class="info-label">消息数量</div>
+                                    <div class="info-value" id="stat-messages">0</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            loadStats();
+            loadSettings();
+        }
+
+        async function loadApiConfigs() {
+            const container = document.getElementById('api-config-list');
+
+            try {
+                const response = await fetch(`${API_BASE}/api-configs`);
+                const result = await response.json();
+
+                if (!result.success || result.data.length === 0) {
+                    container.innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-state-icon">⚙️</div>
+                            <div class="empty-state-text">暂无 API 配置</div>
+                            <div class="empty-state-text" style="font-size: 12px; margin-top: 8px;">点击右上角 + 添加配置</div>
+                        </div>
+                    `;
+                    return;
+                }
+
+                const typeNames = {
+                    'llm': '语言模型',
+                    'image': '图像模型',
+                    'vector': '向量模型',
+                    'rerank': '重排模型'
+                };
+
+                container.innerHTML = result.data.map(config => `
+                    <div class="list-item" onclick="editApiConfig('${config.id}')">
+                        <div class="avatar" style="background: ${getProviderColor(config.provider)}">${config.name[0].toUpperCase()}</div>
+                        <div class="item-content">
+                            <div class="item-title">
+                                ${config.name}
+                                ${config.is_enabled ? '' : '<span style="color: var(--text-hint); font-size: 12px;">(已禁用)</span>'}
+                            </div>
+                            <div class="item-subtitle">${typeNames[config.api_type] || config.api_type} · ${config.provider} · ${config.model_name}</div>
+                            <div class="item-time">密钥：${config.api_key}</div>
+                        </div>
+                        <button class="header-btn" onclick="event.stopPropagation(); toggleApiConfig('${config.id}')" style="margin-left: 8px;">
+                            ${config.is_enabled ? '✓' : '○'}
+                        </button>
+                    </div>
+                `).join('');
+            } catch (error) {
+                container.innerHTML = `<div class="empty-state"><div class="empty-state-text">加载失败：${error.message}</div></div>`;
+            }
+        }
+
+        function getProviderColor(provider) {
+            const colors = {
+                'openai': 'linear-gradient(135deg, #10a37f 0%, #0d8f6e 100%)',
+                'azure': 'linear-gradient(135deg, #0078d4 0%, #005a9e 100%)',
+                'baidu': 'linear-gradient(135deg, #2932e1 0%, #1f26c9 100%)',
+                'aliyun': 'linear-gradient(135deg, #ff6a00 0%, #e55f00 100%)',
+                'tencent': 'linear-gradient(135deg, #00a4ff 0%, #008ae6 100%)',
+                'stability': 'linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%)'
+            };
+            return colors[provider.toLowerCase()] || 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+        }
+
+        function showAddApiConfigModal() {
+            document.getElementById('api-config-modal').classList.add('show');
+            document.getElementById('api-config-id').value = '';
+            document.getElementById('api-config-name').value = '';
+            document.getElementById('api-config-type').value = 'llm';
+            document.getElementById('api-config-provider').value = 'openai';
+            document.getElementById('api-config-url').value = '';
+            document.getElementById('api-config-key').value = '';
+            document.getElementById('api-config-model').value = '';
+            document.getElementById('api-config-priority').value = '0';
+            document.getElementById('api-config-enabled').checked = true;
+        }
+
+        function closeAddApiConfigModal() {
+            document.getElementById('api-config-modal').classList.remove('show');
+        }
+
+        async function saveApiConfig() {
+            const id = document.getElementById('api-config-id').value;
+            const data = {
+                name: document.getElementById('api-config-name').value.trim(),
+                api_type: document.getElementById('api-config-type').value,
+                provider: document.getElementById('api-config-provider').value,
+                api_url: document.getElementById('api-config-url').value.trim(),
+                api_key: document.getElementById('api-config-key').value.trim(),
+                model_name: document.getElementById('api-config-model').value.trim(),
+                is_enabled: document.getElementById('api-config-enabled').checked,
+                priority: parseInt(document.getElementById('api-config-priority').value)
+            };
+
+            if (!data.name || !data.api_url || !data.api_key || !data.model_name) {
+                alert('请填写必填项');
+                return;
+            }
+
+            try {
+                const url = id ? `${API_BASE}/api-configs/${id}` : `${API_BASE}/api-configs`;
+                const method = id ? 'PUT' : 'POST';
+
+                const response = await fetch(url, {
+                    method: method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    closeAddApiConfigModal();
+                    loadApiConfigs();
+                    showToast(id ? '配置已更新' : '配置已创建');
+                }
+            } catch (error) {
+                alert('保存失败：' + error.message);
+            }
+        }
+
+        async function editApiConfig(configId) {
+            try {
+                const response = await fetch(`${API_BASE}/api-configs/${configId}`);
+                const result = await response.json();
+
+                if (result.success) {
+                    const config = result.data;
+                    document.getElementById('api-config-id').value = config.id;
+                    document.getElementById('api-config-name').value = config.name;
+                    document.getElementById('api-config-type').value = config.api_type;
+                    document.getElementById('api-config-provider').value = config.provider;
+                    document.getElementById('api-config-url').value = config.api_url;
+                    document.getElementById('api-config-key').value = '';
+                    document.getElementById('api-config-model').value = config.model_name;
+                    document.getElementById('api-config-priority').value = config.priority;
+                    document.getElementById('api-config-enabled').checked = config.is_enabled;
+                    document.getElementById('api-config-modal').classList.add('show');
+                }
+            } catch (error) {
+                alert('加载失败：' + error.message);
+            }
+        }
+
+        async function toggleApiConfig(configId) {
+            try {
+                const response = await fetch(`${API_BASE}/api-configs/${configId}/toggle`, {
+                    method: 'POST'
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    loadApiConfigs();
+                    showToast(result.data.is_enabled ? '已启用配置' : '已禁用配置');
+                }
+            } catch (error) {
+                alert('操作失败：' + error.message);
+            }
         }
 
         // ==================== 初始化 ====================
