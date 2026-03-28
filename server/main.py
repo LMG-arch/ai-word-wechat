@@ -3,6 +3,13 @@ AI 社交世界 - 后端服务
 提供 RESTful API 接口，数据存储在本地 JSON 文件
 """
 
+import sys
+import io
+
+# 修复 Windows CMD 编码问题
+if sys.platform == 'win32':
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles

@@ -1,5 +1,19 @@
 [
   {
+    "id": "f0f48099-4733-49da-ace3-efa2dc5059c2",
+    "timestamp": "17:52:25",
+    "character_name": "小李",
+    "action_type": "成长",
+    "description": "年龄增长到26岁"
+  },
+  {
+    "id": "72a6d61c-b182-4419-8fdc-de539ef0cb07",
+    "timestamp": "17:51:25",
+    "character_name": "测试角色",
+    "action_type": "成长",
+    "description": "年龄增长到29岁"
+  },
+  {
     "id": "9cf12b35-7836-4c72-9a33-645c4f46b973",
     "timestamp": "17:50:35",
     "character_name": "系统",
