@@ -1,0 +1,1096 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 社交世界 - Web 测试版</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #f5f5f5;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* 顶部导航 */
+        .header {
+            background: #07C160;
+            color: white;
+            padding: 12px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        /* 主内容区 */
+        .main-container {
+            flex: 1;
+            overflow: hidden;
+            display: flex;
+        }
+
+        /* 侧边栏 */
+        .sidebar {
+            width: 280px;
+            background: #f7f7f7;
+            border-right: 1px solid #e5e5e5;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .search-box {
+            padding: 12px;
+            background: #f7f7f7;
+            border-bottom: 1px solid #e5e5e5;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 8px 12px;
+            border: none;
+            border-radius: 4px;
+            background: #e9e9e9;
+            font-size: 14px;
+        }
+
+        .list-container {
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .list-item {
+            display: flex;
+            padding: 12px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .list-item:hover {
+            background: #ebebeb;
+        }
+
+        .avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 4px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+
+        .item-content {
+            flex: 1;
+            margin-left: 12px;
+            min-width: 0;
+        }
+
+        .item-title {
+            font-size: 15px;
+            color: #191919;
+            margin-bottom: 4px;
+        }
+
+        .item-subtitle {
+            font-size: 13px;
+            color: #7f7f7f;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .item-time {
+            font-size: 12px;
+            color: #b2b2b2;
+            margin-top: 4px;
+        }
+
+        /* 内容区 */
+        .content-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: white;
+        }
+
+        .detail-header {
+            padding: 16px;
+            border-bottom: 1px solid #e5e5e5;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .detail-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 4px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+
+        .detail-info {
+            flex: 1;
+        }
+
+        .detail-name {
+            font-size: 16px;
+            font-weight: 500;
+        }
+
+        .detail-status {
+            font-size: 12px;
+            color: #7f7f7f;
+        }
+
+        .detail-body {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .info-section {
+            margin-bottom: 24px;
+        }
+
+        .info-section h3 {
+            font-size: 14px;
+            color: #7f7f7f;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+
+        .info-item {
+            display: flex;
+            flex-direction: column;
+            padding: 12px;
+            background: #f7f7f7;
+            border-radius: 8px;
+        }
+
+        .info-label {
+            font-size: 12px;
+            color: #7f7f7f;
+            margin-bottom: 4px;
+        }
+
+        .info-value {
+            font-size: 16px;
+            color: #191919;
+            font-weight: 500;
+        }
+
+        /* 底部操作栏 */
+        .action-bar {
+            padding: 12px 16px;
+            border-top: 1px solid #e5e5e5;
+            display: flex;
+            gap: 12px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 10px 16px;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: #07C160;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #06ad56;
+        }
+
+        .btn-secondary {
+            background: #f7f7f7;
+            color: #191919;
+        }
+
+        .btn-secondary:hover {
+            background: #ebebeb;
+        }
+
+        /* 底部导航 */
+        .bottom-nav {
+            background: white;
+            border-top: 1px solid #e5e5e5;
+            display: flex;
+            padding: 4px 0;
+        }
+
+        .nav-item {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 8px 0;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: #7f7f7f;
+        }
+
+        .nav-item.active {
+            color: #07C160;
+        }
+
+        .nav-item:hover {
+            background: #f7f7f7;
+        }
+
+        .nav-icon {
+            font-size: 24px;
+            margin-bottom: 2px;
+        }
+
+        .nav-label {
+            font-size: 11px;
+        }
+
+        /* 日志面板 */
+        .log-panel {
+            position: fixed;
+            bottom: 60px;
+            right: 20px;
+            width: 400px;
+            max-height: 300px;
+            background: #1a1a1a;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            overflow: hidden;
+            display: none;
+        }
+
+        .log-panel.show {
+            display: block;
+        }
+
+        .log-header {
+            background: #2a2a2a;
+            color: white;
+            padding: 8px 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 13px;
+        }
+
+        .log-content {
+            padding: 8px;
+            max-height: 240px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            color: #00ff00;
+        }
+
+        .log-entry {
+            padding: 4px 0;
+            border-bottom: 1px solid #333;
+        }
+
+        .log-time {
+            color: #888;
+        }
+
+        /* 空状态 */
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: #7f7f7f;
+        }
+
+        .empty-state-icon {
+            font-size: 64px;
+            margin-bottom: 16px;
+        }
+
+        /* 标签页 */
+        .tab-content {
+            display: none;
+            height: 100%;
+        }
+
+        .tab-content.active {
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* 模态框 */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal-overlay.show {
+            display: flex;
+        }
+
+        .modal {
+            background: white;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 500px;
+            max-height: 80vh;
+            overflow: hidden;
+        }
+
+        .modal-header {
+            padding: 16px;
+            border-bottom: 1px solid #e5e5e5;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-title {
+            font-size: 16px;
+            font-weight: 500;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #7f7f7f;
+        }
+
+        .modal-body {
+            padding: 16px;
+            overflow-y: auto;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 14px;
+            color: #191919;
+            margin-bottom: 8px;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #e5e5e5;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .modal-footer {
+            padding: 16px;
+            border-top: 1px solid #e5e5e5;
+            display: flex;
+            gap: 12px;
+        }
+    </style>
+</head>
+<body>
+    <!-- 顶部 -->
+    <header class="header">
+        <h1>AI 社交世界</h1>
+        <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px;" onclick="toggleLogPanel()">
+            📋 日志
+        </button>
+    </header>
+
+    <!-- 主容器 -->
+    <div class="main-container">
+        <!-- 聊天列表 -->
+        <div id="tab-chat" class="tab-content active">
+            <div class="sidebar">
+                <div class="search-box">
+                    <input type="text" placeholder="搜索" id="chat-search">
+                </div>
+                <div class="list-container" id="chat-list">
+                    <!-- 动态生成 -->
+                </div>
+            </div>
+            <div class="content-area" id="chat-detail">
+                <div class="empty-state">
+                    <div class="empty-state-icon">💬</div>
+                    <p>选择一个聊天</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 通讯录 -->
+        <div id="tab-contacts" class="tab-content">
+            <div class="sidebar">
+                <div class="search-box">
+                    <input type="text" placeholder="搜索" id="contact-search">
+                    <button class="btn btn-primary" style="width: 100%; margin-top: 8px;" onclick="showAddCharacterModal()">
+                        ➕ 添加角色
+                    </button>
+                </div>
+                <div class="list-container" id="contact-list">
+                    <!-- 动态生成 -->
+                </div>
+            </div>
+            <div class="content-area" id="contact-detail">
+                <div class="empty-state">
+                    <div class="empty-state-icon">👤</div>
+                    <p>选择一个联系人</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 群聊 -->
+        <div id="tab-groups" class="tab-content">
+            <div class="content-area">
+                <div class="empty-state">
+                    <div class="empty-state-icon">👥</div>
+                    <p>群聊功能开发中...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 任务 -->
+        <div id="tab-tasks" class="tab-content">
+            <div class="content-area">
+                <div class="empty-state">
+                    <div class="empty-state-icon">📝</div>
+                    <p>任务功能开发中...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 发现 -->
+        <div id="tab-discover" class="tab-content">
+            <div class="content-area">
+                <div class="empty-state">
+                    <div class="empty-state-icon">🧭</div>
+                    <p>发现功能开发中...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 我 -->
+        <div id="tab-mine" class="tab-content">
+            <div class="content-area">
+                <div class="detail-body">
+                    <div class="info-section">
+                        <h3>设置</h3>
+                        <div class="info-item" style="cursor: pointer;" onclick="showApiConfigModal()">
+                            <div class="info-label">AI 模型配置</div>
+                            <div class="info-value">配置 AI 服务商 →</div>
+                        </div>
+                    </div>
+                    <div class="info-section">
+                        <h3>时间设置</h3>
+                        <div class="info-item">
+                            <div class="info-label">时间倍速</div>
+                            <div class="info-value">
+                                <select id="time-speed" onchange="updateTimeSpeed(this.value)" style="width: 100%; padding: 8px;">
+                                    <option value="1">1x (实时)</option>
+                                    <option value="5">5x</option>
+                                    <option value="10">10x</option>
+                                    <option value="30" selected>30x (1 天=1 月)</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="info-section">
+                        <h3>系统信息</h3>
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <div class="info-label">角色数量</div>
+                                <div class="info-value" id="stat-characters">0</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">消息数量</div>
+                                <div class="info-value" id="stat-messages">0</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 底部导航 -->
+    <nav class="bottom-nav">
+        <div class="nav-item active" data-tab="chat" onclick="switchTab('chat')">
+            <span class="nav-icon">💬</span>
+            <span class="nav-label">聊天</span>
+        </div>
+        <div class="nav-item" data-tab="contacts" onclick="switchTab('contacts')">
+            <span class="nav-icon">👥</span>
+            <span class="nav-label">通讯录</span>
+        </div>
+        <div class="nav-item" data-tab="groups" onclick="switchTab('groups')">
+            <span class="nav-icon">👨‍👩‍👧</span>
+            <span class="nav-label">群聊</span>
+        </div>
+        <div class="nav-item" data-tab="tasks" onclick="switchTab('tasks')">
+            <span class="nav-icon">📝</span>
+            <span class="nav-label">任务</span>
+        </div>
+        <div class="nav-item" data-tab="discover" onclick="switchTab('discover')">
+            <span class="nav-icon">🧭</span>
+            <span class="nav-label">发现</span>
+        </div>
+        <div class="nav-item" data-tab="mine" onclick="switchTab('mine')">
+            <span class="nav-icon">👤</span>
+            <span class="nav-label">我</span>
+        </div>
+    </nav>
+
+    <!-- 日志面板 -->
+    <div class="log-panel" id="log-panel">
+        <div class="log-header">
+            <span>实时日志</span>
+            <button onclick="clearLogs()" style="background: none; border: none; color: white; cursor: pointer;">清空</button>
+        </div>
+        <div class="log-content" id="log-content">
+            <!-- 日志内容 -->
+        </div>
+    </div>
+
+    <!-- 添加角色模态框 -->
+    <div class="modal-overlay" id="add-character-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <span class="modal-title">创建新角色</span>
+                <button class="modal-close" onclick="closeAddCharacterModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>昵称</label>
+                    <input type="text" id="char-name" placeholder="输入角色昵称">
+                </div>
+                <div class="form-group">
+                    <label>年龄</label>
+                    <input type="number" id="char-age" value="25" min="0" max="100">
+                </div>
+                <div class="form-group">
+                    <label>性别</label>
+                    <select id="char-gender">
+                        <option value="男">男</option>
+                        <option value="女">女</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>职业</label>
+                    <input type="text" id="char-occupation" placeholder="例如：程序员、教师、医生">
+                </div>
+                <div class="form-group">
+                    <label>性格描述</label>
+                    <textarea id="char-personality" rows="3" placeholder="例如：开朗、内向、幽默"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeAddCharacterModal()">取消</button>
+                <button class="btn btn-primary" onclick="createCharacter()">创建</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==================== 数据模型 ====================
+        class Character {
+            constructor({ id, name, age, gender, occupation, personality, money = 50 }) {
+                this.id = id || Date.now().toString();
+                this.name = name;
+                this.age = age;
+                this.gender = gender;
+                this.occupation = occupation;
+                this.personality = personality;
+                this.money = money;
+                this.signature = '暂无签名';
+                this.createdAt = Date.now();
+            }
+
+            getAgeStage() {
+                if (this.age <= 12) return '儿童';
+                if (this.age <= 17) return '青少年';
+                if (this.age <= 40) return '青年';
+                if (this.age <= 60) return '中年';
+                return '老年';
+            }
+
+            getAvatarInitials() {
+                return this.name.charAt(0);
+            }
+        }
+
+        class ChatMessage {
+            constructor({ conversationId, senderId, content, isFromUser = false }) {
+                this.id = Date.now().toString();
+                this.conversationId = conversationId;
+                this.senderId = senderId;
+                this.content = content;
+                this.isFromUser = isFromUser;
+                this.timestamp = Date.now();
+            }
+        }
+
+        // ==================== 数据存储 ====================
+        const Store = {
+            characters: [],
+            messages: [],
+            logs: [],
+            timeSpeed: 30,
+
+            save() {
+                localStorage.setItem('aiwechat_data', JSON.stringify({
+                    characters: this.characters,
+                    messages: this.messages
+                }));
+            },
+
+            load() {
+                const data = localStorage.getItem('aiwechat_data');
+                if (data) {
+                    const parsed = JSON.parse(data);
+                    this.characters = parsed.characters || [];
+                    this.messages = parsed.messages || [];
+                }
+            },
+
+            addLog(characterName, actionType, description) {
+                const time = new Date().toLocaleTimeString('zh-CN', { hour12: false });
+                this.logs.unshift({ time, characterName, actionType, description });
+                if (this.logs.length > 100) this.logs.pop();
+                renderLogs();
+            }
+        };
+
+        // ==================== 业务逻辑 ====================
+        const Service = {
+            createCharacter(data) {
+                const character = new Character(data);
+                Store.characters.push(character);
+                Store.save();
+                Store.addLog(character.name, '创建', `角色"${character.name}"被创建，${character.age}岁，${character.occupation}`);
+                renderContactList();
+                updateStats();
+                return character;
+            },
+
+            deleteCharacter(id) {
+                // 先关闭详情页，避免报错
+                const detailContainer = document.getElementById('contact-detail');
+                if (detailContainer) {
+                    detailContainer.innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-state-icon">👤</div>
+                            <p>选择一个联系人</p>
+                        </div>
+                    `;
+                }
+
+                const index = Store.characters.findIndex(c => c.id === id);
+                if (index >= 0) {
+                    const char = Store.characters[index];
+                    Store.addLog(char.name, '删除', `角色"${char.name}"被删除`);
+                    Store.characters.splice(index, 1);
+                    Store.save();
+                    renderContactList();
+                    updateStats();
+                }
+            },
+
+            sendMessage(conversationId, content, isFromUser = true) {
+                const message = new ChatMessage({ conversationId, senderId: 'user', content, isFromUser });
+                Store.messages.push(message);
+                Store.save();
+
+                // 滚动到底部
+                scrollChatToBottom(conversationId);
+
+                // 模拟 AI 回复
+                if (isFromUser) {
+                    setTimeout(() => {
+                        const character = Store.characters.find(c => c.id === conversationId);
+                        if (character) {
+                            const reply = this.generateReply(character, content);
+                            const replyMsg = new ChatMessage({
+                                conversationId,
+                                senderId: character.id,
+                                content: reply,
+                                isFromUser: false
+                            });
+                            Store.messages.push(replyMsg);
+                            Store.save();
+                            Store.addLog(character.name, '对话', `回复："${reply.substring(0, 20)}..."`);
+                            renderChatDetail(conversationId);
+                            // AI 回复后也滚动到底部
+                            scrollChatToBottom(conversationId);
+                        }
+                    }, 1000);
+                }
+
+                renderChatDetail(conversationId);
+            },
+
+            generateReply(character, userInput) {
+                const replies = [
+                    `嗯，${userInput}，这个问题挺有意思的。`,
+                    `作为${character.occupation}，我觉得${userInput}值得思考。`,
+                    `哈哈，${userInput}，让我想起了之前的经历。`,
+                    `${userInput}吗？我需要好好想想。`,
+                    ` interesting! ${userInput}，从${character.personality}的角度来看...`
+                ];
+                return replies[Math.floor(Math.random() * replies.length)];
+            },
+
+            checkAgeGrowth() {
+                const now = Date.now();
+                Store.characters.forEach(char => {
+                    // 30 倍速：现实 1 分钟 = 角色增长 0.5 岁
+                    const ageIncrease = (Store.timeSpeed / 60) * (1 / 60); // 每分钟增长的年龄
+                    if (Math.random() < 0.01) { // 随机触发
+                        char.age = Math.floor(char.age + ageIncrease);
+                        Store.addLog(char.name, '成长', `年龄增长到${char.age}岁`);
+                    }
+                });
+                Store.save();
+            }
+        };
+
+        // ==================== UI 渲染 ====================
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.classList.remove('active');
+            });
+
+            document.getElementById(`tab-${tabName}`).classList.add('active');
+            document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+
+            if (tabName === 'contacts') {
+                renderContactList();
+            } else if (tabName === 'chat') {
+                renderChatList();
+            } else if (tabName === 'mine') {
+                updateStats();
+            }
+        }
+
+        function renderContactList() {
+            const container = document.getElementById('contact-list');
+            if (Store.characters.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state" style="padding: 40px 20px;">
+                        <p>暂无联系人</p>
+                        <p style="font-size: 12px; margin-top: 8px;">点击右上角添加角色</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = Store.characters.map(char => `
+                <div class="list-item" onclick="showCharacterDetail('${char.id}')">
+                    <div class="avatar">${char.getAvatarInitials()}</div>
+                    <div class="item-content">
+                        <div class="item-title">${char.name}</div>
+                        <div class="item-subtitle">${char.occupation} · ${char.age}岁</div>
+                        <div class="item-time">${char.getAgeStage()}</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderChatList() {
+            const container = document.getElementById('chat-list');
+            const conversations = [...new Set(Store.messages.map(m => m.conversationId))];
+
+            if (conversations.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state" style="padding: 40px 20px;">
+                        <p>暂无消息</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = conversations.map(convId => {
+                const char = Store.characters.find(c => c.id === convId);
+                const lastMsg = Store.messages.filter(m => m.conversationId === convId).pop();
+                if (!char || !lastMsg) return '';
+
+                return `
+                    <div class="list-item" onclick="showChatDetail('${convId}')">
+                        <div class="avatar">${char.getAvatarInitials()}</div>
+                        <div class="item-content">
+                            <div class="item-title">${char.name}</div>
+                            <div class="item-subtitle">${lastMsg.content}</div>
+                            <div class="item-time">${formatTime(lastMsg.timestamp)}</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function showCharacterDetail(characterId) {
+            const char = Store.characters.find(c => c.id === characterId);
+            if (!char) return;
+
+            const container = document.getElementById('contact-detail');
+            container.innerHTML = `
+                <div class="detail-header">
+                    <div class="detail-avatar">${char.getAvatarInitials()}</div>
+                    <div class="detail-info">
+                        <div class="detail-name">${char.name}</div>
+                        <div class="detail-status">${char.signature}</div>
+                    </div>
+                </div>
+                <div class="detail-body">
+                    <div class="info-section">
+                        <h3>基本信息</h3>
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <div class="info-label">年龄</div>
+                                <div class="info-value">${char.age}岁</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">性别</div>
+                                <div class="info-value">${char.gender}</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">职业</div>
+                                <div class="info-value">${char.occupation}</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">性格</div>
+                                <div class="info-value">${char.personality}</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">年龄段</div>
+                                <div class="info-value">${char.getAgeStage()}</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">资金</div>
+                                <div class="info-value">¥${char.money}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="action-bar">
+                    <button class="btn btn-primary" onclick="showChatDetail('${char.id}')">发消息</button>
+                    <button class="btn btn-secondary" onclick="deleteCharacter('${char.id}')">删除</button>
+                </div>
+            `;
+
+            switchTab('contacts');
+        }
+
+        function showChatDetail(characterId) {
+            const char = Store.characters.find(c => c.id === characterId);
+            if (!char) return;
+
+            const container = document.getElementById('chat-detail');
+            const messages = Store.messages.filter(m => m.conversationId === characterId);
+
+            container.innerHTML = `
+                <div class="detail-header">
+                    <div class="detail-avatar">${char.getAvatarInitials()}</div>
+                    <div class="detail-info">
+                        <div class="detail-name">${char.name}</div>
+                        <div class="detail-status">在线</div>
+                    </div>
+                </div>
+                <div class="detail-body" id="chat-messages-${characterId}" style="display: flex; flex-direction: column; gap: 12px;">
+                    ${messages.length === 0 ? '<div class="empty-state"><p>开始聊天吧</p></div>' : ''}
+                    ${messages.map(msg => `
+                        <div style="display: flex; ${msg.isFromUser ? 'justify-content: flex-end' : 'justify-content: flex-start'}">
+                            <div style="
+                                padding: 10px 14px;
+                                border-radius: 4px;
+                                max-width: 70%;
+                                background: ${msg.isFromUser ? '#95EC69' : 'white'};
+                                border: 1px solid #e5e5e5;
+                            ">
+                                ${msg.content}
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+                <div class="action-bar">
+                    <input type="text" id="chat-input-${characterId}" 
+                        placeholder="输入消息..." 
+                        style="flex: 1; padding: 10px; border: 1px solid #e5e5e5; border-radius: 4px;"
+                        onkeypress="if(event.key==='Enter') sendChatMessage('${characterId}')">
+                    <button class="btn btn-primary" style="flex: none; width: 80px;" 
+                        onclick="sendChatMessage('${characterId}')">发送</button>
+                </div>
+            `;
+
+            switchTab('chat');
+            
+            // 滚动到底部
+            setTimeout(() => {
+                const body = container.querySelector(`#chat-messages-${characterId}`);
+                if (body) body.scrollTop = body.scrollHeight;
+            }, 100);
+        }
+
+        function sendChatMessage(characterId) {
+            const input = document.getElementById(`chat-input-${characterId}`);
+            const content = input.value.trim();
+            if (!content) return;
+
+            Service.sendMessage(characterId, content, true);
+            input.value = '';
+        }
+
+        function scrollChatToBottom(characterId) {
+            setTimeout(() => {
+                const body = document.getElementById(`chat-messages-${characterId}`);
+                if (body) {
+                    body.scrollTop = body.scrollHeight;
+                }
+            }, 50);
+        }
+
+        function showAddCharacterModal() {
+            document.getElementById('add-character-modal').classList.add('show');
+        }
+
+        function closeAddCharacterModal() {
+            document.getElementById('add-character-modal').classList.remove('show');
+            // 清空表单
+            document.getElementById('char-name').value = '';
+            document.getElementById('char-age').value = '25';
+            document.getElementById('char-occupation').value = '';
+            document.getElementById('char-personality').value = '';
+        }
+
+        function createCharacter() {
+            const name = document.getElementById('char-name').value.trim();
+            const age = parseInt(document.getElementById('char-age').value);
+            const gender = document.getElementById('char-gender').value;
+            const occupation = document.getElementById('char-occupation').value.trim();
+            const personality = document.getElementById('char-personality').value.trim();
+
+            if (!name) {
+                alert('请输入昵称');
+                return;
+            }
+
+            Service.createCharacter({ name, age, gender, occupation, personality });
+            closeAddCharacterModal();
+        }
+
+        function updateStats() {
+            document.getElementById('stat-characters').textContent = Store.characters.length;
+            document.getElementById('stat-messages').textContent = Store.messages.length;
+        }
+
+        function updateTimeSpeed(speed) {
+            Store.timeSpeed = parseInt(speed);
+            Store.addLog('系统', '设置', `时间倍速调整为${speed}x`);
+        }
+
+        function toggleLogPanel() {
+            document.getElementById('log-panel').classList.toggle('show');
+        }
+
+        function renderLogs() {
+            const container = document.getElementById('log-content');
+            container.innerHTML = Store.logs.map(log => `
+                <div class="log-entry">
+                    <span class="log-time">[${log.time}]</span>
+                    <span>[${log.characterName}]</span>
+                    <span>[${log.actionType}]</span>
+                    <span>${log.description}</span>
+                </div>
+            `).join('');
+        }
+
+        function clearLogs() {
+            Store.logs = [];
+            renderLogs();
+        }
+
+        function formatTime(timestamp) {
+            const now = Date.now();
+            const diff = now - timestamp;
+            if (diff < 60000) return '刚刚';
+            if (diff < 3600000) return `${Math.floor(diff / 60000)}分钟前`;
+            if (diff < 86400000) return `${Math.floor(diff / 3600000)}小时前`;
+            return `${Math.floor(diff / 86400000)}天前`;
+        }
+
+        // ==================== 初始化 ====================
+        document.addEventListener('DOMContentLoaded', () => {
+            Store.load();
+            renderContactList();
+            renderLogs();
+            updateStats();
+
+            // 定时检查年龄增长
+            setInterval(() => Service.checkAgeGrowth(), 60000);
+
+            // 添加一些测试数据
+            if (Store.characters.length === 0) {
+                Service.createCharacter({
+                    name: '小王',
+                    age: 25,
+                    gender: '男',
+                    occupation: '程序员',
+                    personality: '开朗'
+                });
+                Service.createCharacter({
+                    name: '小李',
+                    age: 28,
+                    gender: '女',
+                    occupation: '设计师',
+                    personality: '温柔'
+                });
+            }
+        });
+    </script>
+</body>
+</html>

@@ -188,12 +188,39 @@ NEO4J_USERNAME=neo4j
 NEO4J_PASSWORD=password
 ```
 
-## 构建运行
+## 运行方式
 
-### 环境要求
-- Android Studio Hedgehog 或更高版本
-- JDK 17
-- Android SDK 34
+### Web 测试版 (推荐用于快速测试)
+
+无需安装 Android Studio，直接在浏览器中运行：
+
+1. **直接打开**
+   ```
+   双击 web/index.html
+   ```
+
+2. **或使用 HTTP 服务器**
+   ```bash
+   cd web
+   python -m http.server 8080
+   # 访问 http://localhost:8080
+   ```
+
+**Web 版功能**:
+- ✅ 角色创建与管理
+- ✅ 聊天对话（模拟 AI）
+- ✅ 通讯录
+- ✅ 数据持久化（LocalStorage）
+- ✅ 实时日志面板
+- ⚠️ AI 回复为模拟文本
+- ❌ 暂无真实 AI 集成
+
+### Android 版本
+
+**环境要求**
+- Android Studio Hedgehog (2023.1.1) 或更高版本
+- JDK 17 或 JDK 21（Java 25 不兼容）
+- Android SDK 35
 
 ### 构建命令
 ```bash
