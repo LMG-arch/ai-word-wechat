@@ -151,6 +151,13 @@ class CreateApiConfigRequest(BaseModel):
     priority: int = 0
 
 
+class TestApiConfigRequest(BaseModel):
+    api_url: str
+    api_key: str
+    api_type: str
+    model_name: str = ""
+
+
 # ==================== 数据存储函数 ====================
 
 def load_json(filename: str, default=None):
@@ -572,6 +579,165 @@ async def toggle_api_config(config_id: str):
             return {"success": True, "data": config.model_dump()}
 
     raise HTTPException(status_code=404, detail="配置不存在")
+
+
+@app.post("/api/api-configs/test")
+async def test_api_config(request: TestApiConfigRequest):
+    """测试 API 配置是否可用"""
+    import aiohttp
+    
+    try:
+        headers = {
+            "Authorization": f"Bearer {request.api_key}",
+            "Content-Type": "application/json"
+        }
+        
+        # 根据 API 类型构造不同的测试请求
+        if request.api_type == 'llm':
+            test_data = {
+                "model": request.model_name or "gpt-3.5-turbo",
+                "messages": [{"role": "user", "content": "Hello"}],
+                "max_tokens": 10
+            }
+        elif request.api_type == 'image':
+            test_data = {
+                "prompt": "test",
+                "n": 1,
+                "size": "256x256"
+            }
+        elif request.api_type == 'vector':
+            test_data = {
+                "model": request.model_name or "text-embedding-ada-002",
+                "input": ["test"]
+            }
+        elif request.api_type == 'rerank':
+            test_data = {
+                "query": "test",
+                "documents": ["test document"],
+                "top_n": 1
+            }
+        else:
+            return {"success": False, "error": f"不支持的 API 类型：{request.api_type}"}
+        
+        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=10)) as session:
+            async with session.post(request.api_url, headers=headers, json=test_data) as response:
+                if response.status == 200:
+                    result = await response.json()
+                    return {
+                        "success": True,
+                        "message": "API 配置测试成功",
+                        "data": {
+                            "status": "ok",
+                            "response_time": response.headers.get('X-Request-Id', 'N/A')
+                        }
+                    }
+                else:
+                    error_data = await response.json()
+                    return {
+                        "success": False,
+                        "error": f"API 测试失败 (HTTP {response.status})",
+                        "details": error_data
+                    }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"测试失败：{str(e)}"
+        }
+
+
+@app.get("/api/api-configs/models")
+async def get_available_models(
+    api_url: str,
+    api_key: str,
+    api_type: str = "llm"
+):
+    """获取平台可用的所有模型列表"""
+    import aiohttp
+    
+    try:
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json"
+        }
+        
+        # 构造获取模型列表的 URL
+        models_url = api_url.rsplit('/', 1)[0] + '/models' if '/chat/' in api_url or '/images/' in api_url or '/embeddings/' in api_url else api_url
+        
+        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=10)) as session:
+            async with session.get(models_url, headers=headers) as response:
+                if response.status == 200:
+                    result = await response.json()
+                    models = result.get('data', [])
+                    
+                    # 根据 API 类型过滤模型
+                    filtered_models = []
+                    for model in models:
+                        model_id = model.get('id', '') if isinstance(model, dict) else str(model)
+                        
+                        # 根据类型过滤
+                        if api_type == 'llm':
+                            if any(kw in model_id.lower() for kw in ['gpt', 'chat', 'completion', 'text']):
+                                filtered_models.append(model)
+                        elif api_type == 'image':
+                            if any(kw in model_id.lower() for kw in ['image', 'dall', 'stable', 'diffusion']):
+                                filtered_models.append(model)
+                        elif api_type == 'vector':
+                            if any(kw in model_id.lower() for kw in ['embedding', 'vector', 'ada']):
+                                filtered_models.append(model)
+                        else:
+                            filtered_models.append(model)
+                    
+                    return {
+                        "success": True,
+                        "data": filtered_models,
+                        "total": len(filtered_models)
+                    }
+                else:
+                    # 如果无法获取模型列表，返回预设的常用模型
+                    preset_models = get_preset_models(api_type)
+                    return {
+                        "success": True,
+                        "data": preset_models,
+                        "total": len(preset_models),
+                        "note": "无法从 API 获取模型列表，返回预设模型"
+                    }
+    except Exception as e:
+        # 返回预设模型
+        preset_models = get_preset_models(api_type)
+        return {
+            "success": True,
+            "data": preset_models,
+            "total": len(preset_models),
+            "note": f"获取失败：{str(e)}，返回预设模型"
+        }
+
+
+def get_preset_models(api_type: str) -> List[Dict]:
+    """获取预设的常用模型列表"""
+    presets = {
+        'llm': [
+            {'id': 'gpt-4', 'name': 'GPT-4'},
+            {'id': 'gpt-4-turbo', 'name': 'GPT-4 Turbo'},
+            {'id': 'gpt-3.5-turbo', 'name': 'GPT-3.5 Turbo'},
+            {'id': 'claude-3-opus', 'name': 'Claude 3 Opus'},
+            {'id': 'claude-3-sonnet', 'name': 'Claude 3 Sonnet'},
+        ],
+        'image': [
+            {'id': 'dall-e-3', 'name': 'DALL-E 3'},
+            {'id': 'dall-e-2', 'name': 'DALL-E 2'},
+            {'id': 'stable-diffusion-xl', 'name': 'Stable Diffusion XL'},
+            {'id': 'midjourney', 'name': 'Midjourney'},
+        ],
+        'vector': [
+            {'id': 'text-embedding-ada-002', 'name': 'Text Embedding Ada-002'},
+            {'id': 'text-embedding-3-small', 'name': 'Text Embedding 3 Small'},
+            {'id': 'text-embedding-3-large', 'name': 'Text Embedding 3 Large'},
+        ],
+        'rerank': [
+            {'id': 'reranker-v1', 'name': 'Reranker V1'},
+        ]
+    }
+    return presets.get(api_type, [])
 
 
 @app.get("/api/stats")

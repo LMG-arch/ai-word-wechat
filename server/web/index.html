@@ -896,8 +896,14 @@
                     <input type="password" id="api-config-key" placeholder="sk-...">
                 </div>
                 <div class="form-group">
-                    <label>模型名称 *</label>
-                    <input type="text" id="api-config-model" placeholder="gpt-4, gpt-3.5-turbo, sd-xl, etc.">
+                    <label>
+                        模型名称 *
+                        <button class="header-btn" onclick="fetchModels()" style="float: right; font-size: 12px; padding: 4px 8px;">🔄 获取可用模型</button>
+                    </label>
+                    <select id="api-config-model-select" onchange="document.getElementById('api-config-model').value = this.value" style="width: 100%; padding: 10px; border: 1px solid var(--divider); border-radius: 8px; margin-top: 4px;">
+                        <option value="">选择模型...</option>
+                    </select>
+                    <input type="text" id="api-config-model" placeholder="或手动输入模型名称" style="margin-top: 4px;">
                 </div>
                 <div class="form-group">
                     <label>优先级</label>
@@ -912,6 +918,7 @@
             </div>
             <div class="modal-footer">
                 <button class="btn btn-secondary" onclick="closeAddApiConfigModal()">取消</button>
+                <button class="btn btn-secondary" onclick="testApiConfig()" style="margin-right: 8px;">🧪 测试连接</button>
                 <button class="btn btn-primary" onclick="saveApiConfig()">保存</button>
             </div>
         </div>
@@ -1612,6 +1619,102 @@
 
         function closeAddApiConfigModal() {
             document.getElementById('api-config-modal').classList.remove('show');
+        }
+
+        // 测试 API 配置
+        async function testApiConfig() {
+            const apiType = document.getElementById('api-config-type').value;
+            const apiUrl = document.getElementById('api-config-url').value.trim();
+            const apiKey = document.getElementById('api-config-key').value.trim();
+            const modelName = document.getElementById('api-config-model').value.trim();
+
+            if (!apiUrl || !apiKey) {
+                alert('请填写 API 地址和密钥');
+                return;
+            }
+
+            const btn = event.target;
+            const originalText = btn.textContent;
+            btn.textContent = '⏳ 测试中...';
+            btn.disabled = true;
+
+            try {
+                const response = await fetch(`${API_BASE}/api-configs/test`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        api_url: apiUrl,
+                        api_key: apiKey,
+                        api_type: apiType,
+                        model_name: modelName
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    alert(`✅ ${result.message}\n\n响应时间：${result.data?.response_time || 'N/A'}`);
+                } else {
+                    alert(`❌ ${result.error}\n\n详情：${JSON.stringify(result.details, null, 2)}`);
+                }
+            } catch (error) {
+                alert(`❌ 测试失败：${error.message}`);
+            } finally {
+                btn.textContent = originalText;
+                btn.disabled = false;
+            }
+        }
+
+        // 获取可用模型列表
+        async function fetchModels() {
+            const apiType = document.getElementById('api-config-type').value;
+            const apiUrl = document.getElementById('api-config-url').value.trim();
+            const apiKey = document.getElementById('api-config-key').value.trim();
+
+            if (!apiUrl || !apiKey) {
+                alert('请填写 API 地址和密钥');
+                return;
+            }
+
+            const btn = event.target;
+            const originalText = btn.textContent;
+            btn.textContent = '⏳ 获取中...';
+            btn.disabled = true;
+
+            try {
+                const response = await fetch(`${API_BASE}/api-configs/models?api_url=${encodeURIComponent(apiUrl)}&api_key=${encodeURIComponent(apiKey)}&api_type=${apiType}`);
+                const result = await response.json();
+
+                const select = document.getElementById('api-config-model-select');
+                select.innerHTML = '<option value="">选择模型...</option>';
+
+                if (result.success && result.data) {
+                    result.data.forEach(model => {
+                        const modelId = typeof model === 'string' ? model : (model.id || model.name || '');
+                        const modelName = typeof model === 'string' ? model : (model.name || model.id || '');
+                        
+                        if (modelId) {
+                            const option = document.createElement('option');
+                            option.value = modelId;
+                            option.textContent = modelName;
+                            select.appendChild(option);
+                        }
+                    });
+
+                    if (result.note) {
+                        console.log(result.note);
+                    }
+
+                    alert(`✅ 已获取 ${result.total} 个可用模型`);
+                } else {
+                    alert(`❌ 获取失败：${result.error || '未知错误'}`);
+                }
+            } catch (error) {
+                alert(`❌ 获取失败：${error.message}`);
+            } finally {
+                btn.textContent = originalText;
+                btn.disabled = false;
+            }
         }
 
         // 自动更新 API 地址
