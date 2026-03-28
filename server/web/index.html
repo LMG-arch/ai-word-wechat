@@ -1653,9 +1653,19 @@
                 const result = await response.json();
 
                 if (result.success) {
-                    alert(`✅ ${result.message}\n\n响应时间：${result.data?.response_time || 'N/A'}`);
+                    alert(`✅ ${result.message}\n\nHTTP 状态：${result.data?.http_status || 'N/A'}\n响应时间：${result.data?.response_time || 'N/A'}`);
                 } else {
-                    alert(`❌ ${result.error}\n\n详情：${JSON.stringify(result.details, null, 2)}`);
+                    let errorMsg = `❌ ${result.error}`;
+                    if (result.details) {
+                        if (result.details.type === 'network_error') {
+                            errorMsg += `\n\n无法连接到 API 地址:\n${result.details.url}`;
+                        } else if (result.details.raw_response) {
+                            errorMsg += `\n\n服务器响应:\n${result.details.raw_response.substring(0, 500)}`;
+                        } else {
+                            errorMsg += `\n\n详情:\n${JSON.stringify(result.details, null, 2).substring(0, 500)}`;
+                        }
+                    }
+                    alert(errorMsg);
                 }
             } catch (error) {
                 alert(`❌ 测试失败：${error.message}`);

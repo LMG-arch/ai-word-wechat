@@ -621,27 +621,46 @@ async def test_api_config(request: TestApiConfigRequest):
         
         async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=10)) as session:
             async with session.post(request.api_url, headers=headers, json=test_data) as response:
-                if response.status == 200:
+                # 尝试解析响应
+                try:
                     result = await response.json()
+                except:
+                    # 如果不是 JSON，获取文本
+                    text = await response.text()
+                    result = {"raw_response": text}
+                
+                if response.status == 200:
                     return {
                         "success": True,
                         "message": "API 配置测试成功",
                         "data": {
                             "status": "ok",
-                            "response_time": response.headers.get('X-Request-Id', 'N/A')
+                            "response_time": response.headers.get('X-Request-Id', 'N/A'),
+                            "http_status": response.status
                         }
                     }
                 else:
-                    error_data = await response.json()
                     return {
                         "success": False,
                         "error": f"API 测试失败 (HTTP {response.status})",
-                        "details": error_data
+                        "details": result
                     }
+    except aiohttp.ClientError as e:
+        return {
+            "success": False,
+            "error": f"网络错误：{str(e)}",
+            "details": {
+                "type": "network_error",
+                "url": request.api_url
+            }
+        }
     except Exception as e:
         return {
             "success": False,
-            "error": f"测试失败：{str(e)}"
+            "error": f"测试失败：{str(e)}",
+            "details": {
+                "type": "unknown_error"
+            }
         }
 
 
