@@ -5,10 +5,13 @@ AI 社交世界 - 后端服务
 
 import sys
 import io
+import os
 
-# 修复 Windows CMD 编码问题
+# 修复 Windows CMD 编码和颜色问题
 if sys.platform == 'win32':
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+    # 禁用 uvicorn 的彩色日志
+    os.environ['LOGURU_COLORIZE'] = 'False'
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -18,11 +21,18 @@ from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 import json
-import os
+import os as os_module
 import uuid
 import time
 
 app = FastAPI(title="AI 社交世界 API")
+
+# 配置 uvicorn 日志不使用颜色
+import logging
+logging.basicConfig(
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    level=logging.INFO
+)
 
 # 启用 CORS
 app.add_middleware(
@@ -825,4 +835,46 @@ async def startup_event():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8080)
+    # 禁用彩色日志输出
+    uvicorn.run(app, host="0.0.0.0", port=8080, log_config={
+        "version": 1,
+        "disable_existing_loggers": False,
+        "formatters": {
+            "default": {
+                "format": "%(asctime)s - %(levelname)s - %(message)s",
+                "use_colors": False
+            },
+            "access": {
+                "format": "%(asctime)s - %(levelname)s - %(message)s",
+                "use_colors": False
+            }
+        },
+        "handlers": {
+            "default": {
+                "formatter": "default",
+                "class": "logging.StreamHandler",
+                "stream": "ext://sys.stdout"
+            },
+            "access": {
+                "formatter": "access",
+                "class": "logging.StreamHandler",
+                "stream": "ext://sys.stdout"
+            }
+        },
+        "root": {
+            "level": "INFO",
+            "handlers": ["default"]
+        },
+        "loggers": {
+            "uvicorn": {
+                "level": "INFO",
+                "handlers": ["default"],
+                "propagate": False
+            },
+            "uvicorn.access": {
+                "level": "INFO",
+                "handlers": ["access"],
+                "propagate": False
+            }
+        }
+    })
