@@ -143,7 +143,8 @@ class ApiConfig(BaseModel):
     provider: str  # openai, azure, baidu, etc.
     api_url: str
     api_key: str
-    model_name: str
+    models: List[str] = []  # 支持多个模型
+    selected_model: str = ""  # 当前选择的模型
     is_enabled: bool = True
     priority: int = 0
     created_at: int = Field(default_factory=lambda: int(time.time() * 1000))
@@ -156,7 +157,8 @@ class CreateApiConfigRequest(BaseModel):
     provider: str
     api_url: str
     api_key: str
-    model_name: str
+    models: List[str] = []  # 支持多个模型
+    selected_model: str = ""  # 当前选择的模型
     is_enabled: bool = True
     priority: int = 0
 
@@ -165,7 +167,7 @@ class TestApiConfigRequest(BaseModel):
     api_url: str
     api_key: str
     api_type: str
-    model_name: str = ""
+    selected_model: str = ""  # 使用选择的模型
 
 
 # ==================== 数据存储函数 ====================
@@ -607,7 +609,7 @@ async def test_api_config(request: TestApiConfigRequest):
         # 根据 API 类型构造不同的测试请求
         if request.api_type == 'llm':
             test_data = {
-                "model": request.model_name or "gpt-3.5-turbo",
+                "model": request.selected_model or "gpt-3.5-turbo",
                 "messages": [{"role": "user", "content": "Hello"}],
                 "max_tokens": 10
             }
@@ -619,7 +621,7 @@ async def test_api_config(request: TestApiConfigRequest):
             }
         elif request.api_type == 'vector':
             test_data = {
-                "model": request.model_name or "text-embedding-ada-002",
+                "model": request.selected_model or "text-embedding-ada-002",
                 "input": ["test"]
             }
         elif request.api_type == 'rerank':

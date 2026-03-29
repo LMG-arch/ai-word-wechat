@@ -897,13 +897,22 @@
                 </div>
                 <div class="form-group">
                     <label>
-                        模型名称 *
+                        模型管理
                         <button class="header-btn" onclick="fetchModels()" style="float: right; font-size: 12px; padding: 4px 8px;">🔄 获取可用模型</button>
                     </label>
-                    <select id="api-config-model-select" onchange="document.getElementById('api-config-model').value = this.value" style="width: 100%; padding: 10px; border: 1px solid var(--divider); border-radius: 8px; margin-top: 4px;">
-                        <option value="">选择模型...</option>
+                    <select id="api-config-model-select" onchange="addModelToList(this.value)" style="width: 100%; padding: 10px; border: 1px solid var(--divider); border-radius: 8px; margin-top: 4px;">
+                        <option value="">选择模型添加到列表...</option>
                     </select>
-                    <input type="text" id="api-config-model" placeholder="或手动输入模型名称" style="margin-top: 4px;">
+                    <div id="models-list" style="margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px;">
+                        <!-- 已添加的模型标签 -->
+                    </div>
+                    <input type="text" id="api-config-model-manual" placeholder="或手动输入模型名称并按回车添加" onkeypress="if(event.key==='Enter') addManualModel()" style="margin-top: 8px;">
+                </div>
+                <div class="form-group">
+                    <label>当前选择的模型 *</label>
+                    <select id="api-config-selected-model" style="width: 100%; padding: 10px; border: 1px solid var(--divider); border-radius: 8px;">
+                        <option value="">从上方模型列表中选择一个...</option>
+                    </select>
                 </div>
                 <div class="form-group">
                     <label>优先级</label>
@@ -942,6 +951,78 @@
         // 当前选中的角色
         let currentCharacter = null;
         let currentConversation = null;
+        
+        // 当前配置的模型列表
+        let currentModels = [];
+
+        // ==================== 模型管理函数 ====================
+        function addModelToList(modelName) {
+            if (!modelName || currentModels.includes(modelName)) return;
+            
+            currentModels.push(modelName);
+            renderModelsList();
+            updateSelectedModelDropdown();
+            
+            // 清空选择
+            document.getElementById('api-config-model-select').value = '';
+        }
+
+        function addManualModel() {
+            const modelName = document.getElementById('api-config-model-manual').value.trim();
+            if (modelName) {
+                addModelToList(modelName);
+                document.getElementById('api-config-model-manual').value = '';
+            }
+        }
+
+        function removeModel(modelName) {
+            currentModels = currentModels.filter(m => m !== modelName);
+            renderModelsList();
+            updateSelectedModelDropdown();
+        }
+
+        function renderModelsList() {
+            const container = document.getElementById('models-list');
+            if (currentModels.length === 0) {
+                container.innerHTML = '<span style="color: var(--text-hint); font-size: 13px;">暂无模型，点击"获取可用模型"或手动添加</span>';
+                return;
+            }
+            
+            container.innerHTML = currentModels.map(model => `
+                <span style="
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 6px;
+                    padding: 6px 10px;
+                    background: var(--wechat-light-green);
+                    border-radius: 16px;
+                    font-size: 13px;
+                ">
+                    ${model}
+                    <button onclick="removeModel('${model}')" style="
+                        background: none;
+                        border: none;
+                        cursor: pointer;
+                        padding: 0;
+                        color: var(--wechat-green-dark);
+                        font-size: 16px;
+                        line-height: 1;
+                    ">×</button>
+                </span>
+            `).join('');
+        }
+
+        function updateSelectedModelDropdown() {
+            const select = document.getElementById('api-config-selected-model');
+            if (currentModels.length === 0) {
+                select.innerHTML = '<option value="">从上方模型列表中选择一个...</option>';
+                return;
+            }
+            
+            select.innerHTML = currentModels.map(model => `
+                <option value="${model}">${model}</option>
+            `).join('');
+        }
 
         // ==================== 导航切换 ====================
         function switchTab(tabName) {
@@ -1531,8 +1612,11 @@
                                 ${config.name}
                                 ${config.is_enabled ? '' : '<span style="color: var(--text-hint); font-size: 12px;">(已禁用)</span>'}
                             </div>
-                            <div class="item-subtitle">${typeNames[config.api_type] || config.api_type} · ${config.provider} · ${config.model_name}</div>
-                            <div class="item-time">密钥：${config.api_key}</div>
+                            <div class="item-subtitle">${typeNames[config.api_type]} · ${config.provider}</div>
+                            <div class="item-time">
+                                模型：${config.selected_model || '未选择'} 
+                                ${config.models && config.models.length > 0 ? `(共${config.models.length}个)` : ''}
+                            </div>
                         </div>
                         <button class="header-btn" onclick="event.stopPropagation(); toggleApiConfig('${config.id}')" style="margin-left: 8px;">
                             ${config.is_enabled ? '✓' : '○'}
@@ -1626,10 +1710,15 @@
             const apiType = document.getElementById('api-config-type').value;
             const apiUrl = document.getElementById('api-config-url').value.trim();
             const apiKey = document.getElementById('api-config-key').value.trim();
-            const modelName = document.getElementById('api-config-model').value.trim();
+            const selectedModel = document.getElementById('api-config-selected-model').value;
 
             if (!apiUrl || !apiKey) {
                 alert('请填写 API 地址和密钥');
+                return;
+            }
+
+            if (!selectedModel) {
+                alert('请先选择一个模型进行测试');
                 return;
             }
 
@@ -1646,7 +1735,7 @@
                         api_url: apiUrl,
                         api_key: apiKey,
                         api_type: apiType,
-                        model_name: modelName
+                        selected_model: selectedModel
                     })
                 });
 
@@ -1704,7 +1793,7 @@
                 const result = await response.json();
 
                 const select = document.getElementById('api-config-model-select');
-                select.innerHTML = '<option value="">选择模型...</option>';
+                select.innerHTML = '<option value="">选择模型添加到列表...</option>';
 
                 if (result.success && result.data) {
                     result.data.forEach(model => {
@@ -1723,7 +1812,7 @@
                         console.log(result.note);
                     }
 
-                    alert(`✅ 已获取 ${result.total} 个可用模型`);
+                    alert(`✅ 已获取 ${result.total} 个模型，点击选择添加到列表`);
                 } else {
                     alert(`❌ 获取失败：${result.error || '未知错误'}`);
                 }
@@ -1755,19 +1844,27 @@
 
         async function saveApiConfig() {
             const id = document.getElementById('api-config-id').value;
+            const selectedModel = document.getElementById('api-config-selected-model').value;
+            
+            if (!selectedModel) {
+                alert('请从模型列表中选择一个当前使用的模型');
+                return;
+            }
+            
             const data = {
                 name: document.getElementById('api-config-name').value.trim(),
                 api_type: document.getElementById('api-config-type').value,
                 provider: document.getElementById('api-config-provider').value,
                 api_url: document.getElementById('api-config-url').value.trim(),
                 api_key: document.getElementById('api-config-key').value.trim(),
-                model_name: document.getElementById('api-config-model').value.trim(),
+                models: currentModels,
+                selected_model: selectedModel,
                 is_enabled: document.getElementById('api-config-enabled').checked,
                 priority: parseInt(document.getElementById('api-config-priority').value)
             };
 
-            if (!data.name || !data.api_url || !data.api_key || !data.model_name) {
-                alert('请填写必填项');
+            if (!data.name || !data.api_url || !data.api_key || currentModels.length === 0) {
+                alert('请填写必填项并添加至少一个模型');
                 return;
             }
 
@@ -1805,11 +1902,21 @@
                     document.getElementById('api-config-type').value = config.api_type;
                     document.getElementById('api-config-provider').value = config.provider;
                     document.getElementById('api-config-url').value = config.api_url;
-                    document.getElementById('api-config-key').value = config.api_key; // 保留原有密钥
+                    document.getElementById('api-config-key').value = config.api_key;
                     document.getElementById('api-config-key').placeholder = '留空保持原有密钥';
-                    document.getElementById('api-config-model').value = config.model_name;
-                    document.getElementById('api-config-priority').value = config.priority;
+                    document.getElementById('api-config-priority').value = config.priority || 0;
                     document.getElementById('api-config-enabled').checked = config.is_enabled;
+                    
+                    // 加载模型列表
+                    currentModels = config.models || [];
+                    renderModelsList();
+                    updateSelectedModelDropdown();
+                    
+                    // 设置选中的模型
+                    if (config.selected_model) {
+                        document.getElementById('api-config-selected-model').value = config.selected_model;
+                    }
+                    
                     document.getElementById('api-config-modal').classList.add('show');
                 }
             } catch (error) {
