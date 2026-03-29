@@ -170,6 +170,11 @@ class TestApiConfigRequest(BaseModel):
     selected_model: str = ""  # 使用选择的模型
 
 
+class GenerateCharacterRequest(BaseModel):
+    prompt: str  # 用户提示词
+    age_range: str = "adult"  # 年龄段：child, teen, adult, elder
+
+
 # ==================== 数据存储函数 ====================
 
 def load_json(filename: str, default=None):
@@ -783,7 +788,7 @@ async def get_statistics():
     """获取统计信息"""
     characters = get_characters()
     messages = get_messages()
-    
+
     # 按会话统计消息
     conversations = {}
     for msg in messages:
@@ -791,7 +796,7 @@ async def get_statistics():
         if conv_id not in conversations:
             conversations[conv_id] = 0
         conversations[conv_id] += 1
-    
+
     return {
         "success": True,
         "data": {
@@ -800,6 +805,182 @@ async def get_statistics():
             "conversation_count": len(conversations)
         }
     }
+
+
+# ==================== AI 生成角色接口 ====================
+
+@app.post("/api/characters/generate")
+async def generate_character(request: GenerateCharacterRequest):
+    """AI 生成角色人设"""
+    import aiohttp
+    
+    # 获取 LLM API 配置
+    configs = get_api_configs()
+    llm_config = None
+    for config in configs:
+        if config.api_type == 'llm' and config.is_enabled:
+            llm_config = config
+            break
+    
+    if not llm_config:
+        return {
+            "success": False,
+            "error": "未找到可用的语言模型配置"
+        }
+    
+    # 年龄段映射
+    age_ranges = {
+        'child': (6, 12),
+        'teen': (13, 17),
+        'adult': (18, 40),
+        'elder': (60, 80)
+    }
+    min_age, max_age = age_ranges.get(request.age_range, (18, 40))
+    
+    # 构建提示词
+    system_prompt = f"""你是一个角色创建助手。根据用户的描述生成一个完整的角色设定。
+
+请返回 JSON 格式，包含以下字段：
+- name: 角色名字（中文）
+- age: 年龄（{min_age}-{max_age}岁之间的数字）
+- gender: 性别（男/女）
+- occupation: 职业
+- personality: 性格描述（2-4 个词）
+- signature: 个性签名（20 字以内）
+- avatar_prompt: 头像生成提示词（英文，详细描述外貌特征）
+
+只返回 JSON，不要其他内容。"""
+
+    user_prompt = f"请创建一个角色：{request.prompt}"
+    
+    try:
+        headers = {
+            "Authorization": f"Bearer {llm_config.api_key}",
+            "Content-Type": "application/json"
+        }
+        
+        test_data = {
+            "model": llm_config.selected_model or "gpt-3.5-turbo",
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
+            ],
+            "temperature": 0.7,
+            "max_tokens": 500
+        }
+        
+        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=30)) as session:
+            async with session.post(llm_config.api_url, headers=headers, json=test_data) as response:
+                if response.status == 200:
+                    result = await response.json()
+                    content = result.get('choices', [{}])[0].get('message', {}).get('content', '')
+                    
+                    # 解析 JSON 响应
+                    import re
+                    json_match = re.search(r'\{.*\}', content, re.DOTALL)
+                    if json_match:
+                        character_data = json.loads(json_match.group())
+                        return {
+                            "success": True,
+                            "data": character_data
+                        }
+                    else:
+                        return {
+                            "success": False,
+                            "error": "AI 返回的格式不正确",
+                            "raw_response": content
+                        }
+                else:
+                    return {
+                        "success": False,
+                        "error": f"AI 服务失败 (HTTP {response.status})"
+                    }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"生成失败：{str(e)}"
+        }
+
+
+@app.post("/api/characters/generate-avatar")
+async def generate_avatar(avatar_prompt: str):
+    """AI 生成角色头像"""
+    import aiohttp
+    import base64
+    
+    # 获取 Image API 配置
+    configs = get_api_configs()
+    image_config = None
+    for config in configs:
+        if config.api_type == 'image' and config.is_enabled:
+            image_config = config
+            break
+    
+    # 如果没有图像模型，尝试使用 LLM 配置（某些平台支持）
+    if not image_config:
+        for config in configs:
+            if config.api_type == 'llm' and config.is_enabled:
+                image_config = config
+                break
+    
+    if not image_config:
+        return {
+            "success": False,
+            "error": "未找到可用的图像模型配置"
+        }
+    
+    try:
+        headers = {
+            "Authorization": f"Bearer {image_config.api_key}",
+            "Content-Type": "application/json"
+        }
+        
+        # 根据平台构造不同的请求
+        if 'stability' in image_config.provider.lower():
+            test_data = {
+                "prompt": avatar_prompt,
+                "size": "1024x1024"
+            }
+        else:
+            # OpenAI 格式
+            test_data = {
+                "model": image_config.selected_model or "dall-e-3",
+                "prompt": avatar_prompt,
+                "n": 1,
+                "size": "1024x1024",
+                "response_format": "url"
+            }
+        
+        api_url = image_config.api_url
+        if 'v1/chat/' in api_url:
+            # 如果是聊天 API，替换为图像 API
+            api_url = api_url.replace('/v1/chat/completions', '/v1/images/generations')
+        
+        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=60)) as session:
+            async with session.post(api_url, headers=headers, json=test_data) as response:
+                if response.status == 200:
+                    result = await response.json()
+                    # OpenAI 格式
+                    image_url = result.get('data', [{}])[0].get('url', '')
+                    return {
+                        "success": True,
+                        "data": {
+                            "image_url": image_url,
+                            "prompt": avatar_prompt
+                        }
+                    }
+                else:
+                    error_data = await response.json()
+                    return {
+                        "success": False,
+                        "error": f"图像生成失败 (HTTP {response.status})",
+                        "details": error_data
+                    }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"生成失败：{str(e)}"
+        }
 
 
 # 启动后台任务：年龄增长

@@ -21,7 +21,7 @@
   {
     "id": "51619fb2-487c-42a6-b344-9a398291419e",
     "name": "测试角色",
-    "age": 33,
+    "age": 34,
     "gender": "女",
     "occupation": "设计师",
     "personality": "温柔",
@@ -31,7 +31,7 @@
     "current_location_id": null,
     "company_id": null,
     "created_at": 1774691011425,
-    "updated_at": 1774766922984,
+    "updated_at": 1774767776104,
     "last_avatar_change_time": 0,
     "last_signature_change_time": 0,
     "is_alive": true,

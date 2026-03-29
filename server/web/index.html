@@ -823,6 +823,13 @@
             </div>
             <div class="modal-body">
                 <div class="form-group">
+                    <label>
+                        🤖 AI 生成角色
+                        <button class="header-btn" onclick="showAIGenerateModal()" style="float: right; font-size: 12px; padding: 4px 8px;">✨ AI 创建</button>
+                    </label>
+                    <p style="font-size: 12px; color: var(--text-hint); margin-top: 4px;">输入简单描述，AI 自动完善角色设定并生成头像</p>
+                </div>
+                <div class="form-group">
                     <label>昵称 *</label>
                     <input type="text" id="char-name" placeholder="输入角色昵称">
                 </div>
@@ -845,10 +852,51 @@
                     <label>性格描述</label>
                     <textarea id="char-personality" rows="2" placeholder="例如：开朗、内向、幽默"></textarea>
                 </div>
+                <div class="form-group">
+                    <label>个性签名</label>
+                    <input type="text" id="char-signature" placeholder="例如：生活不止眼前的苟且，还有诗和远方">
+                </div>
+                <div class="form-group">
+                    <label>头像 URL</label>
+                    <input type="text" id="char-avatar" placeholder="AI 生成的头像 URL">
+                </div>
             </div>
             <div class="modal-footer">
                 <button class="btn btn-secondary" onclick="closeAddCharacterModal()">取消</button>
                 <button class="btn btn-primary" onclick="createCharacter()">创建</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI 生成角色模态框 -->
+    <div class="modal-overlay" id="ai-generate-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <span class="modal-title">✨ AI 创建角色</span>
+                <button class="modal-close" onclick="closeAIGenerateModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>角色描述 *</label>
+                    <textarea id="ai-prompt" rows="3" placeholder="例如：一个温柔的幼儿园老师，喜欢画画和读书，说话轻声细语..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label>年龄段</label>
+                    <select id="ai-age-range">
+                        <option value="child">儿童 (6-12 岁)</option>
+                        <option value="teen">青少年 (13-17 岁)</option>
+                        <option value="adult" selected>成年人 (18-40 岁)</option>
+                        <option value="elder">老年人 (60+ 岁)</option>
+                    </select>
+                </div>
+                <div id="ai-generate-status" style="display: none; text-align: center; padding: 20px;">
+                    <div class="spinner" style="margin: 0 auto 10px;"></div>
+                    <p id="ai-status-text" style="color: var(--text-secondary);">正在生成角色...</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeAIGenerateModal()">取消</button>
+                <button class="btn btn-primary" onclick="generateCharacter()" id="ai-generate-btn">🪄 生成角色</button>
             </div>
         </div>
     </div>
@@ -1111,14 +1159,11 @@
             const gender = document.getElementById('char-gender').value;
             const occupation = document.getElementById('char-occupation').value.trim();
             const personality = document.getElementById('char-personality').value.trim();
+            const signature = document.getElementById('char-signature').value.trim();
+            const avatar = document.getElementById('char-avatar').value.trim();
 
-            if (!name) {
-                alert('请输入昵称');
-                return;
-            }
-
-            if (!occupation) {
-                alert('请输入职业');
+            if (!name || !occupation) {
+                alert('请输入昵称和职业');
                 return;
             }
 
@@ -1126,7 +1171,15 @@
                 const response = await fetch(`${API_BASE}/characters`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name, age, gender, occupation, personality })
+                    body: JSON.stringify({ 
+                        name, 
+                        age, 
+                        gender, 
+                        occupation, 
+                        personality,
+                        signature,
+                        avatar_url: avatar || null
+                    })
                 });
 
                 const result = await response.json();
@@ -1138,6 +1191,87 @@
                 }
             } catch (error) {
                 alert('创建失败：' + error.message);
+            }
+        }
+
+        // ==================== AI 生成角色功能 ====================
+        function showAIGenerateModal() {
+            document.getElementById('add-character-modal').classList.remove('show');
+            document.getElementById('ai-generate-modal').classList.add('show');
+            document.getElementById('ai-generate-status').style.display = 'none';
+            document.getElementById('ai-generate-btn').disabled = false;
+        }
+
+        function closeAIGenerateModal() {
+            document.getElementById('ai-generate-modal').classList.remove('show');
+            document.getElementById('add-character-modal').classList.add('show');
+        }
+
+        async function generateCharacter() {
+            const prompt = document.getElementById('ai-prompt').value.trim();
+            const ageRange = document.getElementById('ai-age-range').value;
+
+            if (!prompt) {
+                alert('请输入角色描述');
+                return;
+            }
+
+            const btn = document.getElementById('ai-generate-btn');
+            const statusDiv = document.getElementById('ai-generate-status');
+            const statusText = document.getElementById('ai-status-text');
+
+            btn.disabled = true;
+            statusDiv.style.display = 'block';
+            statusText.textContent = '🪄 正在生成角色人设...';
+
+            try {
+                // 第一步：生成角色人设
+                const response = await fetch(`${API_BASE}/characters/generate`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt, age_range: ageRange })
+                });
+
+                const result = await response.json();
+
+                if (!result.success) {
+                    throw new Error(result.error || '生成失败');
+                }
+
+                const character = result.data;
+                statusText.textContent = '🎨 正在生成头像...';
+
+                // 第二步：生成头像
+                const avatarResponse = await fetch(`${API_BASE}/characters/generate-avatar?avatar_prompt=${encodeURIComponent(character.avatar_prompt)}`, {
+                    method: 'POST'
+                });
+
+                const avatarResult = await avatarResponse.json();
+
+                // 填充表单
+                document.getElementById('char-name').value = character.name || '';
+                document.getElementById('char-age').value = character.age || 25;
+                document.getElementById('char-gender').value = character.gender || '男';
+                document.getElementById('char-occupation').value = character.occupation || '';
+                document.getElementById('char-personality').value = character.personality || '';
+                document.getElementById('char-signature').value = character.signature || '';
+                
+                if (avatarResult.success && avatarResult.data.image_url) {
+                    document.getElementById('char-avatar').value = avatarResult.data.image_url;
+                    statusText.textContent = '✅ 生成成功！';
+                } else {
+                    statusText.textContent = '⚠️ 人设生成成功，头像生成失败';
+                }
+
+                // 延迟关闭，显示成功状态
+                setTimeout(() => {
+                    closeAIGenerateModal();
+                    showToast('角色生成成功！');
+                }, 1000);
+
+            } catch (error) {
+                statusText.textContent = `❌ 生成失败：${error.message}`;
+                btn.disabled = false;
             }
         }
 
