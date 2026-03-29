@@ -533,8 +533,10 @@ async def update_api_config(config_id: str, request: CreateApiConfigRequest):
             config.api_type = request.api_type
             config.provider = request.provider
             config.api_url = request.api_url
-            if request.api_key and request.api_key != '***':
+            # 只有在提供了新密钥时才更新（排除空值和脱敏格式）
+            if request.api_key and not request.api_key.startswith('***'):
                 config.api_key = request.api_key
+            # 如果密钥为空或脱敏格式，保留原有密钥
             config.model_name = request.model_name
             config.is_enabled = request.is_enabled
             config.priority = request.priority

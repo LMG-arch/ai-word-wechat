@@ -1805,7 +1805,8 @@
                     document.getElementById('api-config-type').value = config.api_type;
                     document.getElementById('api-config-provider').value = config.provider;
                     document.getElementById('api-config-url').value = config.api_url;
-                    document.getElementById('api-config-key').value = '';
+                    document.getElementById('api-config-key').value = config.api_key; // 保留原有密钥
+                    document.getElementById('api-config-key').placeholder = '留空保持原有密钥';
                     document.getElementById('api-config-model').value = config.model_name;
                     document.getElementById('api-config-priority').value = config.priority;
                     document.getElementById('api-config-enabled').checked = config.is_enabled;

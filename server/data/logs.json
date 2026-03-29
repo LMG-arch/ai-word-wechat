@@ -1,5 +1,19 @@
 [
   {
+    "id": "e22b4f5e-1709-404c-ae9c-4ade1cecd696",
+    "timestamp": "14:48:42",
+    "character_name": "测试角色",
+    "action_type": "成长",
+    "description": "年龄增长到33岁"
+  },
+  {
+    "id": "f7c2d16a-2e80-4e87-8750-57bc3dc84df9",
+    "timestamp": "14:42:42",
+    "character_name": "测试角色",
+    "action_type": "成长",
+    "description": "年龄增长到32岁"
+  },
+  {
     "id": "6c39ef00-9fe8-468a-aaf5-45161b36ced5",
     "timestamp": "17:57:25",
     "character_name": "测试角色",
