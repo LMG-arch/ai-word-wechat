@@ -97,6 +97,18 @@ def fallback_moment_image_url(seed: str) -> str:
     digest = hashlib.md5(seed.encode("utf-8")).hexdigest()[:12]
     return f"https://picsum.photos/seed/{digest}/800/600"
 
+# ==================== 调度器模块（提醒 + 主动对话） ====================
+# 新增 V3.3：角色定时提醒与主动联系用户系统
+try:
+    from services.scheduler import (
+        get_reminders, add_reminder, remove_reminder, get_character_reminders,
+        check_due_reminders, can_proactively_message, record_proactive_message,
+        generate_proactive_message, should_character_reach_out,
+        check_special_date_greetings, run_scheduler_tick
+    )
+except ImportError:
+    pass
+
 
 # ==================== 图片提示词管理 ====================
 VALID_IMAGE_SIZES = ("1920x1080", "1080x1920", "1024x1024")
@@ -7051,6 +7063,88 @@ async def get_llm_usage_by_model():
     return {"success": True, "data": {"by_model": stats.by_model, "by_endpoint": stats.by_endpoint, "by_config": stats.by_config}}
 
 
+# ==================== 调度器接口（提醒 + 主动对话）V3.3 新增 ====================
+
+class AddReminderRequest(BaseModel):
+    character_id: str
+    reminder_type: str = "reminder"  # reminder/greeting/task_reminder
+    trigger_time_ms: int  # 触发时间（毫秒时间戳）
+    content: str
+    repeat: str = "none"  # none/daily/weekly
+
+
+@app.get("/api/scheduler/reminders")
+async def list_reminders(character_id: Optional[str] = None):
+    """获取提醒列表"""
+    if character_id:
+        reminders = get_character_reminders(character_id)
+    else:
+        reminders = get_reminders()
+    return {"success": True, "data": reminders}
+
+
+@app.post("/api/scheduler/reminders")
+async def create_reminder(request: AddReminderRequest):
+    """创建提醒"""
+    reminder = add_reminder(
+        character_id=request.character_id,
+        reminder_type=request.reminder_type,
+        trigger_time_ms=request.trigger_time_ms,
+        content=request.content,
+        repeat=request.repeat,
+    )
+    add_log("system", "reminder_create", f"为角色 {request.character_id} 创建提醒：{request.content[:50]}...")
+    return {"success": True, "data": reminder}
+
+
+@app.delete("/api/scheduler/reminders/{reminder_id}")
+async def delete_reminder(reminder_id: str):
+    """删除提醒"""
+    success = remove_reminder(reminder_id)
+    if success:
+        add_log("system", "reminder_delete", f"删除提醒 {reminder_id}")
+    return {"success": success}
+
+
+@app.post("/api/scheduler/run")
+async def run_scheduler_api():
+    """手动触发调度器（检查到期提醒、主动对话、节日问候等）"""
+    characters = [c for c in get_characters() if c.is_alive]
+    results = await run_scheduler_tick(
+        characters=characters,
+        get_ai_reply_func=generate_ai_reply,
+        save_messages_func=save_messages,
+        get_messages_func=get_messages,
+        add_log_func=add_log,
+    )
+    return {"success": True, "data": results}
+
+
+@app.post("/api/characters/{character_id}/proactive-message")
+async def trigger_proactive_message(character_id: str, context: str = "default"):
+    """触发角色主动发消息给用户"""
+    characters = get_characters()
+    char = next((c for c in characters if c.id == character_id), None)
+    if not char:
+        raise HTTPException(status_code=404, detail="角色不存在")
+    if not char.is_alive:
+        raise HTTPException(status_code=400, detail="角色已不在世")
+
+    message = generate_proactive_message(char, context)
+    msg = ChatMessage(
+        conversation_id=char.id,
+        sender_id=char.id,
+        content=message,
+        is_from_user=False,
+    )
+    messages = get_messages()
+    messages.append(msg)
+    save_messages(messages)
+    record_proactive_message(char.id)
+    add_log(char.name, "主动联系", f"触发主动消息：{message[:30]}...")
+    return {"success": True, "data": msg.model_dump()}
+
+
 # 启动后台任务：年龄增长
 @app.on_event("startup")
 async def startup_event():
@@ -7221,6 +7315,29 @@ async def startup_event():
             except Exception as e:
                 add_log("system", "task_engine_error", str(e)[:120])
 
+    async def scheduler_task():
+        """V3.3 新增：调度器任务 - 提醒触发、角色主动对话、节日问候"""
+        while True:
+            await asyncio.sleep(45)  # 每 45 秒检查一次
+            settings = get_settings()
+            if not getattr(settings, 'enable_scheduler', True):
+                continue
+            try:
+                characters = [c for c in get_characters() if c.is_alive]
+                results = await run_scheduler_tick(
+                    characters=characters,
+                    get_ai_reply_func=generate_ai_reply,
+                    save_messages_func=save_messages,
+                    get_messages_func=get_messages,
+                    add_log_func=add_log,
+                )
+                if results["reminders_triggered"] > 0:
+                    add_log("system", "scheduler", f"触发 {results['reminders_triggered']} 个提醒")
+                if results["proactive_messages"] > 0:
+                    add_log("system", "scheduler", f"角色主动发消息 {results['proactive_messages']} 次")
+            except Exception as e:
+                add_log("system", "scheduler_error", str(e)[:120])
+
     settings = get_settings()
     if settings.last_world_update_time <= 0:
         settings.last_world_update_time = int(time.time() * 1000)
@@ -7230,6 +7347,7 @@ async def startup_event():
     asyncio.create_task(social_autorun_task())
     asyncio.create_task(heartbeat_task())
     asyncio.create_task(task_engine_task())
+    asyncio.create_task(scheduler_task())  # V3.3 新增：调度器任务
 
 
 if __name__ == "__main__":
