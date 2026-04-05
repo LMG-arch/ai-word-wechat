@@ -1,333 +1,89 @@
 # AI 社交世界 (AIWeChat)
 
-一款基于 Android 平台的社交模拟应用，采用微信风格的 UI 设计，核心玩法是创建一个由 AI 角色自主运行的虚拟世界。
+一款基于 **FastAPI + 单页 Web（`server/web/index.html`）** 的社交模拟应用，采用微信风格 UI。核心玩法是让 AI 角色在**可由 LLM 生成的虚拟城市**里生活、社交、成长与协作。每一个角色都拥有**时间感知的独立记忆**，能够从经验中学习进化。
+
+> 📖 完整 API 文档见 [开发文档.md](开发文档.md)，覆盖 **76 个 API 端点**。
 
 ## 🚀 快速开始
 
-### Web 版（推荐用于测试）
+### 启动服务器
 
-**启动服务器:**
+**Windows:**
 ```bash
 cd server
-# Windows
 start.bat
-# 或手动启动
+```
+
+**手动启动:**
+```bash
+cd server
 pip install -r requirements.txt
 python main.py
 ```
 
-**访问地址:**
+### 访问地址
 - 电脑浏览器：http://localhost:8080
 - 手机访问：http://你的电脑 IP:8080
 
-**功能特性:**
-- ✅ 完整的 RESTful API
-- ✅ 数据持久化（JSON 文件）
-- ✅ 手机端优化 UI
-- ✅ 实时日志面板
-- ✅ API 配置管理
-- ✅ 后台年龄增长任务
+## 🌟 核心功能
+
+### 1. AI 角色系统
+- **智能人设生成**: 支持按自然语言提示词批量生成完整 AI 人设（姓名、职业、性格、背景）。
+- **生命周期管理**: 角色会随世界时间增长年龄，经历从儿童到老年的不同人生阶段，并自动更新头像与签名。
+- **自适应职业**: 角色根据年龄阶段自动调整职业状态（如学生、退休等）。
+- **年龄驱动人格**: 不同年龄段（儿童、青少年、成年、中年、老年）拥有差异化人格特征和发圈频率。
+- **个性化模型配置**: 支持为每个角色独立指定 LLM 模型，满足精细化调试需求。
+- **发圈频率控制**: 支持按角色设置发圈频率（极少/较低/正常/较高/极高），结合年龄因子动态调整。
+
+### 2. 记忆系统 (Graphiti+ 架构)
+- **时态记忆库**: 基于 SQLite 的双时态模型，所有记忆带时间戳，支持历史状态回溯。
+- **语义召回**: 集成向量模型（Embeddings）与重排模型（Reranker），实现基于相似度与重要性的记忆提取。
+- **时间衰减**: 近期记忆权重更高，反思记忆衰减更慢，模拟人类遗忘曲线。
+
+### 3. 社交与关系引擎
+- **动态关系演化**: 亲密度（0-100）随互动（聊天、点赞、相遇）实时变化，自动定义关系状态（陌生人→密友）。
+- **私人群聊**: 亲密度达标后自动创建私人群，AI 角色之间会进行基于人设的自主对话（非模板句）。
+- **朋友圈系统**: 类微信 UI，支持 AI 角色自主发帖（自拍/场景/人像）、互评与点赞。
+
+### 4. 虚拟城市与地图
+- **LLM 地图生成**: 首次启动时由 LLM 设计城市布局（道路、地标、水系），支持「重塑城市」功能。
+- **实时轨迹**: 角色根据日程（Schedule）在城市中移动，支持 SVG 地图实时展示与轨迹回放。
+- **相遇检测**: 当两名角色在地图上近距离接触时，自动触发互动、提升亲密度并开启偶遇对话。
+
+### 5. 任务与经济社会
+- **任务系统**: 涵盖文本、图像、代码、研究、设计等类型，支持个人接取或公司协作。
+- **经济循环**: 初始资金、每日消耗、贷款利息与逾期机制，形成完整的贫困/破产压力闭环。
+- **后台任务引擎**: 每 30 秒自动驱动角色/公司接取和完成任务，基于经济压力、职业匹配度智能分配。
+- **AI 自动审核**: LLM 自动评估任务交付物质量，审核通过后自动发放奖励并触发反思。
+- **完整自动化**: 角色从接取→执行→提交→审核→奖励→反思，全流程自动化，无需人工干预。
+- **统一反思管线**: 任务完成后 AI 产出结构化反思报告，差异化成功/失败内容，沉淀为长期记忆或公司知识库。
+- **任务专属图像模型**: 支持为图像类任务独立指定图像生成模型，灵活控制成本与质量。
+
+### 6. 经验与成长系统
+- **角色经验库**: 每个角色独立积累每种任务类型的经验（完成次数、成功率、经验教训、技能提升）。
+- **公司知识共享**: 角色反思自动同步到公司知识库，所有公司成员可复用前辈经验。
+- **LLM 经验注入**: 对话时自动注入角色和公司经验上下文，角色不再"从零开始"。
+
+## 📁 项目结构
 
 ```
-app/
-├── src/main/java/com/ai/wechat/
-│   ├── data/
-│   │   ├── model/          # 数据模型 (7 个实体类)
-│   │   │   ├── Character.kt
-│   │   │   ├── ApiConfig.kt
-│   │   │   ├── ChatMessage.kt
-│   │   │   ├── Company.kt
-│   │   │   ├── Task.kt
-│   │   │   ├── GroupChat.kt
-│   │   │   └── MemoryCache.kt
-│   │   └── memory/         # 记忆系统
-│   │       ├── Memory.kt
-│   │       ├── MemoryEngine.kt
-│   │       └── impl/
-│   │           └── GraphitiMemoryEngine.kt
-│   ├── db/
-│   │   ├── AppDatabase.kt
-│   │   └── dao/            # 数据访问对象 (7 个 DAO)
-│   ├── network/            # 网络层
-│   │   ├── AiApiService.kt
-│   │   └── NetworkConfig.kt
-│   ├── service/            # 业务逻辑层
-│   │   ├── AiWeChatService.kt
-│   │   ├── CharacterManager.kt
-│   │   ├── RelationshipEngine.kt
-│   │   ├── EconomyService.kt
-│   │   ├── TaskSystem.kt
-│   │   └── ReflectionEngine.kt
-│   ├── ui/
-│   │   ├── screens/        # 页面 (11 个)
-│   │   │   ├── chat/
-│   │   │   ├── contacts/
-│   │   │   ├── groups/
-│   │   │   ├── tasks/
-│   │   │   ├── discover/
-│   │   │   ├── mine/
-│   │   │   ├── character/
-│   │   │   ├── map/
-│   │   │   ├── log/
-│   │   │   └── settings/
-│   │   ├── navigation/     # 导航
-│   │   ├── theme/          # 主题
-│   │   └── viewmodel/      # ViewModel
-│   ├── worker/             # 后台任务
-│   ├── di/                 # 依赖注入模块 (5 个)
-│   ├── AIWeChatApplication.kt
-│   └── MainActivity.kt
-├── src/test/               # 单元测试
-└── src/androidTest/        # UI 测试
+aiwechat/
+├── server/                 # 后端服务
+│   ├── main.py            # FastAPI 应用入口
+│   ├── requirements.txt   # Python 依赖
+│   ├── data/              # 数据持久化目录 (JSON + SQLite)
+│   └── web/               # Web UI 静态文件 (HTML/JS/CSS)
+├── 开发文档.md             # 详细需求与接口文档
+├── 使用指南.md             # 功能操作说明
+└── README.md              # 项目主说明
 ```
 
-**统计**: 50+ Kotlin 文件，7200+ 行代码
+## ⚙️ 技术栈
 
-## 核心功能
-
-### 1. AI 角色系统 ✅
-- **自定义创建**: 配置昵称、年龄、性别、职业、性格
-- **智能头像生成**: 根据人设自动生成写实风格头像
-- **生命周期管理**: 年龄增长、自主更新头像和签名
-- **时间感知**: 支持时间倍速（1-30 倍速）
-- **年龄段划分**: 儿童期、青少年期、青年期、中年期、老年期
-
-### 2. 记忆系统（Graphiti + Neo4j） ✅
-- **时间感知记忆**: 双时态模型，支持历史状态回溯
-- **向量检索**: 基于向量相似度的记忆召回
-- **时间衰减**: 近期记忆权重更高（半衰期 2.5 天）
-- **重排优化**: 使用重排模型精排 Top 10
-- **反思记忆**: 失败教训衰减更慢（半衰期 7 天）
-
-### 3. 关系系统 ✅
-- **亲密度**: 0-100 数值，随互动变化
-- **关系状态**: 陌生人→认识→熟人→好友→密友
-- **关系系数**: 陌生人加成 (1.2x)、密友边际递减 (0.8x)
-- **阈值跨越**: 亲密度突破 20 自动创建私人群聊
-- **每日衰减**: 超过 3 天不互动每日 -1
-
-### 4. 任务系统 ✅
-- **任务类型**: 文本生成、图像生成、代码编写、调研分析、创意设计
-- **个人任务**: 角色独立接取，奖励全额归个人
-- **公司任务**: 公司统一接取，成员协作完成
-- **审核机制**: 用户确认成果后发放奖励
-- **图像质量**: 史诗感、电影质感、8K 分辨率
-
-### 5. 经济系统 ✅
-- **初始资金**: 每个角色创建时 50 资金
-- **日常消耗**: 每天 5 资金（吃饭、住宿）
-- **贷款机制**: 资金归零连续 3 天自动贷款 100（日息 1%）
-- **破产处理**: 无力偿还触发剧情事件
-- **公司创建**: 年龄≥18 岁，资金≥200，至少 1 名联合创始人
-
-### 6. 公司系统 ✅
-- **组织结构**: 法人（群主）、联合创始人、普通成员
-- **资金管理**: 任务奖励、工资发放、奖金分配
-- **成员贡献**: 记录每个成员的贡献度
-- **公司群聊**: 自动创建，全员参与任务讨论
-
-### 7. 反思引擎 ✅
-- **触发时机**: 任务成功/失败、审核不通过
-- **经验提取**: 自动总结教训和技能提升
-- **技能系统**: 需求理解、执行效率、史诗感把控等维度
-- **记忆存储**: 反思记忆存入个人记忆库
-
-## 技术架构
-
-### UI 层
-- **Jetpack Compose**: 声明式 UI 框架
-- **Material 3**: 现代化设计规范
-- **Navigation Compose**: 页面导航
-- **Coil**: 图片加载
-
-### 业务逻辑层
-- **Dagger Hilt**: 依赖注入
-- **Kotlin Coroutines**: 异步编程
-- **Flow**: 响应式数据流
-- **WorkManager**: 后台定时任务
-
-### 数据层
-- **Room**: SQLite 本地缓存
-- **Neo4j Driver**: 图数据库连接
-- **Graphiti**: 时间知识图谱引擎
-- **Gson**: JSON 序列化
-
-### AI 服务层
-- **Retrofit + OkHttp**: 网络请求
-- **多服务商支持**: OpenAI、Azure、百度文心、阿里云、Stability AI 等
-- **备用机制**: 主模型失败自动切换备用
-- **超时控制**: 连接 5 秒，读取 30 秒
-
-## 开发计划
-
-### V1.0 基础版 ✅
-- [x] 项目初始化
-- [x] 基础架构搭建 (Dagger Hilt, Room, Retrofit)
-- [x] 仿微信 UI 框架 (Jetpack Compose, Material 3)
-- [x] AI 服务集成 (多模型支持，备用机制)
-
-### V2.0 社交版 ✅
-- [x] 多角色交互 (CharacterManager, 通讯录)
-- [x] 亲密度系统完善 (RelationshipEngine, 阈值跨越)
-- [ ] 朋友圈功能
-
-### V3.0 记忆版 ✅
-- [x] Graphiti 时间记忆 (双时态模型)
-- [x] 向量检索优化 (时间衰减，重排模型)
-- [x] 私人群聊 (GroupChat, 自动创建)
-
-### V4.0 经济版 ✅
-- [x] 资金系统完善 (转账，日常消耗)
-- [x] 任务系统完善 (个人/公司任务，审核机制)
-- [x] 反思机制 (ReflectionEngine, 技能系统)
-
-### V5.0 生态版 🔄
-- [x] 公司系统 (创建，成员管理，资金分配)
-- [ ] 知识库 (反思报告共享)
-- [x] 地图系统 (基础框架)
-
-### 待完成功能
-- [ ] 朋友圈发布与互动
-- [ ] 公司知识库与反思共享
-- [ ] 地图角色实时位置显示
-- [ ] 日程系统自动生成
-- [ ] 角色死亡机制
-- [ ] ViewModel 与 UI 完全对接
-- [ ] API 配置持久化
-
-## 配置说明
-
-### API 配置
-在设置页面配置 AI 模型：
-1. 语言模型（对话、文本生成）
-2. 图像模型（头像、任务图像）
-3. 向量模型（记忆检索）
-4. 重排模型（记忆精排）
-
-### Neo4j 配置
-环境变量：
-```
-NEO4J_URI=bolt://localhost:7687
-NEO4J_USERNAME=neo4j
-NEO4J_PASSWORD=password
-```
-
-## 运行方式
-
-### 后端服务 + 手机 UI（推荐）
-
-完整的测试环境，数据存储在本地 JSON 文件。
-
-**启动服务器:**
-```bash
-cd server
-# Windows
-start.bat
-# 或手动启动
-pip install -r requirements.txt
-python main.py
-```
-
-**访问地址:**
-- 电脑浏览器：http://localhost:8080
-- 手机访问：http://你的电脑 IP:8080
-
-**功能特性:**
-- ✅ 完整的 RESTful API
-- ✅ 数据持久化（JSON 文件）
-- ✅ 手机端优化 UI
-- ✅ 实时日志面板
-- ✅ 后台年龄增长任务
-- ✅ 支持多设备访问
-
-### Web 测试版 (离线版)
-
-无需安装，直接在浏览器运行。
-
-1. **直接打开**
-   ```
-   双击 web/index.html
-   ```
-
-2. **或使用 HTTP 服务器**
-   ```bash
-   cd web
-   python -m http.server 8080
-   # 访问 http://localhost:8080
-   ```
-
-**Web 版功能**:
-- ✅ 角色创建与管理
-- ✅ 聊天对话（模拟 AI）
-- ✅ 通讯录
-- ✅ 数据持久化（LocalStorage）
-- ✅ 实时日志面板
-- ⚠️ AI 回复为模拟文本
-- ❌ 暂无真实 AI 集成
-
-### Android 版本
-
-**环境要求**
-- Android Studio Hedgehog (2023.1.1) 或更高版本
-- JDK 17 或 JDK 21（Java 25 不兼容）
-- Android SDK 35
-
-### 构建命令
-```bash
-./gradlew assembleDebug
-```
-
----
-
-## ⚙️ API 配置指南
-
-### 支持的模型类型
-
-| 类型 | 用途 | 示例 API 端点 |
-|------|------|--------------|
-| **语言模型 (LLM)** | 对话/文本生成 | `/v1/chat/completions` |
-| **图像模型** | 绘画/图片生成 | `/v1/images/generations` |
-| **向量模型** | 嵌入/向量检索 | `/v1/embeddings` |
-| **重排模型** | 记忆精排 | `/reranker` |
-
-### 常用服务商配置
-
-#### OpenAI
-- **语言模型**: `https://api.openai.com/v1/chat/completions`
-- **图像模型**: `https://api.openai.com/v1/images/generations`
-- **向量模型**: `https://api.openai.com/v1/embeddings`
-- **模型名称**: `gpt-4`, `gpt-3.5-turbo`, `dall-e-3`
-
-#### Azure OpenAI
-- **语言模型**: `https://{resource}.openai.azure.com/openai/deployments/{deployment}/chat/completions?api-version=2024-02-15-preview`
-- **图像模型**: `https://{resource}.openai.azure.com/openai/deployments/{deployment}/images/generations?api-version=2024-02-15-preview`
-- **向量模型**: `https://{resource}.openai.azure.com/openai/deployments/{deployment}/embeddings?api-version=2024-02-15-preview`
-
-#### 百度文心
-- **语言模型**: `https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/completions`
-- **图像模型**: `https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/text2image/sd_xl`
-- **向量模型**: `https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/embeddings/embedding-v1`
-- **重排模型**: `https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/reranker/reranker`
-
-#### 阿里云通义
-- **语言模型**: `https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation`
-- **图像模型**: `https://dashscope.aliyuncs.com/api/v1/services/aigc/text-to-image/generation`
-- **向量模型**: `https://dashscope.aliyuncs.com/api/v1/services/embeddings/text-embedding/text-embedding`
-
-#### Stability AI
-- **图像模型**: `https://api.stability.ai/v2beta/stable-image/generate/core`
-- **模型名称**: `stable-diffusion-xl`, `stable-image-core`
-
-#### 本地部署 (Ollama 等)
-- **语言模型**: `http://localhost:11434/v1/chat/completions`
-- **图像模型**: `http://localhost:11434/v1/images/generations`
-- **向量模型**: `http://localhost:11434/v1/embeddings`
-
-### 运行
-在 Android Studio 中点击 Run 按钮，或使用：
-```bash
-./gradlew installDebug
-```
+- **后端**: FastAPI (Python), SQLite (Memory DB), Pydantic
+- **前端**: HTML5, Vanilla JavaScript, CSS3 (微信风格响应式)
+- **AI 服务**: 多模型支持 (OpenAI, Azure, Claude, Stability AI, Embedding/Rerank API)
+- **地图引擎**: SVG 动态路网 + 角色坐标刷新
 
 ## 许可证
 
