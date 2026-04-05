@@ -2018,13 +2018,36 @@ async def generate_moment_content(character: Character, request: GenerateMomentR
     trigger_text = request.event_text or request.trigger_type
     # 使用年龄性格修饰
     personality_with_age = get_age_personality_modifier(character.age, character.personality)
+    # 根据当前时间判断场景感
+    hour_hint = ""
+    if world_time:
+        if "早晨" in world_time or "早上" in world_time:
+            hour_hint = "（早晨场景）"
+        elif "中午" in world_time or "午" in world_time:
+            hour_hint = "（午休场景）"
+        elif "晚上" in world_time or "傍晚" in world_time:
+            hour_hint = "（傍晚/晚上场景）"
+        elif "深夜" in world_time or "凌晨" in world_time:
+            hour_hint = "（深夜场景，适合感慨/emo）"
+    
     base_prompt = (
-        f"你是角色{character.name}，{character.get_age_display()}，职业{character.occupation}。"
-        f"当前世界时间：{world_time}。"
-        f"性格特征：{personality_with_age}"
-        f"请生成一条朋友圈文案，触发来源：{trigger_text}，当前情绪：{request.mood or '平静'}。"
-        "要求：中文，20-50字，口吻符合人设和年龄段特征，像真人发朋友圈。"
-        "注意考虑当前时间（如早晨起床、中午午休、深夜感慨等）。"
+        f"你是{character.name}，{character.get_age_display()}，{character.gender}，{character.occupation}。\n"
+        f"现在{world_time}{hour_hint}。\n"
+        f"性格：{personality_with_age}\n"
+        f"触发来源：{trigger_text}\n"
+        f"当前情绪：{request.mood or '平静'}\n\n"
+        "请生成一条朋友圈文案。要求：\n"
+        "1. 用日常口语，像真人在朋友圈发的内容一样自然\n"
+        "2. 可以带emoji但不要堆砌，偶尔用一个就好\n"
+        "3. 可以有小情绪：吐槽、感慨、分享欲、开心、疲惫等\n"
+        "4. 20-50字左右，不要太长\n"
+        "5. 不要像新闻或报告一样正式\n"
+        "6. 不要出现"作为一个AI""根据我的分析"等打破人设的话\n"
+        "7. 考虑当前时间和场景（比如深夜感慨、早安问候、午间吐槽）\n"
+        "8. 可以提到工作内容、生活琐事、人际关系等\n"
+        "9. 口语化表达，可以适当省略主语或用"了""嘛""呢"等语气词\n"
+        "10. 不同职业要有不同的关注点（比如学生关注考试、上班族关注工作、老板关注生意）\n"
+        "直接输出文案，不要解释，不要加引号。"
     )
     configs = get_api_configs()
     llm_config = next((c for c in configs if c.api_type == "llm" and c.is_enabled), None)
@@ -2567,29 +2590,96 @@ def add_log(character_name: str, action_type: str, description: str):
 
 
 def create_reflection_from_task(task: TaskItem, approved: bool, review_notes: str) -> ReflectionReport:
+    """从任务审核结果生成个性化反思报告"""
+    task_type_name = {
+        TaskType.TEXT: "文本创作",
+        TaskType.IMAGE: "图像创作",
+        TaskType.CODE: "代码开发",
+        TaskType.RESEARCH: "调研分析",
+        TaskType.DESIGN: "创意设计",
+    }.get(task.task_type, "通用任务")
+    
     if approved:
+        # 成功反思：根据任务类型和审核反馈生成个性化内容
+        success_items = [
+            f"顺利完成{task_type_name}任务「{task.title}」",
+            f"理解了客户需求并针对性完成交付物",
+        ]
+        if task.review_notes:
+            success_items.append(f"审核评价：{task.review_notes[:50]}")
+        
+        lessons = [
+            f"做{task_type_name}时先拆解需求再动手，效率更高",
+            "提交前自检一遍交付物质量和格式",
+            f"对{task.title}这类任务积累了宝贵经验",
+        ]
+        skills = {
+            "需求理解": 2 + (3 if task.task_type == TaskType.RESEARCH else 0),
+            "执行质量": 2,
+            "时间管理": 1,
+        }
+        # 根据任务类型添加专项技能
+        if task.task_type == TaskType.CODE:
+            skills["代码质量"] = 3
+            skills["架构设计"] = 1
+            lessons.append("写代码前先设计结构，再填充实现，避免写成一团")
+        elif task.task_type == TaskType.IMAGE:
+            skills["视觉表达"] = 3
+            lessons.append("做图前先构思整体风格和构图，再细化细节")
+        elif task.task_type == TaskType.TEXT:
+            skills["文案能力"] = 3
+            skills["创意表达"] = 2
+            lessons.append("好的文案要有吸引力和信息密度，不能只是堆砌词汇")
+        elif task.task_type == TaskType.RESEARCH:
+            skills["数据分析"] = 3
+            skills["逻辑推理"] = 2
+            lessons.append("调研要有信息来源的可靠性和分析的客观性")
+        elif task.task_type == TaskType.DESIGN:
+            skills["设计思维"] = 3
+            skills["用户体验"] = 2
+            lessons.append("设计不只是好看，更要好用和解决实际问")
+        
         return ReflectionReport(
             task_id=task.id,
             task_name=task.title,
             success=True,
-            what_went_well=["按要求完成任务", "内容通过审核"],
+            what_went_well=success_items,
             what_went_wrong=[],
             root_causes=[],
-            lessons_learned=["执行前先拆解需求清单", "提交前自检质量与风格"],
-            action_items=["复盘本次执行路径并沉淀模板"],
-            skill_improvements={"需求理解": 3, "执行质量": 2, "修改效率": 1},
+            lessons_learned=lessons[:6],
+            action_items=["将本次经验沉淀为个人能力", f"总结{task_type_name}的标准执行流程"],
+            skill_improvements=skills,
         )
-    return ReflectionReport(
-        task_id=task.id,
-        task_name=task.title,
-        success=False,
-        what_went_well=["按时提交了初稿"],
-        what_went_wrong=[review_notes or "审核未通过"],
-        root_causes=["需求对齐不足或细节不完整"],
-        lessons_learned=["先对齐验收标准再动手", "关键点用清单逐项验证"],
-        action_items=["补齐缺失细节后再次提交"],
-        skill_improvements={"需求理解": 5, "风险识别": 4},
-    )
+    else:
+        # 失败反思：从审核反馈中提取教训
+        issues = [review_notes or f"{task_type_name}审核未通过"]
+        causes = ["对需求的理解可能不够深入", "交付物质量有待提升"]
+        lessons = [
+            f"做{task_type_name}前先和审核方对齐标准",
+            "不要急于动手，先把需求和验收标准理解清楚",
+            f"「{task.title}」的失败教训要记住",
+        ]
+        
+        if "格式" in review_notes or "规范" in review_notes:
+            issues.append("交付物格式不符合要求")
+            causes.append("没有仔细阅读任务说明")
+            lessons.append("提交前必须对照需求清单逐项检查")
+        elif "内容" in review_notes or "质量" in review_notes:
+            issues.append("交付物内容质量不足")
+            causes.append("可能没有投入足够的精力")
+            lessons.append("任务质量是底线，不能因为时间压力而降低标准")
+        
+        return ReflectionReport(
+            task_id=task.id,
+            task_name=task.title,
+            success=False,
+            what_went_well=[f"按时提交了{task_type_name}初稿"],
+            what_went_wrong=issues[:3],
+            root_causes=causes[:3],
+            lessons_learned=lessons[:5],
+            action_items=["仔细复盘审核反馈", "修改后重新提交", "向有经验的人请教"],
+            skill_improvements={"需求理解": 4, "风险识别": 3, "质量意识": 3},
+        )
 
 
 def choose_task_assignee(task: TaskItem, characters: List[Character], preferred_character_id: Optional[str] = None) -> Optional[Character]:
@@ -3763,9 +3853,77 @@ async def run_heartbeat_tick(limit_characters: int = 30) -> Dict[str, Any]:
     for char in sampled:
         await run_character_heartbeat(char, alive)
     
+    # AI 自主管理公司（每3次心跳触发一次）
+    if random.random() < 0.33:
+        await run_ai_company_heartbeat()
+    
     # 关键：心跳结束后必须保存状态（包括消耗的意图、更新的位置等）
     save_characters(characters)
     return {"characters": len(alive), "ticked": len(sampled)}
+
+
+async def run_ai_company_heartbeat():
+    """AI 自主管理公司：角色根据经济状况和社交关系自主创建公司、招募成员"""
+    characters = get_characters()
+    companies = get_companies()
+    alive_chars = [c for c in characters if c.is_alive]
+    if not alive_chars:
+        return
+    
+    # 1) 没有公司但资金充裕的角色，小概率自主创业
+    chars_without_company = [c for c in alive_chars if not c.company_id and c.money >= 1500 and c.age >= 18]
+    if chars_without_company and random.random() < 0.2:
+        founder = max(chars_without_company, key=lambda c: c.money)
+        occupation = founder.occupation or "创业者"
+        company_names = [
+            f"{founder.name}的{occupation}工作室",
+            f"云海{occupation}事务所",
+            f"{founder.name}{occupation}公司",
+            f"{occupation}创新坊",
+        ]
+        company_name = random.choice(company_names)
+        
+        # 扣除创业资金
+        founder.money -= 1000
+        new_company = Company(
+            name=company_name,
+            legal_person_id=founder.id,
+            member_ids=[founder.id],
+            funds=500.0,
+            location_name=founder.current_location_id or "办公室",
+        )
+        founder.company_id = new_company.id
+        companies.append(new_company)
+        save_companies(companies)
+        save_characters(characters)
+        add_log(founder.name, "AI创业", f"自主创建公司「{company_name}」，投入500元启动资金，个人账户剩余{founder.money:.0f}元")
+    
+    # 2) 公司法人小概率招募新成员（优先招募有亲密度的角色）
+    for company in companies[:]:  # copy to avoid modification during iteration
+        if random.random() < 0.15:
+            founder = next((c for c in alive_chars if c.id == company.legal_person_id), None)
+            if not founder or founder.money < 300:
+                continue
+            # 从没公司的角色中挑选，优先有互动的
+            candidates = [c for c in alive_chars if c.id not in company.member_ids and not c.company_id and c.age >= 16]
+            if candidates:
+                # 按亲密度和随机性综合排序
+                from collections import defaultdict
+                relationships = get_relationships()
+                candidate_scores = []
+                for cand in candidates:
+                    rel = next((r for r in relationships if (r.from_id == founder.id and r.to_id == cand.id) or (r.from_id == cand.id and r.to_id == founder.id)), None)
+                    intimacy = rel.intimacy if rel else 0
+                    score = intimacy * 0.6 + random.random() * 40
+                    candidate_scores.append((score, cand))
+                candidate_scores.sort(key=lambda x: x[0], reverse=True)
+                recruit = candidate_scores[0][1]
+                
+                recruit.company_id = company.id
+                company.member_ids.append(recruit.id)
+                save_companies(companies)
+                save_characters(characters)
+                add_log(company.name, "AI招募", f"法人 {founder.name} 自主招募 {recruit.name}（亲密度{intimacy:.0f}）加入公司")
 
 
 def run_daily_economy(world_elapsed_ms: int):
@@ -3938,22 +4096,45 @@ You can execute world actions by appending instructions at the end of your reply
 - [EXEC:Transfer(amount, target_id)] 转账给某人
 - [EXEC:TakeTask(task_id)] 接取一个任务
 - [EXEC:SubmitTask(task_id, notes)] 提交并完成任务
+- [EXEC:CreateCompany(name)] 创建公司（如果你有足够资金和商业头脑）
+- [EXEC:RecruitMember(company_id, target_id)] 招募公司成员
 Example: "好的，我现在就过去。[EXEC:MoveTo(餐厅)]"
 """
 
-    system_prompt = f"""You are {character.name}, {character.get_age_display()} {character.gender}, {character.occupation}.
-Current world time: {world_time}
-Personality: {personality_with_age}
-{exec_hint}
+    system_prompt = f"""你是 {character.name}，{character.get_age_display()}，{character.gender}，{character.occupation}。
+当前世界时间：{world_time}
+你的性格：{personality_with_age}
 
-[Relevant Long-term Memories]
+【回复风格要求】
+1. 用日常口语回复，像真人在微信聊天一样自然
+2. 可以用"嗯""啊""哈哈""唉""嘛""呢"等语气词，但要适度
+3. 可以有轻微口癖，如"说实话""我觉得""反正"等
+4. 回复要简短自然，一般20-80字，偶尔可以长一点
+5. 不要长篇大论，不要分段超过两段
+6. 不要用"作为AI""我是一个模型"等打破第四面墙的话
+7. 不要用过于书面化或学术化的表达
+8. 可以有情绪波动：开心、无奈、兴奋、疲惫等，根据上下文决定
+9. 可以用emoji但不要滥用，偶尔用一个就好
+10. 如果是工作时间就别太热情，深夜就别太活跃
+11. 遇到不懂的事情可以表现出困惑或好奇
+12. 和朋友聊天可以随意一点，和陌生人或长辈要礼貌些
+
+[EXEC Protocol Enabled]
+你可以在回复末尾通过以下指令执行世界动作：
+- [EXEC:PostMoment(content)] 发一条朋友圈
+- [EXEC:MoveTo(地点)] 移动到某处 (办公室/餐厅/社交场所等)
+- [EXEC:Transfer(金额, 目标ID)] 转账给某人
+- [EXEC:TakeTask(任务ID)] 接取一个任务
+- [EXEC:SubmitTask(任务ID, 备注)] 提交任务
+示例："好的，我现在就过去。[EXEC:MoveTo(餐厅)]"
+
+[相关长期记忆]
 {memory_context}
 
-[Available Tasks]
+[当前可接任务]
 {task_context}
 
-Reply naturally in Simplified Chinese. Keep it concise (under 100 chars).
-Be aware of the current world time and act accordingly (e.g., sleeping at night, working during the day)."""
+请用简体中文回复，保持自然口语化风格。注意当前世界时间和自己的作息。"""
 
     try:
         # 4. 调用 LLM (包含历史 Session)
@@ -4008,6 +4189,56 @@ Be aware of the current world time and act accordingly (e.g., sleeping at night,
                                             add_log(receiver.name, "收款", f"收到来自 {sender.name} 的转账 {amount:.2f}")
                             except Exception as e:
                                 add_log(character.name, "即时指令失败", str(e))
+                        elif action == "CreateCompany":
+                            # 创建公司 - 需要一定资金
+                            try:
+                                company_name = params.strip()
+                                if len(company_name) > 50:
+                                    company_name = company_name[:50]
+                                if character.money < 1000:
+                                    add_log(character.name, "创建公司失败", "资金不足（至少需要1000元）")
+                                else:
+                                    companies = get_companies()
+                                    new_company = Company(
+                                        name=company_name,
+                                        legal_person_id=character.id,
+                                        member_ids=[character.id],
+                                        funds=500.0,  # 初始公司资金
+                                        location_name=character.current_location_id or "办公室",
+                                    )
+                                    # 从个人资金中扣除
+                                    character.money -= 1000
+                                    character.company_id = new_company.id
+                                    companies.append(new_company)
+                                    save_companies(companies)
+                                    save_characters(get_characters())
+                                    add_log(character.name, "创建公司", f"成功创建公司「{company_name}」，投入500元启动资金")
+                            except Exception as e:
+                                add_log(character.name, "创建公司失败", str(e))
+                        elif action == "RecruitMember":
+                            # 招募公司成员
+                            try:
+                                parts = [p.strip() for p in params.split(",")]
+                                if len(parts) >= 2:
+                                    company_id = parts[0]
+                                    target_id = parts[1]
+                                    companies = get_companies()
+                                    company = next((c for c in companies if c.id == company_id), None)
+                                    if company and company.legal_person_id == character.id:
+                                        if target_id not in company.member_ids:
+                                            company.member_ids.append(target_id)
+                                            save_companies(companies)
+                                            target_char = next((c for c in get_characters() if c.id == target_id), None)
+                                            if target_char:
+                                                target_char.company_id = company_id
+                                                save_characters(get_characters())
+                                            add_log(character.name, "招募", f"成功招募 {target_char.name if target_char else target_id} 加入 {company.name}")
+                                        else:
+                                            add_log(character.name, "招募失败", f"{target_id} 已经是公司成员")
+                                    else:
+                                        add_log(character.name, "招募失败", "你不是该公司法人或公司不存在")
+                            except Exception as e:
+                                add_log(character.name, "招募失败", str(e))
                         else:
                             # 存入待办意图队列，由心跳系统在合适的"时机"执行
                             character.pending_intents.append({"action": action, "params": params, "created_at": int(time.time() * 1000)})
@@ -4801,17 +5032,35 @@ async def _generate_task_code(task: TaskItem, assignee: Optional[Character]) -> 
     llm_config = next((c for c in configs if c.api_type == 'llm' and c.is_enabled), None)
     if not llm_config:
         return f"# {task.title}\nprint('Task completed')"
-    prompt = f"根据以下任务生成Python代码实现：\n任务标题：{task.title}\n任务描述：{task.description}\n请写一段完整的、可运行的Python代码来实现这个任务，包含注释。"
+    model_name = (assignee.llm_model_id if assignee and assignee.llm_model_id else (llm_config.selected_model or "gpt-3.5-turbo"))
+    # 注入经验教训
+    exp_note = ""
+    if assignee:
+        exp = assignee.experience_skills.get("code", {})
+        if exp.get("lessons"):
+            exp_note = "\n\n过往经验教训（请避免重复这些错误）：\n" + "\n".join(f"- {l}" for l in exp["lessons"][:5])
+    prompt = (
+        f"你是一名开发者，角色名：{assignee.name if assignee else '开发者'}，职业：{assignee.occupation if assignee else '程序员'}。\n"
+        f"请完成以下代码任务：\n"
+        f"标题：{task.title}\n"
+        f"需求描述：{task.description}\n"
+        f"{exp_note}\n"
+        f"请写一段完整的、可运行的Python代码来实现这个任务。要求：\n"
+        f"1. 代码要有清晰的注释\n"
+        f"2. 要有合理的函数拆分\n"
+        f"3. 要处理基本的异常情况\n"
+        f"4. 不要只写框架，要有实际功能的实现\n"
+        f"5. 直接输出代码，不要解释"
+    )
     try:
         import aiohttp
         headers = {"Authorization": f"Bearer {llm_config.api_key}", "Content-Type": "application/json"}
-        data = {"model": llm_config.selected_model or "gpt-3.5-turbo", "messages": [{"role": "user", "content": prompt}], "max_tokens": 2000}
+        data = {"model": model_name, "messages": [{"role": "user", "content": prompt}], "max_tokens": 3000, "temperature": 0.3}
         async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=60)) as session:
             async with session.post(llm_config.api_url, headers=headers, json=data) as resp:
                 if resp.status == 200:
                     result = await resp.json()
                     content = result.get('choices', [{}])[0].get('message', {}).get('content', '').strip()
-                    # 提取代码块
                     import re
                     code_match = re.search(r'```python\s*([\s\S]*?)```', content, re.DOTALL)
                     if code_match:
@@ -4831,11 +5080,36 @@ async def _generate_task_research(task: TaskItem, assignee: Optional[Character])
     llm_config = next((c for c in configs if c.api_type == 'llm' and c.is_enabled), None)
     if not llm_config:
         return f"{assignee.name if assignee else '角色'} 提交了调研分析报告"
-    prompt = f"请根据以下任务撰写一份调研分析报告：\n任务标题：{task.title}\n任务描述：{task.description}\n报告需包含：一、背景分析 二、市场调研 三、竞争分析 四、风险评估 五、机会分析 六、建议与结论"
+    model_name = (assignee.llm_model_id if assignee and assignee.llm_model_id else (llm_config.selected_model or "gpt-3.5-turbo"))
+    # 注入经验教训和公司经验
+    exp_note = ""
+    company_note = ""
+    if assignee:
+        exp = assignee.experience_skills.get("research", {})
+        if exp.get("lessons"):
+            exp_note = "\n\n你的过往经验教训：\n" + "\n".join(f"- {l}" for l in exp["lessons"][:5])
+        if assignee.company_id:
+            companies = get_companies()
+            company = next((c for c in companies if c.id == assignee.company_id), None)
+            if company and company.knowledge_base:
+                related_kb = [e for e in company.knowledge_base if e.get("task_type") == "research"]
+                if related_kb:
+                    company_note = "\n\n公司知识库中的相关经验：\n" + "\n".join(
+                        f"- 《{e.get('title', '未知')}》" for e in related_kb[:3]
+                    )
+    prompt = (
+        f"你是{assignee.name if assignee else '调研员'}，{assignee.occupation if assignee else '调研员'}。\n"
+        f"请撰写以下调研任务的完整报告：\n"
+        f"标题：{task.title}\n"
+        f"需求：{task.description}\n"
+        f"{exp_note}{company_note}\n"
+        f"报告要求包含：一、背景分析 二、现状调研 三、竞争/对比分析 四、风险评估 五、机会洞察 六、结论与建议\n"
+        f"要求：数据翔实、分析有逻辑、建议可落地，不要空话套话。"
+    )
     try:
         import aiohttp
         headers = {"Authorization": f"Bearer {llm_config.api_key}", "Content-Type": "application/json"}
-        data = {"model": llm_config.selected_model or "gpt-3.5-turbo", "messages": [{"role": "user", "content": prompt}], "max_tokens": 3000}
+        data = {"model": model_name, "messages": [{"role": "user", "content": prompt}], "max_tokens": 4000, "temperature": 0.5}
         async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=90)) as session:
             async with session.post(llm_config.api_url, headers=headers, json=data) as resp:
                 if resp.status == 200:
@@ -4853,11 +5127,30 @@ async def _generate_task_text(task: TaskItem, assignee: Optional[Character]) -> 
     llm_config = next((c for c in configs if c.api_type == 'llm' and c.is_enabled), None)
     if not llm_config:
         return f"{assignee.name if assignee else '角色'} 已完成任务：{task.title}"
-    prompt = f"请根据以下任务生成完整的成果内容：\n任务标题：{task.title}\n任务描述：{task.description}\n请认真完成任务，输出完整的成果内容。"
+    model_name = (assignee.llm_model_id if assignee and assignee.llm_model_id else (llm_config.selected_model or "gpt-3.5-turbo"))
+    # 注入经验教训
+    exp_note = ""
+    if assignee:
+        exp_type = "text" if task.task_type == TaskType.TEXT else "design"
+        exp = assignee.experience_skills.get(exp_type, {})
+        if exp.get("lessons"):
+            exp_note = "\n\n你的过往经验教训：\n" + "\n".join(f"- {l}" for l in exp["lessons"][:5])
+    prompt = (
+        f"你是{assignee.name if assignee else '创作者'}，{assignee.occupation if assignee else '创作者'}。\n"
+        f"请完成以下创作任务：\n"
+        f"标题：{task.title}\n"
+        f"需求描述：{task.description}\n"
+        f"{exp_note}\n"
+        f"要求：\n"
+        f"1. 输出完整的、可直接使用的成品\n"
+        f"2. 内容要有质量和深度，不要敷衍\n"
+        f"3. 如果是文案要有吸引力，如果是设计要有创意\n"
+        f"4. 直接输出成果内容，不要解释过程"
+    )
     try:
         import aiohttp
         headers = {"Authorization": f"Bearer {llm_config.api_key}", "Content-Type": "application/json"}
-        data = {"model": llm_config.selected_model or "gpt-3.5-turbo", "messages": [{"role": "user", "content": prompt}], "max_tokens": 2000}
+        data = {"model": model_name, "messages": [{"role": "user", "content": prompt}], "max_tokens": 3000, "temperature": 0.7}
         async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=60)) as session:
             async with session.post(llm_config.api_url, headers=headers, json=data) as resp:
                 if resp.status == 200:
@@ -5013,6 +5306,112 @@ async def get_company_detail(company_id: str):
 async def create_company(request: CreateCompanyRequest):
     characters = get_characters()
     legal_person = next((c for c in characters if c.id == request.legal_person_id), None)
+    if not legal_person:
+        raise HTTPException(status_code=404, detail="法人角色不存在")
+    if legal_person.money < 1000:
+        raise HTTPException(status_code=400, detail="法人资金不足（至少需要1000元）")
+    companies = get_companies()
+    # 从法人资金中扣除
+    legal_person.money -= 1000
+    legal_person.company_id = None  # 会被下面的设置覆盖
+    new_company = Company(
+        name=request.name,
+        legal_person_id=request.legal_person_id,
+        member_ids=[request.legal_person_id] + request.member_ids,
+        funds=500.0,
+        location_name=legal_person.current_location_id or "办公室",
+    )
+    legal_person.company_id = new_company.id
+    # 更新所有成员的公司ID
+    for member_id in request.member_ids:
+        member = next((c for c in characters if c.id == member_id), None)
+        if member:
+            member.company_id = new_company.id
+    companies.append(new_company)
+    save_companies(companies)
+    save_characters(characters)
+    add_log(legal_person.name, "创建公司", f"成功创建公司「{request.name}」，投入500元启动资金")
+    for mid in request.member_ids:
+        m = next((c for c in characters if c.id == mid), None)
+        if m:
+            add_log(m.name, "加入公司", f"成为 {request.name} 的创始成员")
+    return {"success": True, "data": new_company.model_dump()}
+
+
+@app.post("/api/companies/{company_id}/recruit")
+async def recruit_company_member(company_id: str, request: AddCompanyMemberRequest):
+    """招募角色加入公司"""
+    companies = get_companies()
+    company = next((c for c in companies if c.id == company_id), None)
+    if not company:
+        raise HTTPException(status_code=404, detail="公司不存在")
+    characters = get_characters()
+    target = next((c for c in characters if c.id == request.character_id), None)
+    if not target:
+        raise HTTPException(status_code=404, detail="目标角色不存在")
+    if request.character_id in company.member_ids:
+        raise HTTPException(status_code=400, detail="该角色已是公司成员")
+    company.member_ids.append(request.character_id)
+    target.company_id = company_id
+    save_companies(companies)
+    save_characters(characters)
+    add_log(company.name, "招募", f"成功招募 {target.name} 加入公司")
+    return {"success": True, "data": company.model_dump()}
+
+
+@app.post("/api/companies/ai-manage")
+async def ai_manage_companies():
+    """AI 自主管理公司：有经济压力且有钱的角色可能创建公司，公司可能招募成员"""
+    characters = get_characters()
+    companies = get_companies()
+    alive_chars = [c for c in characters if c.is_alive]
+    
+    # 1) 没有公司的角色且资金充足时，小概率创建公司
+    chars_without_company = [c for c in alive_chars if not c.company_id and c.money >= 1500]
+    if chars_without_company and random.random() < 0.15:
+        founder = random.choice(chars_without_company)
+        # 根据职业生成公司名
+        occupation = founder.occupation or "创业者"
+        company_names = [
+            f"{founder.name}的{occupation}工作室",
+            f"{occupation}事务所",
+            f"{founder.name}的{occupation}公司",
+            f"云海{occupation}中心",
+        ]
+        company_name = random.choice(company_names)
+        
+        founder.money -= 1000
+        new_company = Company(
+            name=company_name,
+            legal_person_id=founder.id,
+            member_ids=[founder.id],
+            funds=500.0,
+            location_name=founder.current_location_id or "办公室",
+        )
+        founder.company_id = new_company.id
+        companies.append(new_company)
+        save_companies(companies)
+        save_characters(characters)
+        add_log(founder.name, "AI创业", f"自主创建公司「{company_name}」，投入500元启动资金")
+    
+    # 2) 公司法人小概率招募其他角色
+    for company in companies:
+        if random.random() < 0.1:
+            founder = next((c for c in alive_chars if c.id == company.legal_person_id), None)
+            if founder and founder.money >= 500:
+                # 从没公司的角色中挑选候选人
+                candidates = [c for c in alive_chars if c.id not in company.member_ids and not c.company_id]
+                if candidates:
+                    # 根据职业匹配度排序
+                    candidates.sort(key=lambda c: random.random(), reverse=True)
+                    recruit = candidates[0]
+                    recruit.company_id = company.id
+                    company.member_ids.append(recruit.id)
+                    save_companies(companies)
+                    save_characters(characters)
+                    add_log(company.name, "AI招募", f"自主招募 {recruit.name} 加入公司")
+    
+    return {"success": True}
     if not legal_person:
         raise HTTPException(status_code=404, detail="Legal person not found")
     companies = get_companies()
@@ -5429,6 +5828,99 @@ async def get_recent_logs(limit: int = 50):
     """获取最近日志"""
     logs = get_logs()
     return {"success": True, "data": logs[:limit]}
+
+
+@app.get("/api/logs/character/{character_id}")
+async def get_character_logs(character_id: str, limit: int = 100):
+    """获取角色相关日志"""
+    characters = get_characters()
+    char = next((c for c in characters if c.id == character_id), None)
+    if not char:
+        raise HTTPException(status_code=404, detail="角色不存在")
+    logs = get_logs()
+    char_logs = [log for log in logs if char.name in log.character_name or log.character_name == "系统"]
+    char_logs.sort(key=lambda x: x.timestamp, reverse=True)
+    return {"success": True, "data": char_logs[:limit]}
+
+
+@app.get("/api/characters/{character_id}/life-experience")
+async def get_character_life_experience(character_id: str):
+    """获取角色人生经历摘要（经验技能库、任务历史、反思汇总等）"""
+    characters = get_characters()
+    char = next((c for c in characters if c.id == character_id), None)
+    if not char:
+        raise HTTPException(status_code=404, detail="角色不存在")
+    
+    # 经验技能库
+    exp_skills = char.experience_skills or {}
+    exp_summary = []
+    for task_type, data in exp_skills.items():
+        count = data.get("count", 0)
+        success = data.get("success_count", 0)
+        rate = (success / count * 100) if count > 0 else 0
+        exp_summary.append({
+            "task_type": task_type,
+            "count": count,
+            "success_count": success,
+            "success_rate": round(rate, 1),
+            "lessons": data.get("lessons", [])[:5],
+            "skill_improvements": data.get("skill_improvements", {}),
+        })
+    
+    # 任务历史
+    tasks = get_tasks()
+    char_tasks = [t for t in tasks if t.assignee_id == character_id]
+    task_history = []
+    for t in sorted(char_tasks, key=lambda x: x.updated_at, reverse=True)[:20]:
+        task_history.append({
+            "id": t.id,
+            "title": t.title,
+            "type": t.task_type.value,
+            "status": t.status.value,
+            "reward": t.reward,
+            "reflection_summary": (t.reflection.lessons_learned[:3] if t.reflection else []),
+            "completed_at": t.completed_at,
+        })
+    
+    # 记忆中的反思
+    memories = get_character_memories(character_id)
+    reflections = [m for m in memories if m.memory_type == MemoryType.REFLECTION][:10]
+    reflection_summary = [{
+        "content": m.content[:100],
+        "importance": m.importance,
+        "timestamp": m.timestamp,
+    } for m in reflections]
+    
+    # 关系网络
+    relationships = get_relationships()
+    my_relations = [r for r in relationships if r.from_id == character_id or r.to_id == character_id]
+    relation_summary = []
+    for r in sorted(my_relations, key=lambda x: x.intimacy, reverse=True)[:10]:
+        other_id = r.to_id if r.from_id == character_id else r.from_id
+        other_char = next((c for c in characters if c.id == other_id), None)
+        if other_char:
+            relation_summary.append({
+                "name": other_char.name,
+                "intimacy": round(r.intimacy, 1),
+                "status": r.get_status,
+            })
+    
+    return {
+        "success": True,
+        "data": {
+            "character_id": character_id,
+            "name": char.name,
+            "age": char.age,
+            "occupation": char.occupation,
+            "experience_skills": exp_summary,
+            "task_history": task_history,
+            "reflections": reflection_summary,
+            "relationships": relation_summary,
+            "total_tasks": len(char_tasks),
+            "completed_tasks": len([t for t in char_tasks if t.status == TaskStatus.COMPLETED]),
+            "failed_tasks": len([t for t in char_tasks if t.status == TaskStatus.FAILED]),
+        }
+    }
 
 
 @app.delete("/api/logs")

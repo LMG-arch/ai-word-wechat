@@ -1100,6 +1100,47 @@
                 font-size: 13px;
             }
 
+            /* 任务列表移动端适配 */
+            .info-card {
+                margin: 8px 6px !important;
+                padding: 10px;
+            }
+            .item-title {
+                font-size: 14px;
+            }
+            .item-subtitle {
+                font-size: 12px;
+            }
+            .item-time {
+                font-size: 11px;
+            }
+            .btn {
+                padding: 8px 12px !important;
+                font-size: 13px !important;
+                min-height: 36px !important;
+            }
+            /* 任务创建表单适配 */
+            .form-group {
+                margin-bottom: 8px;
+            }
+            .form-group input,
+            .form-group textarea,
+            .form-group select {
+                font-size: 14px !important;
+                padding: 8px !important;
+            }
+            .form-group label {
+                font-size: 13px;
+            }
+            .task-category-tabs {
+                flex-wrap: wrap;
+                gap: 4px;
+            }
+            .task-tab {
+                font-size: 12px;
+                padding: 4px 8px;
+            }
+
             /* 角色详情 */
             .character-detail {
                 padding: 12px;
@@ -3049,6 +3090,14 @@
                         <div class="info-card-title">生命周期历史</div>
                         ${historyHtml}
                     </div>
+                    <div class="info-card" id="life-experience-card">
+                        <div class="info-card-title">人生经历</div>
+                        <div id="life-experience-content" class="item-subtitle">加载中...</div>
+                    </div>
+                    <div class="info-card" id="character-logs-card">
+                        <div class="info-card-title">角色日志</div>
+                        <div id="character-logs-content" class="item-subtitle">加载中...</div>
+                    </div>
                 `;
 
                 document.getElementById('character-detail-page').classList.add('active');
@@ -3057,6 +3106,10 @@
                 refreshDetailAvatarSize();
                 // 加载 AI 设置
                 refreshDetailAISettings();
+                // 加载人生经历
+                loadCharacterLifeExperience(characterId);
+                // 加载角色日志
+                loadCharacterLogs(characterId);
             } catch (error) {
                 alert('加载失败：' + error.message);
             }
@@ -3087,6 +3140,95 @@
             await loadLLMModelOptions(currentCharacter.llm_model_id || '');
             if (currentCharacter.moment_frequency) {
                 freqSelect.value = currentCharacter.moment_frequency;
+            }
+        }
+
+        /** 加载角色人生经历 */
+        async function loadCharacterLifeExperience(characterId) {
+            const container = document.getElementById('life-experience-content');
+            if (!container) return;
+            try {
+                const resp = await fetch(`${API_BASE}/characters/${characterId}/life-experience`);
+                const result = await resp.json();
+                if (!result.success || !result.data) {
+                    container.innerHTML = '加载失败';
+                    return;
+                }
+                const d = result.data;
+                let html = '';
+
+                // 任务统计
+                html += `<div style="margin-bottom:8px;">
+                    <strong>任务统计：</strong>共 ${d.total_tasks} 个任务 · 完成 ${d.completed_tasks} · 失败 ${d.failed_tasks}
+                </div>`;
+
+                // 经验技能
+                if (d.experience_skills.length > 0) {
+                    html += `<div style="margin:8px 0;"><strong>经验技能：</strong></div>`;
+                    d.experience_skills.forEach(exp => {
+                        html += `<div style="margin:4px 0;padding:6px;background:#f8f9fa;border-radius:4px;font-size:12px;">
+                            <strong>${exp.task_type}</strong>：完成 ${exp.count} 次，成功率 ${exp.success_rate}%
+                            ${exp.lessons.length ? '<br>经验：' + exp.lessons.map(l => escapeHtml(l)).join('；') : ''}
+                        </div>`;
+                    });
+                }
+
+                // 关系网络
+                if (d.relationships.length > 0) {
+                    html += `<div style="margin:8px 0;"><strong>社交关系：</strong></div>`;
+                    d.relationships.forEach(rel => {
+                        html += `<div style="margin:2px 0;font-size:12px;">
+                            ${escapeHtml(rel.name)} · 亲密度 ${rel.intimacy} · ${rel.status}
+                        </div>`;
+                    });
+                }
+
+                // 最近任务
+                if (d.task_history.length > 0) {
+                    html += `<div style="margin:8px 0;"><strong>最近任务：</strong></div>`;
+                    d.task_history.slice(0, 5).forEach(t => {
+                        const statusMap = { completed: '✅', failed: '❌', in_progress: '⏳', open: '📋', pending_review: '🔍' };
+                        const icon = statusMap[t.status] || '📋';
+                        html += `<div style="margin:2px 0;font-size:12px;">
+                            ${icon} ${escapeHtml(t.title)} · ${t.reward}元
+                            ${t.reflection_summary.length ? '<br>反思：' + t.reflection_summary.map(r => escapeHtml(r)).join('；') : ''}
+                        </div>`;
+                    });
+                }
+
+                container.innerHTML = html || '暂无人生经历数据';
+            } catch (error) {
+                container.innerHTML = '加载失败：' + error.message;
+            }
+        }
+
+        /** 加载角色日志 */
+        async function loadCharacterLogs(characterId) {
+            const container = document.getElementById('character-logs-content');
+            if (!container) return;
+            try {
+                const resp = await fetch(`${API_BASE}/logs/character/${characterId}?limit=30`);
+                const result = await resp.json();
+                if (!result.success) {
+                    container.innerHTML = '加载失败';
+                    return;
+                }
+                const logs = result.data || [];
+                if (logs.length === 0) {
+                    container.innerHTML = '暂无日志';
+                    return;
+                }
+                container.innerHTML = logs.map(log => {
+                    const ts = log.timestamp || formatDateTime(log.timestamp_ms);
+                    return `<div style="margin:3px 0;padding:4px 8px;font-size:12px;border-left:3px solid #07c160;background:#fafafa;">
+                        <span style="color:#999;">${ts}</span> 
+                        <strong>${escapeHtml(log.character_name)}</strong> 
+                        <span style="color:#07c160;">[${escapeHtml(log.action_type)}]</span>
+                        ${escapeHtml(log.description)}
+                    </div>`;
+                }).join('');
+            } catch (error) {
+                container.innerHTML = '加载失败：' + error.message;
             }
         }
 
