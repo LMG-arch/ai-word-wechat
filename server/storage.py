@@ -613,14 +613,14 @@ def apply_age_stage_constraints(character: Character) -> List[str]:
         if character.occupation != "学生":
             old_occupation = character.occupation or "?"
             character.occupation = "学生"
-            notes.append(f"年龄阶段调整，职业已从"{old_occupation}"修正为"学生"")
+            notes.append(f'年龄阶段调整，职业已从"{old_occupation}"修正为"学生"')
     elif stage == "青少年":
         if not character.occupation:
             character.occupation = "学生"
-            notes.append("青少年阶段默认职业已设置为"学生"")
+            notes.append('青少年阶段默认职业已设置为"学生"')
     elif stage == "老年" and character.age >= 65 and character.occupation in ["", "无业", "待定"]:
         character.occupation = "退休"
-        notes.append("老年阶段默认职业已设置为"退休"")
+        notes.append('老年阶段默认职业已设置为"退休"')
     return notes
 
 

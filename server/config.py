@@ -47,6 +47,26 @@ DATA_FILES = {
 
 # SQLite 记忆数据库路径
 MEMORY_DB_PATH = os.path.join(DATA_DIR, "memory.db")
+MEMORY_DB_FILE = MEMORY_DB_PATH  # 向后兼容别名
+
+# === 向后兼容：独立的文件路径常量 ===
+# 这些常量被 models.py 和其他模块直接导入
+CHARACTERS_FILE = DATA_FILES["characters"]
+MESSAGES_FILE = DATA_FILES["messages"]
+LOGS_FILE = DATA_FILES["logs"]
+SETTINGS_FILE = DATA_FILES["settings"]
+API_CONFIGS_FILE = DATA_FILES["api_configs"]
+MEMORIES_FILE = DATA_FILES["memories"]
+MOMENTS_FILE = DATA_FILES["moments"]
+TASKS_FILE = DATA_FILES["tasks"]
+COMPANIES_FILE = DATA_FILES["companies"]
+SCHEDULES_FILE = DATA_FILES["schedules"]
+ECONOMY_LOGS_FILE = DATA_FILES["economy_logs"]
+LOCATION_HISTORY_FILE = DATA_FILES["location_history"]
+LLM_USAGE_FILE = DATA_FILES["llm_usage"]
+WORLD_MAP_FILE = DATA_FILES["world_map"]
+PRIVATE_GROUPS_FILE = os.path.join(DATA_DIR, "private_groups.json")
+CHARACTER_HISTORY_FILE = DATA_FILES["character_histories"]
 
 # === 时间常量 ===
 MILLISECONDS_PER_SECOND = 1000
@@ -59,6 +79,11 @@ MONTHS_PER_YEAR = 12
 # === 世界时间常量 ===
 WORLD_LOCATION_SLOT_MS = 2 * MILLISECONDS_PER_HOUR  # 角色位置刷新间隔
 WORLD_COMPANY_BIND = "公司"  # 公司地标绑定名称
+
+# === 世界地图绑定键 ===
+# 地标类型绑定，用于 resolve_location_coordinates 等函数
+WORLD_BIND_KEYS = ("办公室", "工作室", "学校", "医院", "书房", "餐厅", "社交场所", "城市")
+WORLD_RESIDENTIAL_BIND = "住宅"
 
 # === 默认世界地图模板 ===
 DEFAULT_WORLD_MAP = {
@@ -85,6 +110,9 @@ AVATAR_REFRESH_INTERVAL_MS = 7 * MILLISECONDS_PER_DAY  # 每周最多刷新一�
 SIGNATURE_REFRESH_INTERVAL_MS = 7 * MILLISECONDS_PER_DAY  # 每周最多刷新一次
 MAX_AVATAR_CHANGES = 10  # 最多保留头像变更历史
 MAX_SIGNATURE_CHANGES = 10  # 最多保留签名变更历史
+
+# === 图像尺寸配置 ===
+VALID_IMAGE_SIZES = ["256x256", "512x512", "1024x1024"]
 
 # === 年龄阶段 ===
 AGE_STAGE_CHILD = "儿童"

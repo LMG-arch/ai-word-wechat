@@ -23,7 +23,6 @@ from config import (
     MEMORY_DB_FILE, MEMORIES_FILE, MILLISECONDS_PER_DAY,
     MEMORY_TYPE_EVENT, MEMORY_TYPE_REFLECTION
 )
-from storage import load_json
 
 
 # ==================== 枚举类型 ====================
