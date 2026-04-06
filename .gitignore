@@ -8,6 +8,42 @@
 /.idea/navEditor.xml
 /.idea/assetWizardSettings.xml
 .DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+*.whl
+
+# Virtual environment
+venv/
+ENV/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+Thumbs.db
+
+# Data files (runtime generated)
+server/data/avatars/
+server/data/image_prompts/
+server/data/*.db
+server/data/*.json
+!server/data/api_configs.json
+!server/data/characters.json
+!server/data/settings.json
+!server/data/world_map.json
 /build
 /captures
 .externalNativeBuild

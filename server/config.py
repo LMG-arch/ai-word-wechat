@@ -8,7 +8,8 @@ import os
 import sys
 
 # === 修复 Windows 编码 ===
-if sys.platform == "win32":
+# 仅在非测试环境下包装 stdout，避免干扰 pytest 等工具
+if sys.platform == "win32" and not os.environ.get("PYTEST_CURRENT_TEST"):
     import io
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
     sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')

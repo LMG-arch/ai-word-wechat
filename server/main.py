@@ -10,8 +10,8 @@ import sys
 import io
 import os
 
-# 修复 Windows CMD 编码和颜色问题
-if sys.platform == 'win32':
+# 修复 Windows CMD 编码和颜色问题（测试环境下跳过）
+if sys.platform == 'win32' and not os.environ.get('PYTEST_CURRENT_TEST'):
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
     os.environ['LOGURU_COLORIZE'] = 'False'
 
@@ -24,8 +24,17 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 
+from contextlib import asynccontextmanager
+
 # ==================== 应用创建 ====================
-app = FastAPI(title="AI 社交世界 API")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """应用生命周期管理：启动和关闭"""
+    await startup_event()
+    yield
+
+
+app = FastAPI(title="AI 社交世界 API", lifespan=lifespan)
 
 # 配置日志
 logging.basicConfig(
@@ -92,8 +101,7 @@ app.include_router(stats_router)
 app.include_router(scheduler_router)
 app.include_router(llm_usage_router)
 
-# ==================== 启动事件 ====================
-@app.on_event("startup")
+# ==================== 生命周期管理 ====================
 async def startup_event():
     """启动后台心跳任务"""
     from storage import get_settings, save_settings
@@ -119,7 +127,6 @@ async def startup_event():
         characters = get_characters()
         for char in characters:
             if char.is_alive:
-                old_age = char.age
                 char.age += 1
                 new_stage = get_age_stage_from_age(char.age)
                 if char.age_stage != new_stage:
@@ -131,7 +138,6 @@ async def startup_event():
 
     async def process_social_autorun():
         """社交自动运行 - 角色自动互动"""
-        from services.character_service import get_world_time_ms
         from services.moment_service import run_moment_auto_interactions
         settings = get_settings()
         now_ms = int(time.time() * 1000)
@@ -185,7 +191,7 @@ async def startup_event():
                 await process_social_autorun()
                 settings = get_settings()
                 now_ms = int(time.time() * 1000)
-                enc = run_encounter_detection()
+                enc = detect_encounters()
                 await process_encounter_followups(enc.get("items") or [])
                 sync_private_groups()
                 apply_inactivity_decay()

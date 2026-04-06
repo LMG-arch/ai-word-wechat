@@ -8,7 +8,13 @@ from __future__ import annotations
 import os
 import time
 import random
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Tuple
+from datetime import datetime
+
+# 类型别名
+AgeStage = str
+ResidenceName = str
+WorldTimeMs = int
 
 # 使用相对导入
 from models import Character, CharacterHistoryEntry, Settings

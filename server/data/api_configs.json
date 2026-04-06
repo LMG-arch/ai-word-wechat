@@ -1,1 +1,51 @@
-[]  
+[
+  {
+    "id": "7a37301c-2028-4e59-9bdc-453a5e528003",
+    "name": "nvidia",
+    "api_type": "llm",
+    "provider": "openai",
+    "api_url": "https://integrate.api.nvidia.com/v1/chat/completions",
+    "api_key": "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",
+    "models": [
+      "qwen/qwen3-next-80b-a3b-instruct",
+      "qwen/qwen3.5-122b-a10b"
+    ],
+    "selected_model": "qwen/qwen3.5-122b-a10b",
+    "is_enabled": true,
+    "priority": 0,
+    "created_at": 1774927844508,
+    "updated_at": 1775314278664
+  },
+  {
+    "id": "f764c191-1b4c-47cc-8984-33ef8d7bdd62",
+    "name": "Kwai-Kolors/Kolors",
+    "api_type": "image",
+    "provider": "openai",
+    "api_url": "https://api.siliconflow.cn/v1/images/generations",
+    "api_key": "sk-ekixlhuxyuplteicebfscfbqkymrfmnpsvlebycpqfxcuyfd",
+    "models": [
+      "Kwai-Kolors/Kolors"
+    ],
+    "selected_model": "Kwai-Kolors/Kolors",
+    "is_enabled": true,
+    "priority": 0,
+    "created_at": 1774929041679,
+    "updated_at": 1774966561781
+  },
+  {
+    "id": "d6dfec21-5b5c-4ebd-94c3-eb4b0cb3ec98",
+    "name": "Tongyi-MAI/Z-Image-Turbo",
+    "api_type": "image",
+    "provider": "openai",
+    "api_url": "https://api-inference.modelscope.cn/v1/images/generations",
+    "api_key": "ms-b8f2c6c6-91a2-4339-bc0f-344066f68c77",
+    "models": [
+      "Tongyi-MAI/Z-Image-Turbo"
+    ],
+    "selected_model": "Tongyi-MAI/Z-Image-Turbo",
+    "is_enabled": true,
+    "priority": 0,
+    "created_at": 1774966556103,
+    "updated_at": 1774966556103
+  }
+]

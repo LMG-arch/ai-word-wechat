@@ -1,121 +1,1802 @@
 [
   {
-    "id": "cbc4dcb9-a47b-41f7-8715-d95045b4b258",
-    "timestamp": "15:02:56",
-    "character_name": "测试角色",
-    "action_type": "成长",
-    "description": "年龄增长到34岁"
+    "id": "738568fd-aa25-4f64-b9cd-2889c83b8dde",
+    "timestamp": "13:56:28",
+    "timestamp_ms": 1775454988761,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "heartbeat",
+    "description": "tick=7 alive=7"
   },
   {
-    "id": "e22b4f5e-1709-404c-ae9c-4ade1cecd696",
-    "timestamp": "14:48:42",
-    "character_name": "测试角色",
-    "action_type": "成长",
-    "description": "年龄增长到33岁"
+    "id": "f3c10c0f-9108-4454-8e80-40d15ccf3a0c",
+    "timestamp": "13:56:27",
+    "timestamp_ms": 1775454987443,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "social_autorun_error",
+    "description": "'sqlite3.Connection' object has no attribute 'closed'"
   },
   {
-    "id": "f7c2d16a-2e80-4e87-8750-57bc3dc84df9",
-    "timestamp": "14:42:42",
-    "character_name": "测试角色",
-    "action_type": "成长",
-    "description": "年龄增长到32岁"
+    "id": "cb7382c0-d520-40f1-a74a-81743a84a0cb",
+    "timestamp": "13:56:26",
+    "timestamp_ms": 1775454986230,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "age_growth_error",
+    "description": "'Character' object has no attribute 'age_stage'"
   },
   {
-    "id": "6c39ef00-9fe8-468a-aaf5-45161b36ced5",
-    "timestamp": "17:57:25",
-    "character_name": "测试角色",
-    "action_type": "成长",
-    "description": "年龄增长到31岁"
+    "id": "54ff62a9-237f-4803-91a2-5b60f21e34db",
+    "timestamp": "13:55:28",
+    "timestamp_ms": 1775454928727,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "heartbeat",
+    "description": "tick=7 alive=7"
   },
   {
-    "id": "f0f075e2-b975-4f3e-b53d-0ecfe94cd18c",
-    "timestamp": "17:57:13",
+    "id": "19577c62-2bb7-4d03-8282-84fbd6651ebe",
+    "timestamp": "13:55:27",
+    "timestamp_ms": 1775454927427,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "social_autorun_error",
+    "description": "'sqlite3.Connection' object has no attribute 'closed'"
+  },
+  {
+    "id": "5dea15a5-59a9-4150-8388-2dd8a4e8a3b9",
+    "timestamp": "13:54:28",
+    "timestamp_ms": 1775454868692,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "heartbeat",
+    "description": "tick=7 alive=7"
+  },
+  {
+    "id": "0de48ba0-36ff-42bd-89c7-db7ca2a2fb3c",
+    "timestamp": "13:54:27",
+    "timestamp_ms": 1775454867381,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "social_autorun_error",
+    "description": "'sqlite3.Connection' object has no attribute 'closed'"
+  },
+  {
+    "id": "48fdfdd1-b565-4293-9f85-115314b288cd",
+    "timestamp": "13:53:28",
+    "timestamp_ms": 1775454808655,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "heartbeat",
+    "description": "tick=7 alive=7"
+  },
+  {
+    "id": "bc4355c6-cced-4288-99bd-e95802de2e45",
+    "timestamp": "13:53:27",
+    "timestamp_ms": 1775454807359,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "social_autorun_error",
+    "description": "'sqlite3.Connection' object has no attribute 'closed'"
+  },
+  {
+    "id": "1026a0cf-76bf-4d3b-a511-59873da58e6b",
+    "timestamp": "13:52:28",
+    "timestamp_ms": 1775454748624,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "heartbeat",
+    "description": "tick=7 alive=7"
+  },
+  {
+    "id": "63f6be81-7d99-40d0-bf67-655b3dfb9b4f",
+    "timestamp": "13:52:27",
+    "timestamp_ms": 1775454747345,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "social_autorun_error",
+    "description": "'sqlite3.Connection' object has no attribute 'closed'"
+  },
+  {
+    "id": "8cf669a8-48b2-456f-8a61-d65286cc45fc",
+    "timestamp": "13:51:28",
+    "timestamp_ms": 1775454688554,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "heartbeat",
+    "description": "tick=7 alive=7"
+  },
+  {
+    "id": "e7ebc34a-2159-4b18-b76d-06d14d69bda4",
+    "timestamp": "13:51:27",
+    "timestamp_ms": 1775454687334,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "social_autorun_error",
+    "description": "'sqlite3.Connection' object has no attribute 'closed'"
+  },
+  {
+    "id": "7e3437bd-f1a4-44c5-ba15-d8eac112ef95",
+    "timestamp": "13:51:26",
+    "timestamp_ms": 1775454686215,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "age_growth_error",
+    "description": "'Character' object has no attribute 'age_stage'"
+  },
+  {
+    "id": "280817d3-aa2f-4605-87cb-4284f04b3789",
+    "timestamp": "13:50:28",
+    "timestamp_ms": 1775454628520,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "heartbeat",
+    "description": "tick=7 alive=7"
+  },
+  {
+    "id": "0ae14e62-8c2a-45fc-a86e-7679b652e050",
+    "timestamp": "13:50:27",
+    "timestamp_ms": 1775454627316,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "social_autorun_error",
+    "description": "'sqlite3.Connection' object has no attribute 'closed'"
+  },
+  {
+    "id": "9489ca28-9e76-4898-a04d-6065bd8b88f3",
+    "timestamp": "13:49:28",
+    "timestamp_ms": 1775454568473,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "heartbeat",
+    "description": "tick=7 alive=7"
+  },
+  {
+    "id": "96647e71-0cca-44f4-8b0b-de4489ca9878",
+    "timestamp": "13:49:27",
+    "timestamp_ms": 1775454567299,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "social_autorun_error",
+    "description": "'sqlite3.Connection' object has no attribute 'closed'"
+  },
+  {
+    "id": "4998c381-3dd3-484a-b492-c90a8a109560",
+    "timestamp": "13:48:28",
+    "timestamp_ms": 1775454508398,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "heartbeat",
+    "description": "tick=7 alive=7"
+  },
+  {
+    "id": "9e4243f1-952a-421a-82fa-6cc5f35fa928",
+    "timestamp": "13:48:27",
+    "timestamp_ms": 1775454507270,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "social_autorun_error",
+    "description": "'sqlite3.Connection' object has no attribute 'closed'"
+  },
+  {
+    "id": "3af5a084-2b9f-4e3d-87b9-8cef121f270a",
+    "timestamp": "13:47:28",
+    "timestamp_ms": 1775454448354,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "heartbeat",
+    "description": "tick=7 alive=7"
+  },
+  {
+    "id": "f3f6b17c-15ca-432d-9575-a87808fe2d50",
+    "timestamp": "13:47:27",
+    "timestamp_ms": 1775454447260,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "social_autorun_error",
+    "description": "'sqlite3.Connection' object has no attribute 'closed'"
+  },
+  {
+    "id": "d8738403-e68f-4acc-8eda-98e0aa4bd6a1",
+    "timestamp": "13:46:28",
+    "timestamp_ms": 1775454388316,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "heartbeat",
+    "description": "tick=7 alive=7"
+  },
+  {
+    "id": "ef08f0c5-3b8d-41d1-b1f5-462d0911131d",
+    "timestamp": "13:46:27",
+    "timestamp_ms": 1775454387251,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "social_autorun_error",
+    "description": "'sqlite3.Connection' object has no attribute 'closed'"
+  },
+  {
+    "id": "7e2bd5a4-ad45-4761-ad87-ff2694bf056e",
+    "timestamp": "13:46:26",
+    "timestamp_ms": 1775454386196,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "age_growth_error",
+    "description": "'Character' object has no attribute 'age_stage'"
+  },
+  {
+    "id": "3ed457c7-589b-4657-a01a-4ed80f94ca9c",
+    "timestamp": "13:45:28",
+    "timestamp_ms": 1775454328276,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "heartbeat",
+    "description": "tick=7 alive=7"
+  },
+  {
+    "id": "67ffaec8-1a97-490d-9da0-56d44867b244",
+    "timestamp": "13:45:27",
+    "timestamp_ms": 1775454327239,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "social_autorun_error",
+    "description": "'sqlite3.Connection' object has no attribute 'closed'"
+  },
+  {
+    "id": "b862c0a3-acb0-4655-961f-cb09a75a6960",
+    "timestamp": "13:44:28",
+    "timestamp_ms": 1775454268240,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "heartbeat",
+    "description": "tick=7 alive=7"
+  },
+  {
+    "id": "1f352a8d-1f99-4bb6-963b-d02b017595c3",
+    "timestamp": "13:44:27",
+    "timestamp_ms": 1775454267219,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "social_autorun_error",
+    "description": "'sqlite3.Connection' object has no attribute 'closed'"
+  },
+  {
+    "id": "095f6d11-46f9-477f-ab25-eb458c9214ae",
+    "timestamp": "13:43:28",
+    "timestamp_ms": 1775454208207,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "heartbeat",
+    "description": "tick=7 alive=7"
+  },
+  {
+    "id": "6207e7e9-f01d-4f29-9ef8-1b92d449cc54",
+    "timestamp": "13:43:27",
+    "timestamp_ms": 1775454207201,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "social_autorun_error",
+    "description": "'sqlite3.Connection' object has no attribute 'closed'"
+  },
+  {
+    "id": "db3774fd-5c0b-47a0-b421-aa3a96b32f3c",
+    "timestamp": "13:42:28",
+    "timestamp_ms": 1775454148176,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "heartbeat",
+    "description": "tick=7 alive=7"
+  },
+  {
+    "id": "5088168d-ed05-4fed-a114-a0b433ad49a8",
+    "timestamp": "13:42:27",
+    "timestamp_ms": 1775454147178,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "social_autorun_error",
+    "description": "'sqlite3.Connection' object has no attribute 'closed'"
+  },
+  {
+    "id": "53af0ac3-b6d7-4f46-8bca-d1c1e5426de4",
+    "timestamp": "13:41:28",
+    "timestamp_ms": 1775454088125,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "heartbeat",
+    "description": "tick=7 alive=7"
+  },
+  {
+    "id": "88f58cff-06a1-4770-93b8-dc5f925f42ba",
+    "timestamp": "13:41:27",
+    "timestamp_ms": 1775454087154,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "social_autorun_error",
+    "description": "'sqlite3.Connection' object has no attribute 'closed'"
+  },
+  {
+    "id": "fa7e0ef7-23fb-47a6-9c38-7c3c2b4be1bf",
+    "timestamp": "13:41:26",
+    "timestamp_ms": 1775454086182,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "age_growth_error",
+    "description": "'Character' object has no attribute 'age_stage'"
+  },
+  {
+    "id": "20948b3b-7b39-4e39-9f82-5e4a7c10fe13",
+    "timestamp": "13:40:28",
+    "timestamp_ms": 1775454028089,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "heartbeat",
+    "description": "tick=7 alive=7"
+  },
+  {
+    "id": "2dddaa03-0760-45fe-902d-c726786bf80e",
+    "timestamp": "13:40:27",
+    "timestamp_ms": 1775454027126,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "social_autorun_error",
+    "description": "'sqlite3.Connection' object has no attribute 'closed'"
+  },
+  {
+    "id": "bb5203cc-f0a1-4b49-8e4a-269d0d42e42f",
+    "timestamp": "13:39:28",
+    "timestamp_ms": 1775453968052,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "heartbeat",
+    "description": "tick=7 alive=7"
+  },
+  {
+    "id": "90136138-2edc-4ffc-a37c-5c38fd7543a8",
+    "timestamp": "13:39:27",
+    "timestamp_ms": 1775453967110,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "social_autorun_error",
+    "description": "'sqlite3.Connection' object has no attribute 'closed'"
+  },
+  {
+    "id": "68575b20-86af-47f0-9d2c-aae206b57ed1",
+    "timestamp": "13:38:28",
+    "timestamp_ms": 1775453908002,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "heartbeat",
+    "description": "tick=7 alive=7"
+  },
+  {
+    "id": "42bd0b3b-1279-4e76-bc46-2af1317537d4",
+    "timestamp": "13:38:27",
+    "timestamp_ms": 1775453907083,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "social_autorun_error",
+    "description": "'sqlite3.Connection' object has no attribute 'closed'"
+  },
+  {
+    "id": "d4b0936d-699d-4583-bef0-900a5a06c37d",
+    "timestamp": "13:37:27",
+    "timestamp_ms": 1775453847967,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "heartbeat",
+    "description": "tick=7 alive=7"
+  },
+  {
+    "id": "2554c170-653a-4563-8cdb-485fa6399261",
+    "timestamp": "13:37:27",
+    "timestamp_ms": 1775453847057,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "social_autorun_error",
+    "description": "'sqlite3.Connection' object has no attribute 'closed'"
+  },
+  {
+    "id": "f2cc24d7-562f-4cfe-aae0-63d7b028bd6e",
+    "timestamp": "13:36:41",
+    "timestamp_ms": 1775453801656,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "scheduler",
+    "description": "角色主动发消息 1 次"
+  },
+  {
+    "id": "e6a725b5-d031-4438-910f-27492244a7cb",
+    "timestamp": "13:36:41",
+    "timestamp_ms": 1775453801652,
+    "world_timestamp_ms": 0,
+    "character_name": "林柔",
+    "action_type": "主动联系",
+    "description": "主动发送：最近心情不错，出来聊聊？..."
+  },
+  {
+    "id": "2af8e7c2-fbc0-4259-ab2c-8ecd826eec0a",
+    "timestamp": "13:36:27",
+    "timestamp_ms": 1775453787910,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "heartbeat",
+    "description": "tick=7 alive=7"
+  },
+  {
+    "id": "5634a6c1-2384-4868-9a15-aff7fa931a39",
+    "timestamp": "13:36:27",
+    "timestamp_ms": 1775453787041,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "social_autorun_error",
+    "description": "'sqlite3.Connection' object has no attribute 'closed'"
+  },
+  {
+    "id": "e8b8f6f1-ae62-4e28-9d04-b6ba400978bc",
+    "timestamp": "13:36:26",
+    "timestamp_ms": 1775453786158,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "age_growth_error",
+    "description": "'Character' object has no attribute 'age_stage'"
+  },
+  {
+    "id": "4d6ee808-414f-4160-8353-fa2709a51c2c",
+    "timestamp": "13:35:27",
+    "timestamp_ms": 1775453727875,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "heartbeat",
+    "description": "tick=7 alive=7"
+  },
+  {
+    "id": "3ba63c89-c81d-436d-8dde-bac0d872468a",
+    "timestamp": "13:35:27",
+    "timestamp_ms": 1775453727022,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "social_autorun_error",
+    "description": "'sqlite3.Connection' object has no attribute 'closed'"
+  },
+  {
+    "id": "af0915b1-656a-47d8-b71e-4247531e51c4",
+    "timestamp": "13:34:27",
+    "timestamp_ms": 1775453667827,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "heartbeat",
+    "description": "tick=7 alive=7"
+  },
+  {
+    "id": "664715c1-5e7d-4d1e-82b6-0421b615ced8",
+    "timestamp": "13:34:26",
+    "timestamp_ms": 1775453666999,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "social_autorun_error",
+    "description": "'sqlite3.Connection' object has no attribute 'closed'"
+  },
+  {
+    "id": "f0f76e64-2b4b-45e0-b808-43bb9dd3669a",
+    "timestamp": "13:33:27",
+    "timestamp_ms": 1775453607788,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "heartbeat",
+    "description": "tick=7 alive=7"
+  },
+  {
+    "id": "3615f223-9660-417a-b472-e5fa6c17e564",
+    "timestamp": "13:33:26",
+    "timestamp_ms": 1775453606974,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "social_autorun_error",
+    "description": "'sqlite3.Connection' object has no attribute 'closed'"
+  },
+  {
+    "id": "b4e2057f-fb46-4262-8e61-519da4d3bc58",
+    "timestamp": "13:32:27",
+    "timestamp_ms": 1775453547746,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "heartbeat",
+    "description": "tick=7 alive=7"
+  },
+  {
+    "id": "0ea9df08-deed-4e8c-88db-047455eb2232",
+    "timestamp": "13:32:26",
+    "timestamp_ms": 1775453546954,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "social_autorun_error",
+    "description": "'sqlite3.Connection' object has no attribute 'closed'"
+  },
+  {
+    "id": "c603cb77-00fa-48d3-b791-0fd75e05ee38",
+    "timestamp": "13:31:27",
+    "timestamp_ms": 1775453487718,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "heartbeat",
+    "description": "tick=7 alive=7"
+  },
+  {
+    "id": "adc80ba9-0caf-45ba-8aea-f5feea5f67f9",
+    "timestamp": "13:31:26",
+    "timestamp_ms": 1775453486928,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "social_autorun_error",
+    "description": "'sqlite3.Connection' object has no attribute 'closed'"
+  },
+  {
+    "id": "7cc228c6-d7f4-4e08-93b7-a87a998e7852",
+    "timestamp": "13:31:26",
+    "timestamp_ms": 1775453486137,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "age_growth_error",
+    "description": "'Character' object has no attribute 'age_stage'"
+  },
+  {
+    "id": "1bcad1f5-943d-4a11-b971-94a8e7fe5195",
+    "timestamp": "13:30:27",
+    "timestamp_ms": 1775453427681,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "heartbeat",
+    "description": "tick=7 alive=7"
+  },
+  {
+    "id": "1088ee92-8e39-455f-87e1-57cbeb7cf923",
+    "timestamp": "13:30:26",
+    "timestamp_ms": 1775453426908,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "social_autorun_error",
+    "description": "'sqlite3.Connection' object has no attribute 'closed'"
+  },
+  {
+    "id": "3d624d24-04fe-4837-b426-2dbfd01f6d1e",
+    "timestamp": "13:29:27",
+    "timestamp_ms": 1775453367629,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "heartbeat",
+    "description": "tick=7 alive=7"
+  },
+  {
+    "id": "4d90f471-0f1c-4159-92b7-749580285185",
+    "timestamp": "13:29:26",
+    "timestamp_ms": 1775453366896,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "social_autorun_error",
+    "description": "'sqlite3.Connection' object has no attribute 'closed'"
+  },
+  {
+    "id": "972a7918-9c58-4d32-9e67-8d8275431ef6",
+    "timestamp": "13:28:27",
+    "timestamp_ms": 1775453307587,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "heartbeat",
+    "description": "tick=7 alive=7"
+  },
+  {
+    "id": "e60b4139-fdb6-4c48-bfca-1fc397fd2372",
+    "timestamp": "13:28:26",
+    "timestamp_ms": 1775453306877,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "social_autorun_error",
+    "description": "'sqlite3.Connection' object has no attribute 'closed'"
+  },
+  {
+    "id": "b56b6084-87bf-43e2-98cf-4463cd2f1a7e",
+    "timestamp": "13:27:27",
+    "timestamp_ms": 1775453247555,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "heartbeat",
+    "description": "tick=7 alive=7"
+  },
+  {
+    "id": "fd60f767-9cbd-423e-8625-2bf9c60392c6",
+    "timestamp": "13:27:26",
+    "timestamp_ms": 1775453246861,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "social_autorun_error",
+    "description": "'sqlite3.Connection' object has no attribute 'closed'"
+  },
+  {
+    "id": "449477b1-445a-4077-b541-21937913b50d",
+    "timestamp": "13:26:27",
+    "timestamp_ms": 1775453187517,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "heartbeat",
+    "description": "tick=7 alive=7"
+  },
+  {
+    "id": "c76e40dd-1631-4baa-9123-76492d96d5e3",
+    "timestamp": "13:26:26",
+    "timestamp_ms": 1775453186843,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "social_autorun_error",
+    "description": "'sqlite3.Connection' object has no attribute 'closed'"
+  },
+  {
+    "id": "0d6f3210-1782-495f-b88d-0dc07984e23c",
+    "timestamp": "13:26:26",
+    "timestamp_ms": 1775453186113,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "age_growth_error",
+    "description": "'Character' object has no attribute 'age_stage'"
+  },
+  {
+    "id": "570fdb42-058e-4659-bcc7-1df694442e1a",
+    "timestamp": "13:25:27",
+    "timestamp_ms": 1775453127464,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "heartbeat",
+    "description": "tick=7 alive=7"
+  },
+  {
+    "id": "1c19d669-5bf7-4af6-9eb2-52c2ab585f07",
+    "timestamp": "13:25:26",
+    "timestamp_ms": 1775453126810,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "social_autorun_error",
+    "description": "'sqlite3.Connection' object has no attribute 'closed'"
+  },
+  {
+    "id": "403d022f-4b25-4cdd-b7e9-08d88923a8d2",
+    "timestamp": "13:24:27",
+    "timestamp_ms": 1775453067430,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "heartbeat",
+    "description": "tick=7 alive=7"
+  },
+  {
+    "id": "28657a3d-7a20-4aa5-955a-bf520a893ffc",
+    "timestamp": "13:24:26",
+    "timestamp_ms": 1775453066786,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "social_autorun_error",
+    "description": "'sqlite3.Connection' object has no attribute 'closed'"
+  },
+  {
+    "id": "4003b250-69b0-4bcf-a835-73e5d26b3dfc",
+    "timestamp": "13:23:27",
+    "timestamp_ms": 1775453007401,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "heartbeat",
+    "description": "tick=7 alive=7"
+  },
+  {
+    "id": "bf49c87a-c29e-4b33-a4eb-021a041e2573",
+    "timestamp": "13:23:26",
+    "timestamp_ms": 1775453006760,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "social_autorun_error",
+    "description": "'sqlite3.Connection' object has no attribute 'closed'"
+  },
+  {
+    "id": "33bd0189-2817-4f2d-a678-4a706f707b54",
+    "timestamp": "13:22:27",
+    "timestamp_ms": 1775452947361,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "heartbeat",
+    "description": "tick=7 alive=7"
+  },
+  {
+    "id": "b20fe224-3e1a-4ae8-b7bc-e243e4476845",
+    "timestamp": "13:22:26",
+    "timestamp_ms": 1775452946726,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "social_autorun_error",
+    "description": "'sqlite3.Connection' object has no attribute 'closed'"
+  },
+  {
+    "id": "23ef0e18-3868-4467-a7fc-5d0155c9a1a8",
+    "timestamp": "13:21:27",
+    "timestamp_ms": 1775452887322,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "heartbeat",
+    "description": "tick=7 alive=7"
+  },
+  {
+    "id": "8d9bd1fc-19e0-4973-8f1d-601c096523ef",
+    "timestamp": "13:21:26",
+    "timestamp_ms": 1775452886712,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "social_autorun_error",
+    "description": "'sqlite3.Connection' object has no attribute 'closed'"
+  },
+  {
+    "id": "0ebbad4b-e47d-41e1-b35d-82f9f5f5da35",
+    "timestamp": "13:21:26",
+    "timestamp_ms": 1775452886104,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "age_growth_error",
+    "description": "'Character' object has no attribute 'age_stage'"
+  },
+  {
+    "id": "6df0b363-207a-429f-b953-3c6776c287f5",
+    "timestamp": "13:20:27",
+    "timestamp_ms": 1775452827291,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "heartbeat",
+    "description": "tick=7 alive=7"
+  },
+  {
+    "id": "092c6fd6-0153-4096-ac9a-b435f548bb3e",
+    "timestamp": "13:20:26",
+    "timestamp_ms": 1775452826702,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "social_autorun_error",
+    "description": "'sqlite3.Connection' object has no attribute 'closed'"
+  },
+  {
+    "id": "79922bba-b34e-4431-af2a-b3f11d078a5e",
+    "timestamp": "13:19:27",
+    "timestamp_ms": 1775452767257,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "heartbeat",
+    "description": "tick=7 alive=7"
+  },
+  {
+    "id": "97769382-109f-4356-92b9-90786499e1ee",
+    "timestamp": "13:19:26",
+    "timestamp_ms": 1775452766687,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "social_autorun_error",
+    "description": "'sqlite3.Connection' object has no attribute 'closed'"
+  },
+  {
+    "id": "d5219566-c81a-43f0-afdf-218f55210939",
+    "timestamp": "13:18:27",
+    "timestamp_ms": 1775452707221,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "heartbeat",
+    "description": "tick=7 alive=7"
+  },
+  {
+    "id": "488c6599-2667-49be-83a6-2458459b309a",
+    "timestamp": "13:18:26",
+    "timestamp_ms": 1775452706654,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "social_autorun_error",
+    "description": "'sqlite3.Connection' object has no attribute 'closed'"
+  },
+  {
+    "id": "aac68403-c4dd-4843-b200-c0d4b275a5e2",
+    "timestamp": "13:17:27",
+    "timestamp_ms": 1775452647189,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "heartbeat",
+    "description": "tick=7 alive=7"
+  },
+  {
+    "id": "dde5e401-ea05-4956-a0cf-6899d9875639",
+    "timestamp": "13:17:26",
+    "timestamp_ms": 1775452646645,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "social_autorun_error",
+    "description": "'sqlite3.Connection' object has no attribute 'closed'"
+  },
+  {
+    "id": "90005993-ac86-49b8-824f-2e502300f902",
+    "timestamp": "13:16:27",
+    "timestamp_ms": 1775452587160,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "heartbeat",
+    "description": "tick=7 alive=7"
+  },
+  {
+    "id": "c048314c-bcec-4a77-b7b9-b7b70659cf49",
+    "timestamp": "13:16:26",
+    "timestamp_ms": 1775452586626,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "social_autorun_error",
+    "description": "'sqlite3.Connection' object has no attribute 'closed'"
+  },
+  {
+    "id": "d13b087a-ad54-4454-9127-cfa41b421b9d",
+    "timestamp": "13:16:26",
+    "timestamp_ms": 1775452586092,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "age_growth_error",
+    "description": "'Character' object has no attribute 'age_stage'"
+  },
+  {
+    "id": "ff7aa368-bbbe-464a-9e5a-8150cb9b6f70",
+    "timestamp": "13:15:27",
+    "timestamp_ms": 1775452527120,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "heartbeat",
+    "description": "tick=7 alive=7"
+  },
+  {
+    "id": "83e9e6bf-f464-4794-9279-49515fe2472f",
+    "timestamp": "13:15:26",
+    "timestamp_ms": 1775452526608,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "social_autorun_error",
+    "description": "'sqlite3.Connection' object has no attribute 'closed'"
+  },
+  {
+    "id": "dfe58c5a-1b70-4d15-a84c-debd2daa7d13",
+    "timestamp": "13:14:27",
+    "timestamp_ms": 1775452467082,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "heartbeat",
+    "description": "tick=7 alive=7"
+  },
+  {
+    "id": "1c06defd-c812-4653-9c91-0f2ff046d41d",
+    "timestamp": "13:14:26",
+    "timestamp_ms": 1775452466586,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "social_autorun_error",
+    "description": "'sqlite3.Connection' object has no attribute 'closed'"
+  },
+  {
+    "id": "310e168d-f48a-4995-a7d3-7d9e2d279ad9",
+    "timestamp": "13:13:27",
+    "timestamp_ms": 1775452407043,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "heartbeat",
+    "description": "tick=7 alive=7"
+  },
+  {
+    "id": "e4ab09bb-5a94-4828-a202-91f59ae64e14",
+    "timestamp": "13:13:26",
+    "timestamp_ms": 1775452406556,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "social_autorun_error",
+    "description": "'sqlite3.Connection' object has no attribute 'closed'"
+  },
+  {
+    "id": "7e5b269b-4f75-4d39-aeda-6ebcff69af78",
+    "timestamp": "13:12:27",
+    "timestamp_ms": 1775452347012,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "heartbeat",
+    "description": "tick=7 alive=7"
+  },
+  {
+    "id": "59db3797-0150-4377-9681-291e6463daf9",
+    "timestamp": "13:12:26",
+    "timestamp_ms": 1775452346530,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "social_autorun_error",
+    "description": "'sqlite3.Connection' object has no attribute 'closed'"
+  },
+  {
+    "id": "8a263bb2-24c6-4e64-92a6-136925ac7f5c",
+    "timestamp": "13:11:26",
+    "timestamp_ms": 1775452286957,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "heartbeat",
+    "description": "tick=7 alive=7"
+  },
+  {
+    "id": "c06c1337-f82a-40d8-a93d-41b7a5db644c",
+    "timestamp": "13:11:26",
+    "timestamp_ms": 1775452286499,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "social_autorun_error",
+    "description": "'sqlite3.Connection' object has no attribute 'closed'"
+  },
+  {
+    "id": "217da41c-733b-4691-a326-bd174a17d941",
+    "timestamp": "13:11:26",
+    "timestamp_ms": 1775452286079,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "age_growth_error",
+    "description": "'Character' object has no attribute 'age_stage'"
+  },
+  {
+    "id": "7d05b6f7-ef72-45fa-bcd5-2c2e303e2b0b",
+    "timestamp": "13:10:26",
+    "timestamp_ms": 1775452226898,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "heartbeat",
+    "description": "tick=7 alive=7"
+  },
+  {
+    "id": "a676146c-2166-45a4-a175-26d1b2d7a5ee",
+    "timestamp": "13:10:26",
+    "timestamp_ms": 1775452226488,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "social_autorun_error",
+    "description": "'sqlite3.Connection' object has no attribute 'closed'"
+  },
+  {
+    "id": "d8d8e767-c9bd-4eb0-beaa-2703ebaa9119",
+    "timestamp": "13:10:26",
+    "timestamp_ms": 1775452226269,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "scheduler",
+    "description": "角色主动发消息 1 次"
+  },
+  {
+    "id": "9299539d-94c3-48fd-b288-da63c0e842f4",
+    "timestamp": "13:10:26",
+    "timestamp_ms": 1775452226261,
+    "world_timestamp_ms": 0,
+    "character_name": "小李",
+    "action_type": "主动联系",
+    "description": "主动发送：最近心情不错，出来聊聊？..."
+  },
+  {
+    "id": "512b1d64-2752-4771-be57-12da6cbb85ea",
+    "timestamp": "13:09:26",
+    "timestamp_ms": 1775452166861,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "heartbeat",
+    "description": "tick=7 alive=7"
+  },
+  {
+    "id": "2f631d64-a655-4867-912e-c04893cd0dcc",
+    "timestamp": "13:09:26",
+    "timestamp_ms": 1775452166468,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "social_autorun_error",
+    "description": "'sqlite3.Connection' object has no attribute 'closed'"
+  },
+  {
+    "id": "ea391497-6a6d-418a-862e-37770dff56eb",
+    "timestamp": "13:08:26",
+    "timestamp_ms": 1775452106805,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "heartbeat",
+    "description": "tick=7 alive=7"
+  },
+  {
+    "id": "5fde170c-1afa-4632-90c2-85888dec4f2d",
+    "timestamp": "13:08:26",
+    "timestamp_ms": 1775452106450,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "social_autorun_error",
+    "description": "'sqlite3.Connection' object has no attribute 'closed'"
+  },
+  {
+    "id": "a8f9c2e2-f6ec-4a70-ad3b-468ab0175500",
+    "timestamp": "13:07:26",
+    "timestamp_ms": 1775452046772,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "heartbeat",
+    "description": "tick=7 alive=7"
+  },
+  {
+    "id": "e4da7df9-e273-4c94-b3ca-ceb31c4fa36f",
+    "timestamp": "13:07:26",
+    "timestamp_ms": 1775452046424,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "social_autorun_error",
+    "description": "'sqlite3.Connection' object has no attribute 'closed'"
+  },
+  {
+    "id": "ef24f2d4-432b-4273-88b4-aea3d05bde7d",
+    "timestamp": "13:06:26",
+    "timestamp_ms": 1775451986733,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "heartbeat",
+    "description": "tick=7 alive=7"
+  },
+  {
+    "id": "5317468e-9997-4aa0-bd4c-27dd9354e1ec",
+    "timestamp": "13:06:26",
+    "timestamp_ms": 1775451986406,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "social_autorun_error",
+    "description": "'sqlite3.Connection' object has no attribute 'closed'"
+  },
+  {
+    "id": "2e1c3131-4dee-461d-9e8f-bf2616387db7",
+    "timestamp": "13:06:26",
+    "timestamp_ms": 1775451986066,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "age_growth_error",
+    "description": "'Character' object has no attribute 'age_stage'"
+  },
+  {
+    "id": "38fcef90-5fac-4263-9521-d1b4b04f357d",
+    "timestamp": "13:05:26",
+    "timestamp_ms": 1775451926699,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "heartbeat",
+    "description": "tick=7 alive=7"
+  },
+  {
+    "id": "563fba84-25e9-4cbd-9837-f3ee2ac88a95",
+    "timestamp": "13:05:26",
+    "timestamp_ms": 1775451926380,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "social_autorun_error",
+    "description": "'sqlite3.Connection' object has no attribute 'closed'"
+  },
+  {
+    "id": "33d268a4-2ab3-45f7-875b-f31aa4d9a331",
+    "timestamp": "13:04:26",
+    "timestamp_ms": 1775451866634,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "heartbeat",
+    "description": "tick=7 alive=7"
+  },
+  {
+    "id": "b9de8976-205c-4b4d-af5c-d157fb1508e2",
+    "timestamp": "13:04:26",
+    "timestamp_ms": 1775451866357,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "social_autorun_error",
+    "description": "'sqlite3.Connection' object has no attribute 'closed'"
+  },
+  {
+    "id": "5569c8c6-7203-4f95-8cba-ba4c1e524de4",
+    "timestamp": "13:03:26",
+    "timestamp_ms": 1775451806603,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "heartbeat",
+    "description": "tick=7 alive=7"
+  },
+  {
+    "id": "20f6a74e-9106-47f2-8d8c-c045c8b57ddd",
+    "timestamp": "13:03:26",
+    "timestamp_ms": 1775451806338,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "social_autorun_error",
+    "description": "'sqlite3.Connection' object has no attribute 'closed'"
+  },
+  {
+    "id": "1dbf9738-2a78-4c54-a1ce-7be9670bbf05",
+    "timestamp": "13:02:26",
+    "timestamp_ms": 1775451746565,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "heartbeat",
+    "description": "tick=7 alive=7"
+  },
+  {
+    "id": "2249644f-be74-4eb7-a1c9-2c06e8ae266d",
+    "timestamp": "13:02:26",
+    "timestamp_ms": 1775451746327,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "social_autorun_error",
+    "description": "'sqlite3.Connection' object has no attribute 'closed'"
+  },
+  {
+    "id": "d5f304f4-2ad2-4eb6-a37f-6d7e1610d076",
+    "timestamp": "13:01:26",
+    "timestamp_ms": 1775451686529,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "heartbeat",
+    "description": "tick=7 alive=7"
+  },
+  {
+    "id": "8ae25d19-8601-40eb-b490-65e0fcb22efc",
+    "timestamp": "13:01:26",
+    "timestamp_ms": 1775451686312,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "social_autorun_error",
+    "description": "'sqlite3.Connection' object has no attribute 'closed'"
+  },
+  {
+    "id": "fd27c64d-eb50-4c92-8c89-fa7279fd07b7",
+    "timestamp": "13:01:26",
+    "timestamp_ms": 1775451686041,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "age_growth_error",
+    "description": "'Character' object has no attribute 'age_stage'"
+  },
+  {
+    "id": "043394ca-a690-46f7-80a3-04bd82371a69",
+    "timestamp": "13:00:26",
+    "timestamp_ms": 1775451626495,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "heartbeat",
+    "description": "tick=7 alive=7"
+  },
+  {
+    "id": "f9669ced-39d8-4683-864b-b857462edf12",
+    "timestamp": "13:00:26",
+    "timestamp_ms": 1775451626289,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "social_autorun_error",
+    "description": "'sqlite3.Connection' object has no attribute 'closed'"
+  },
+  {
+    "id": "a1835b1d-c1f6-4958-91a7-0e87cf3b6f38",
+    "timestamp": "12:59:26",
+    "timestamp_ms": 1775451566457,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "heartbeat",
+    "description": "tick=7 alive=7"
+  },
+  {
+    "id": "4040fb18-1496-41a2-8bb1-32903c9f16c6",
+    "timestamp": "12:59:26",
+    "timestamp_ms": 1775451566266,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "social_autorun_error",
+    "description": "'sqlite3.Connection' object has no attribute 'closed'"
+  },
+  {
+    "id": "87151d63-812b-467c-905e-0f86ef74dcaf",
+    "timestamp": "12:58:26",
+    "timestamp_ms": 1775451506422,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "heartbeat",
+    "description": "tick=7 alive=7"
+  },
+  {
+    "id": "f9ab61ea-c4c7-4a54-be6a-3b6b7f11f8c9",
+    "timestamp": "12:58:26",
+    "timestamp_ms": 1775451506236,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "social_autorun_error",
+    "description": "'sqlite3.Connection' object has no attribute 'closed'"
+  },
+  {
+    "id": "01f32fb7-644e-416b-bad5-5ee4cfb07c5c",
+    "timestamp": "12:57:26",
+    "timestamp_ms": 1775451446392,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "heartbeat",
+    "description": "tick=7 alive=7"
+  },
+  {
+    "id": "d3966cbb-c15c-423e-aba0-16d5033d3baf",
+    "timestamp": "12:57:26",
+    "timestamp_ms": 1775451446218,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "social_autorun_error",
+    "description": "'sqlite3.Connection' object has no attribute 'closed'"
+  },
+  {
+    "id": "2a10cd80-47fd-49d7-838d-cef1bc40ffe2",
+    "timestamp": "12:56:26",
+    "timestamp_ms": 1775451386345,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "heartbeat",
+    "description": "tick=7 alive=7"
+  },
+  {
+    "id": "a09c71a9-159d-47d2-82bb-c49ac9cde64b",
+    "timestamp": "12:56:26",
+    "timestamp_ms": 1775451386199,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "social_autorun_error",
+    "description": "'sqlite3.Connection' object has no attribute 'closed'"
+  },
+  {
+    "id": "f5b37b4b-da25-4b5a-97d3-1ebe19e9d8a9",
+    "timestamp": "12:56:26",
+    "timestamp_ms": 1775451386018,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "age_growth_error",
+    "description": "'Character' object has no attribute 'age_stage'"
+  },
+  {
+    "id": "c598a56c-50d8-4529-9a1e-2084a33bb374",
+    "timestamp": "12:55:26",
+    "timestamp_ms": 1775451326311,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "heartbeat",
+    "description": "tick=7 alive=7"
+  },
+  {
+    "id": "9897af00-0dad-46c3-a413-a464b7718c6a",
+    "timestamp": "12:55:26",
+    "timestamp_ms": 1775451326173,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "social_autorun_error",
+    "description": "'sqlite3.Connection' object has no attribute 'closed'"
+  },
+  {
+    "id": "6fa23672-eea4-4c60-ac20-73f5b840deee",
+    "timestamp": "12:54:26",
+    "timestamp_ms": 1775451266273,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "heartbeat",
+    "description": "tick=7 alive=7"
+  },
+  {
+    "id": "a326e73a-a6d0-4e43-b0f2-021c67f40c0f",
+    "timestamp": "12:54:26",
+    "timestamp_ms": 1775451266152,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "social_autorun_error",
+    "description": "'sqlite3.Connection' object has no attribute 'closed'"
+  },
+  {
+    "id": "d21dc481-3b6e-4779-9e12-32d2fa391854",
+    "timestamp": "12:53:56",
+    "timestamp_ms": 1775451236058,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "scheduler",
+    "description": "角色主动发消息 1 次"
+  },
+  {
+    "id": "e3665a4a-f497-4163-a034-fced47ec8645",
+    "timestamp": "12:53:56",
+    "timestamp_ms": 1775451236055,
+    "world_timestamp_ms": 0,
+    "character_name": "小秦",
+    "action_type": "主动联系",
+    "description": "主动发送：在吗？今天发生了些有趣的事，想跟你分享一下~..."
+  },
+  {
+    "id": "ff5e0596-8d33-4e6e-896e-72d258a9e15f",
+    "timestamp": "12:53:26",
+    "timestamp_ms": 1775451206248,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "heartbeat",
+    "description": "tick=7 alive=7"
+  },
+  {
+    "id": "b233bb74-a15d-498f-a62c-58eecb9f0fef",
+    "timestamp": "12:53:26",
+    "timestamp_ms": 1775451206134,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "social_autorun_error",
+    "description": "'sqlite3.Connection' object has no attribute 'closed'"
+  },
+  {
+    "id": "63f2b7c0-d028-4a18-893b-a1415add6b68",
+    "timestamp": "12:52:26",
+    "timestamp_ms": 1775451146217,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "heartbeat",
+    "description": "tick=7 alive=7"
+  },
+  {
+    "id": "777e386b-22e5-4734-9c25-a9150de63162",
+    "timestamp": "12:52:26",
+    "timestamp_ms": 1775451146123,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "social_autorun_error",
+    "description": "'sqlite3.Connection' object has no attribute 'closed'"
+  },
+  {
+    "id": "db8380a9-0c9b-4312-af75-b7ae5f3c4c89",
+    "timestamp": "12:51:26",
+    "timestamp_ms": 1775451086184,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "heartbeat",
+    "description": "tick=7 alive=7"
+  },
+  {
+    "id": "c9584ee1-b7d3-4529-8107-fac187e0f4ef",
+    "timestamp": "12:51:26",
+    "timestamp_ms": 1775451086105,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "social_autorun_error",
+    "description": "'sqlite3.Connection' object has no attribute 'closed'"
+  },
+  {
+    "id": "2c60fdbf-2ac3-4fb1-876b-4a9a6b6abccf",
+    "timestamp": "12:51:25",
+    "timestamp_ms": 1775451085995,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "age_growth_error",
+    "description": "'Character' object has no attribute 'age_stage'"
+  },
+  {
+    "id": "92b8b65e-66a8-4bf9-a500-430a4403624e",
+    "timestamp": "12:50:26",
+    "timestamp_ms": 1775451026150,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "heartbeat",
+    "description": "tick=7 alive=7"
+  },
+  {
+    "id": "d1a792bf-80d9-4792-9d05-c63bc1e01352",
+    "timestamp": "12:50:26",
+    "timestamp_ms": 1775451026085,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "social_autorun_error",
+    "description": "'sqlite3.Connection' object has no attribute 'closed'"
+  },
+  {
+    "id": "b4f4a9f3-6711-41e8-8a5a-1d4a00eb983c",
+    "timestamp": "12:49:26",
+    "timestamp_ms": 1775450966117,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "heartbeat",
+    "description": "tick=7 alive=7"
+  },
+  {
+    "id": "fbcfbb72-7237-4e49-a909-95da341eafa1",
+    "timestamp": "12:49:26",
+    "timestamp_ms": 1775450966071,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "social_autorun_error",
+    "description": "'sqlite3.Connection' object has no attribute 'closed'"
+  },
+  {
+    "id": "4d584087-2563-480e-9b50-1ba79204fb1e",
+    "timestamp": "12:48:26",
+    "timestamp_ms": 1775450906089,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "heartbeat",
+    "description": "tick=7 alive=7"
+  },
+  {
+    "id": "8f663b5d-7b99-49b8-baf6-5e8b804121d1",
+    "timestamp": "12:48:26",
+    "timestamp_ms": 1775450906058,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "social_autorun_error",
+    "description": "'sqlite3.Connection' object has no attribute 'closed'"
+  },
+  {
+    "id": "9c7a384e-19b3-4126-9780-4df23cb9e7ee",
+    "timestamp": "12:47:26",
+    "timestamp_ms": 1775450846061,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "heartbeat",
+    "description": "tick=7 alive=7"
+  },
+  {
+    "id": "4d33e499-8330-419f-8ba6-59efd74441c6",
+    "timestamp": "12:47:26",
+    "timestamp_ms": 1775450846039,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "social_autorun_error",
+    "description": "'sqlite3.Connection' object has no attribute 'closed'"
+  },
+  {
+    "id": "433eddba-de69-41c0-b5a8-dca63a1666fe",
+    "timestamp": "21:58:41",
+    "timestamp_ms": 1775397521902,
+    "world_timestamp_ms": 446500810,
+    "character_name": "system",
+    "action_type": "heartbeat",
+    "description": "tick=7 alive=7"
+  },
+  {
+    "id": "8b0902a7-f25e-4163-bd4a-192de8005b99",
+    "timestamp": "21:58:41",
+    "timestamp_ms": 1775397521897,
+    "world_timestamp_ms": 446500810,
+    "character_name": "林屿",
+    "action_type": "heartbeat",
+    "description": "浏览朋友圈 10 条"
+  },
+  {
+    "id": "7b29d123-486e-44d3-8e66-e85b65e351d7",
+    "timestamp": "21:58:41",
+    "timestamp_ms": 1775397521864,
+    "world_timestamp_ms": 446500810,
+    "character_name": "林晓",
+    "action_type": "heartbeat",
+    "description": "浏览朋友圈 10 条"
+  },
+  {
+    "id": "b568e2f9-5ed9-49b5-acad-a0bdde0161a0",
+    "timestamp": "21:58:41",
+    "timestamp_ms": 1775397521830,
+    "world_timestamp_ms": 446500810,
+    "character_name": "林晓",
+    "action_type": "heartbeat",
+    "description": "浏览朋友圈 13 条"
+  },
+  {
+    "id": "84624d08-54a8-4d8f-85ae-b292d8a342af",
+    "timestamp": "21:58:41",
+    "timestamp_ms": 1775397521803,
+    "world_timestamp_ms": 446500810,
+    "character_name": "林柔",
+    "action_type": "heartbeat",
+    "description": "浏览朋友圈 6 条"
+  },
+  {
+    "id": "ac94fde4-057e-42e2-8098-e7449b6f836b",
+    "timestamp": "21:58:41",
+    "timestamp_ms": 1775397521774,
+    "world_timestamp_ms": 446500810,
+    "character_name": "小秦",
+    "action_type": "heartbeat",
+    "description": "浏览朋友圈 9 条"
+  },
+  {
+    "id": "c9be0dc6-a1e4-4290-b505-baffacb98147",
+    "timestamp": "21:58:41",
+    "timestamp_ms": 1775397521747,
+    "world_timestamp_ms": 446500810,
+    "character_name": "测试角色",
+    "action_type": "heartbeat",
+    "description": "浏览朋友圈 4 条"
+  },
+  {
+    "id": "53037200-3be8-4799-b20e-742f55ff2f68",
+    "timestamp": "21:58:41",
+    "timestamp_ms": 1775397521715,
+    "world_timestamp_ms": 446500810,
+    "character_name": "小李",
+    "action_type": "heartbeat",
+    "description": "浏览朋友圈 8 条"
+  },
+  {
+    "id": "dd5ed143-e287-446b-8375-565f74379471",
+    "timestamp": "21:57:41",
+    "timestamp_ms": 1775397461676,
+    "world_timestamp_ms": 446440801,
+    "character_name": "system",
+    "action_type": "heartbeat",
+    "description": "tick=7 alive=7"
+  },
+  {
+    "id": "f8b5bd1c-2d29-4922-b35a-6d7388b96a0f",
+    "timestamp": "21:57:41",
+    "timestamp_ms": 1775397461671,
+    "world_timestamp_ms": 446440801,
+    "character_name": "林屿",
+    "action_type": "heartbeat",
+    "description": "浏览朋友圈 10 条"
+  },
+  {
+    "id": "78564309-1b88-40a9-933e-6b75d0bf8502",
+    "timestamp": "21:57:41",
+    "timestamp_ms": 1775397461643,
+    "world_timestamp_ms": 446440801,
+    "character_name": "林晓",
+    "action_type": "heartbeat",
+    "description": "浏览朋友圈 10 条"
+  },
+  {
+    "id": "d0ebd45f-516e-45c0-97ea-3ea930aae568",
+    "timestamp": "21:57:41",
+    "timestamp_ms": 1775397461617,
+    "world_timestamp_ms": 446440801,
+    "character_name": "林晓",
+    "action_type": "heartbeat",
+    "description": "浏览朋友圈 13 条"
+  },
+  {
+    "id": "9427175c-f0ef-40f5-878e-d075657c94fc",
+    "timestamp": "21:57:41",
+    "timestamp_ms": 1775397461593,
+    "world_timestamp_ms": 446440801,
+    "character_name": "林柔",
+    "action_type": "heartbeat",
+    "description": "浏览朋友圈 6 条"
+  },
+  {
+    "id": "0e3c7f4a-7f7c-4757-8d2c-f50387244bec",
+    "timestamp": "21:57:41",
+    "timestamp_ms": 1775397461564,
+    "world_timestamp_ms": 446440801,
+    "character_name": "小秦",
+    "action_type": "heartbeat",
+    "description": "浏览朋友圈 9 条"
+  },
+  {
+    "id": "650d3f6b-e194-4600-ac89-03adec2fa87a",
+    "timestamp": "21:57:41",
+    "timestamp_ms": 1775397461521,
+    "world_timestamp_ms": 446440801,
+    "character_name": "测试角色",
+    "action_type": "heartbeat",
+    "description": "浏览朋友圈 4 条"
+  },
+  {
+    "id": "d1f7e7a3-c97c-4896-b149-86923581513b",
+    "timestamp": "21:57:41",
+    "timestamp_ms": 1775397461476,
+    "world_timestamp_ms": 446440801,
+    "character_name": "小李",
+    "action_type": "heartbeat",
+    "description": "浏览朋友圈 8 条"
+  },
+  {
+    "id": "122bb761-9542-4494-9c42-2a2690d508c9",
+    "timestamp": "21:56:41",
+    "timestamp_ms": 1775397401426,
+    "world_timestamp_ms": 446380796,
+    "character_name": "system",
+    "action_type": "heartbeat",
+    "description": "tick=7 alive=7"
+  },
+  {
+    "id": "59098559-403d-4c88-baeb-95bfb511a861",
+    "timestamp": "21:56:41",
+    "timestamp_ms": 1775397401420,
+    "world_timestamp_ms": 446380796,
+    "character_name": "林屿",
+    "action_type": "heartbeat",
+    "description": "浏览朋友圈 10 条"
+  },
+  {
+    "id": "9028821a-2f3f-40fc-aea9-b9d8d1b4caad",
+    "timestamp": "21:56:41",
+    "timestamp_ms": 1775397401392,
+    "world_timestamp_ms": 446380796,
+    "character_name": "林晓",
+    "action_type": "heartbeat",
+    "description": "浏览朋友圈 10 条"
+  },
+  {
+    "id": "54cb9456-9b33-4cda-ab6e-6b1f54f5ee46",
+    "timestamp": "21:56:41",
+    "timestamp_ms": 1775397401364,
+    "world_timestamp_ms": 446380796,
+    "character_name": "林晓",
+    "action_type": "heartbeat",
+    "description": "浏览朋友圈 13 条"
+  },
+  {
+    "id": "78a82e8a-032a-430c-a088-cf1dfa22d19b",
+    "timestamp": "21:56:41",
+    "timestamp_ms": 1775397401339,
+    "world_timestamp_ms": 446380796,
+    "character_name": "林柔",
+    "action_type": "heartbeat",
+    "description": "浏览朋友圈 6 条"
+  },
+  {
+    "id": "3b4308c0-19ff-480c-9f12-39fd3d6de283",
+    "timestamp": "21:56:41",
+    "timestamp_ms": 1775397401313,
+    "world_timestamp_ms": 446380796,
+    "character_name": "小秦",
+    "action_type": "heartbeat",
+    "description": "浏览朋友圈 9 条"
+  },
+  {
+    "id": "9bb8a63a-cce5-4736-b531-5ae5859191ae",
+    "timestamp": "21:56:41",
+    "timestamp_ms": 1775397401288,
+    "world_timestamp_ms": 446380796,
+    "character_name": "测试角色",
+    "action_type": "heartbeat",
+    "description": "浏览朋友圈 4 条"
+  },
+  {
+    "id": "c7592f21-edde-4080-bf25-8befd21e54bf",
+    "timestamp": "21:56:41",
+    "timestamp_ms": 1775397401258,
+    "world_timestamp_ms": 446380796,
+    "character_name": "小李",
+    "action_type": "heartbeat",
+    "description": "浏览朋友圈 8 条"
+  },
+  {
+    "id": "f5c81987-9c57-4556-8efe-db5528d6eda8",
+    "timestamp": "21:55:41",
+    "timestamp_ms": 1775397341211,
+    "world_timestamp_ms": 446320792,
+    "character_name": "system",
+    "action_type": "heartbeat",
+    "description": "tick=7 alive=7"
+  },
+  {
+    "id": "cffa6b54-566d-44b9-8d1a-d86a66ec8cba",
+    "timestamp": "21:55:41",
+    "timestamp_ms": 1775397341207,
+    "world_timestamp_ms": 446320792,
+    "character_name": "林屿",
+    "action_type": "heartbeat",
+    "description": "浏览朋友圈 10 条"
+  },
+  {
+    "id": "33cacea8-e654-46cb-933a-4d075dc0b712",
+    "timestamp": "21:55:41",
+    "timestamp_ms": 1775397341182,
+    "world_timestamp_ms": 446320792,
+    "character_name": "林晓",
+    "action_type": "heartbeat",
+    "description": "浏览朋友圈 10 条"
+  },
+  {
+    "id": "dad9670c-321c-4d92-abf7-8fb361a13891",
+    "timestamp": "21:55:41",
+    "timestamp_ms": 1775397341159,
+    "world_timestamp_ms": 446320792,
+    "character_name": "林晓",
+    "action_type": "heartbeat",
+    "description": "浏览朋友圈 13 条"
+  },
+  {
+    "id": "d44be2ff-8bc8-4df8-a290-a4f598615f63",
+    "timestamp": "21:55:41",
+    "timestamp_ms": 1775397341137,
+    "world_timestamp_ms": 446320792,
+    "character_name": "林柔",
+    "action_type": "heartbeat",
+    "description": "浏览朋友圈 6 条"
+  },
+  {
+    "id": "4b9ff0a2-47fa-4243-827e-f1a8553e4f08",
+    "timestamp": "21:55:41",
+    "timestamp_ms": 1775397341067,
+    "world_timestamp_ms": 446320792,
+    "character_name": "小秦",
+    "action_type": "moment_post",
+    "description": "发布朋友圈：晨光刚好，咖啡微温。32 岁不慌不忙，一"
+  },
+  {
+    "id": "4d1126a4-5ecb-4d23-81f2-02e213dd1504",
+    "timestamp": "21:55:41",
+    "timestamp_ms": 1775397341060,
+    "world_timestamp_ms": 446320792,
     "character_name": "系统",
-    "action_type": "API 配置",
-    "description": "创建 API 配置\"nvidia\" (openai)"
+    "action_type": "错误",
+    "description": "头像生成异常: name 'character_title' is not defined"
   },
   {
-    "id": "515d316b-8744-441f-8c67-44ce1afecdfe",
-    "timestamp": "17:55:25",
-    "character_name": "测试角色",
-    "action_type": "成长",
-    "description": "年龄增长到30岁"
-  },
-  {
-    "id": "1ee669a9-06e3-4c04-9027-e3067744f9e3",
-    "timestamp": "17:55:25",
-    "character_name": "小李",
-    "action_type": "成长",
-    "description": "年龄增长到27岁"
-  },
-  {
-    "id": "f0f48099-4733-49da-ace3-efa2dc5059c2",
-    "timestamp": "17:52:25",
-    "character_name": "小李",
-    "action_type": "成长",
-    "description": "年龄增长到26岁"
-  },
-  {
-    "id": "72a6d61c-b182-4419-8fdc-de539ef0cb07",
-    "timestamp": "17:51:25",
-    "character_name": "测试角色",
-    "action_type": "成长",
-    "description": "年龄增长到29岁"
-  },
-  {
-    "id": "9cf12b35-7836-4c72-9a33-645c4f46b973",
-    "timestamp": "17:50:35",
+    "id": "e95bad7c-265a-46b9-8c59-d1797c53ec30",
+    "timestamp": "21:55:41",
+    "timestamp_ms": 1775397341050,
+    "world_timestamp_ms": 446320792,
     "character_name": "系统",
-    "action_type": "API 配置",
-    "description": "创建 API 配置\"OpenAI GPT-4\" (openai)"
+    "action_type": "头像生成",
+    "description": "头像生成成功"
   },
   {
-    "id": "236df613-22f7-4b4b-9dc6-50c66da93f07",
-    "timestamp": "17:44:02",
+    "id": "6e54ac36-efc6-4741-8ef0-ca40d4f3b909",
+    "timestamp": "21:55:41",
+    "timestamp_ms": 1775397341046,
+    "world_timestamp_ms": 446320792,
+    "character_name": "系统",
+    "action_type": "头像保存",
+    "description": "头像已保存到本地: df8eb7295b3644c29d12d5fdfc22c1f8.png"
+  },
+  {
+    "id": "aaa674d5-4f22-46c5-a816-f7ac419a6e53",
+    "timestamp": "21:55:36",
+    "timestamp_ms": 1775397336061,
+    "world_timestamp_ms": 446320792,
+    "character_name": "系统",
+    "action_type": "头像生成",
+    "description": "正在生成头像: A cozy morning study scene with soft golden sunlig..."
+  },
+  {
+    "id": "0ef1e2dd-0487-4d9a-b266-48ddcf839ff6",
+    "timestamp": "21:55:30",
+    "timestamp_ms": 1775397330710,
+    "world_timestamp_ms": 446260781,
+    "character_name": "小秦",
+    "action_type": "heartbeat",
+    "description": "浏览朋友圈 8 条"
+  },
+  {
+    "id": "e456397a-b709-46bc-9755-cf82821eda2f",
+    "timestamp": "21:55:30",
+    "timestamp_ms": 1775397330687,
+    "world_timestamp_ms": 446260781,
     "character_name": "测试角色",
-    "action_type": "对话",
-    "description": "回复：\"从温柔的角度来看，在干嘛确实有道理。...\""
+    "action_type": "heartbeat",
+    "description": "浏览朋友圈 4 条"
   },
   {
-    "id": "892ec40b-b08f-4d84-98f1-f380eeb2df6e",
-    "timestamp": "17:44:00",
-    "character_name": "测试角色",
-    "action_type": "对话",
-    "description": "回复：\"哈哈，怎么样，让我想起了之前的经历。...\""
-  },
-  {
-    "id": "6a277484-7d12-41ab-a8a4-69858810f6c9",
-    "timestamp": "17:43:55",
-    "character_name": "测试角色",
-    "action_type": "对话",
-    "description": "回复：\"哈哈，你是谁，让我想起了之前的经历。...\""
-  },
-  {
-    "id": "d179be9a-12eb-4171-9998-fb11be449abe",
-    "timestamp": "17:43:50",
-    "character_name": "测试角色",
-    "action_type": "对话",
-    "description": "回复：\"作为设计师，我觉得你好值得思考。...\""
-  },
-  {
-    "id": "4b8ec089-2cc9-4eb2-9059-648737a38c04",
-    "timestamp": "17:43:37",
-    "character_name": "测试角色",
-    "action_type": "对话",
-    "description": "回复：\"从温柔的角度来看，你好，测试聊天确实有道理。...\""
-  },
-  {
-    "id": "99351518-0caf-47a4-8dc6-c538b3e0addb",
-    "timestamp": "17:43:31",
-    "character_name": "测试角色",
-    "action_type": "创建",
-    "description": "角色\"测试角色\"被创建，28岁，设计师"
-  },
-  {
-    "id": "01125f96-af68-428a-94dc-7063548fc708",
-    "timestamp": "17:42:44",
+    "id": "75502435-287b-41d9-aeee-50ba90d53e22",
+    "timestamp": "21:55:30",
+    "timestamp_ms": 1775397330662,
+    "world_timestamp_ms": 446260781,
     "character_name": "小李",
-    "action_type": "创建",
-    "description": "角色\"小李\"被创建，25岁，学生"
+    "action_type": "heartbeat",
+    "description": "浏览朋友圈 9 条"
+  },
+  {
+    "id": "7f41382e-8b9f-46a1-b718-7f066a4292fb",
+    "timestamp": "21:54:30",
+    "timestamp_ms": 1775397270627,
+    "world_timestamp_ms": 446200768,
+    "character_name": "system",
+    "action_type": "heartbeat",
+    "description": "tick=7 alive=7"
+  },
+  {
+    "id": "37f72cfa-95af-462b-a95a-2704cb930e66",
+    "timestamp": "21:54:30",
+    "timestamp_ms": 1775397270623,
+    "world_timestamp_ms": 446200768,
+    "character_name": "林屿",
+    "action_type": "heartbeat",
+    "description": "浏览朋友圈 10 条"
+  },
+  {
+    "id": "0214680b-07ce-4c3f-9ef6-2db6f14b6395",
+    "timestamp": "21:54:30",
+    "timestamp_ms": 1775397270599,
+    "world_timestamp_ms": 446200768,
+    "character_name": "林晓",
+    "action_type": "heartbeat",
+    "description": "浏览朋友圈 10 条"
   }
 ]

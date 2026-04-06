@@ -1,0 +1,21 @@
+{
+  "time_speed": 1,
+  "enable_death_mechanism": false,
+  "enable_accidental_death": false,
+  "enable_auto_avatar_update": true,
+  "min_lifespan": 80,
+  "max_lifespan": 100,
+  "ui_language": "zh-CN",
+  "enable_auto_moment_interactions": true,
+  "auto_moment_interval_minutes": 5,
+  "auto_moment_last_run_time": 1775397396037,
+  "enable_heartbeat": true,
+  "heartbeat_interval_seconds": 60,
+  "heartbeat_last_run_time": 1775454988741,
+  "enable_task_engine": true,
+  "last_world_update_time": 1775397515691,
+  "world_elapsed_ms": 446500810,
+  "api_configs": {},
+  "character_residences": {},
+  "default_image_size": "1024x1024"
+}
