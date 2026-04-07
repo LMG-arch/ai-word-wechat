@@ -11,7 +11,7 @@
 **Windows:**
 ```bash
 cd server
-start.bat
+一键启动.bat
 ```
 
 **手动启动:**

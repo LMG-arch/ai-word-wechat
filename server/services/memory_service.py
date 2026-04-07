@@ -32,11 +32,18 @@ _memory_conn: Optional[sqlite3.Connection] = None
 def get_memory_conn() -> sqlite3.Connection:
     """获取 SQLite 连接"""
     global _memory_conn
-    if _memory_conn is None or _memory_conn.closed:
-        _memory_conn = sqlite3.connect(MEMORY_DB_FILE)
-        _memory_conn.row_factory = sqlite3.Row
-        _memory_conn.execute("PRAGMA journal_mode=WAL")
-        _memory_conn.execute("PRAGMA synchronous=NORMAL")
+    if _memory_conn is not None:
+        # sqlite3.Connection 没有 `.closed` 属性；用轻量查询探测连接是否仍可用
+        try:
+            _memory_conn.execute("SELECT 1")
+            return _memory_conn
+        except sqlite3.Error:
+            _memory_conn = None
+
+    _memory_conn = sqlite3.connect(MEMORY_DB_FILE)
+    _memory_conn.row_factory = sqlite3.Row
+    _memory_conn.execute("PRAGMA journal_mode=WAL")
+    _memory_conn.execute("PRAGMA synchronous=NORMAL")
     return _memory_conn
 
 
@@ -262,6 +269,11 @@ def can_view_moment(viewer_id: Optional[str], post: MomentPost) -> bool:
         return True
     if viewer_id == post.author_id:
         return True
+    visibility = (getattr(post, "visibility", None) or "friends").lower()
+    if visibility == "public":
+        return True
+    if visibility == "private":
+        return False
     intimacy = get_relationship_intimacy(viewer_id, post.author_id)
     return intimacy >= post.visible_min_intimacy
 

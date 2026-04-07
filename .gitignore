@@ -39,6 +39,8 @@ Thumbs.db
 server/data/avatars/
 server/data/image_prompts/
 server/data/*.db
+server/data/*.db-shm
+server/data/*.db-wal
 server/data/*.json
 !server/data/api_configs.json
 !server/data/characters.json

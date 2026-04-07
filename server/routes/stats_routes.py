@@ -103,7 +103,11 @@ async def get_character_logs(character_id: str, limit: int = 100):
     if not char:
         raise HTTPException(status_code=404, detail="角色不存在")
     logs = get_logs()
-    char_logs = [log for log in logs if char.name in log.character_name or log.character_name == "系统"]
+    # 精确匹配角色名，避免短名（如「张」）子串命中长名（如「张三」）；仍包含系统类日志
+    char_logs = [
+        log for log in logs
+        if log.character_name == char.name or log.character_name == "系统"
+    ]
     char_logs.sort(key=lambda x: x.timestamp, reverse=True)
     return {"success": True, "data": char_logs[:limit]}
 

@@ -148,6 +148,8 @@ class MomentPost(BaseModel):
     content: str
     image_url: Optional[str] = None
     image_prompt_file: Optional[str] = None
+    # public: 所有人可见；private: 仅作者可见；friends: 按亲密度阈值控制
+    visibility: str = "friends"
     trigger_type: str = "random"
     mood: Optional[str] = None
     timestamp: int = Field(default_factory=lambda: int(time.time() * 1000))

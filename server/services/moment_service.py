@@ -23,18 +23,28 @@ def fallback_moment_image_url(seed: str) -> str:
 
 def should_continue_reply(parent_content: str, reply_content: str, intimacy: float) -> bool:
     """判断是否继续回复（避免无限循环）"""
+    # 兼容两种亲密度量纲：0-1 或 0-100
+    if 0 <= intimacy <= 1:
+        intimacy = intimacy * 100
+
+    # 父内容过长时停止继续回复，避免刷屏/循环对话
+    if len(parent_content or "") > 300:
+        return False
     if len(reply_content) < 5:
         return False
     if parent_content == reply_content:
         return False
-    if intimacy < 10:
+    if intimacy <= 10:
         return False
     return True
 
 
 def has_commented_moment(post, author_id: str) -> bool:
     """检查是否已评论过该朋友圈"""
-    return any(c.author_id == author_id and c.parent_comment_id is None for c in (post.comments or []))
+    return any(
+        getattr(c, "author_id", None) == author_id and getattr(c, "parent_comment_id", None) is None
+        for c in (post.comments or [])
+    )
 
 
 def get_comment_by_id(comments: List, comment_id: str) -> Optional[Any]:

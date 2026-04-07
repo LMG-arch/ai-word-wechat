@@ -222,7 +222,8 @@ async def generate_ai_reply(
     生成 AI 角色回复（主函数）
     包含 Exec 协议指令解析、Session 管理、记忆压缩等完整逻辑。
     """
-    from main import session_manager, ExecProtocol, compress_context
+    # session_manager / ExecProtocol 定义在 models 中；compress_context 在本模块中
+    from models import session_manager, ExecProtocol
     from services.character_service import update_character_location
     from models import Company
 

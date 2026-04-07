@@ -438,3 +438,101 @@ async def trigger_proactive_message(character_id: str, context: str = "default")
     from services.scheduler import trigger_proactive_message as trigger_msg
     result = await trigger_msg(char, context=context)
     return {"success": True, "data": result}
+
+
+@router.get("/api/characters/{character_id}/life-experience")
+async def get_character_life_experience(character_id: str):
+    """获取角色人生经历摘要（任务/关系/反思/经验汇总）"""
+    from storage import get_tasks
+    from services.memory_service import get_memory_conn
+    from models import MemoryType
+
+    characters = get_characters()
+    char = next((c for c in characters if c.id == character_id), None)
+    if not char:
+        raise HTTPException(status_code=404, detail="角色不存在")
+
+    tasks = get_tasks()
+    completed = [
+        t for t in tasks
+        if (t.status.value if hasattr(t.status, "value") else str(t.status)) == "completed"
+        and (t.submitter_id == character_id or t.assignee_id == character_id or character_id in (t.collaborator_ids or []))
+    ]
+    completed.sort(key=lambda x: int(getattr(x, "completed_at", 0) or 0), reverse=True)
+
+    task_types_completed = []
+    seen_types = set()
+    for t in completed:
+        ttype = t.task_type.value if hasattr(t.task_type, "value") else str(t.task_type)
+        if ttype not in seen_types:
+            seen_types.add(ttype)
+            task_types_completed.append(ttype)
+
+    # 经验技能库：转为前端期望的列表结构
+    exp_list = []
+    exp_map = getattr(char, "experience_skills", {}) or {}
+    for task_type, exp in exp_map.items():
+        if not isinstance(exp, dict):
+            continue
+        count = int(exp.get("count", 0) or 0)
+        success_count = int(exp.get("success_count", 0) or 0)
+        success_rate = float(exp.get("success_rate") or (success_count / count if count else 0.0))
+        exp_list.append({
+            "task_type": str(task_type),
+            "count": count,
+            "success_rate": round(success_rate, 3),
+            "lessons": (exp.get("lessons") or [])[:10],
+        })
+    exp_list.sort(key=lambda x: x.get("count", 0), reverse=True)
+
+    # 关系数：SQLite relationships 表里以 from_id 为主（近似统计）
+    relationship_count = 0
+    try:
+        with get_memory_conn() as conn:
+            row = conn.execute(
+                "SELECT COUNT(DISTINCT to_id) AS c FROM relationships WHERE from_id = ? AND valid_to IS NULL",
+                (character_id,),
+            ).fetchone()
+            relationship_count = int(row["c"] if row and "c" in row.keys() else (row[0] if row else 0))
+    except Exception:
+        relationship_count = 0
+
+    # 最近反思：从 SQLite memories 取 reflection
+    recent_reflections = []
+    try:
+        mems = get_character_memories(character_id, limit=80)
+        for m in mems:
+            mtype = m.memory_type.value if hasattr(m.memory_type, "value") else str(m.memory_type)
+            if mtype == MemoryType.REFLECTION.value:
+                recent_reflections.append({
+                    "id": m.id,
+                    "content": (m.content or "")[:300],
+                    "created_at": m.timestamp,
+                })
+            if len(recent_reflections) >= 5:
+                break
+    except Exception:
+        recent_reflections = []
+
+    recent_tasks = [
+        {
+            "id": t.id,
+            "title": t.title,
+            "type": t.task_type.value if hasattr(t.task_type, "value") else str(t.task_type),
+            "status": t.status.value if hasattr(t.status, "value") else str(t.status),
+            "completed_at": t.completed_at or 0,
+        }
+        for t in completed[:5]
+    ]
+
+    data = {
+        "character_id": char.id,
+        "character_name": char.name,
+        "total_tasks_completed": len(completed),
+        "task_types_completed": task_types_completed,
+        "experience_skills": exp_list,
+        "relationship_count": relationship_count,
+        "recent_tasks": recent_tasks,
+        "recent_reflections": recent_reflections,
+    }
+    return {"success": True, "data": data}

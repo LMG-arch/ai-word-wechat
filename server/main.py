@@ -7,12 +7,13 @@ AI 社交世界 - 后端服务（精简入口）
 from __future__ import annotations
 
 import sys
-import io
 import os
 
 # 修复 Windows CMD 编码和颜色问题（测试环境下跳过）
 if sys.platform == 'win32' and not os.environ.get('PYTEST_CURRENT_TEST'):
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+    # 避免重新包裹 sys.stdout 导致底层 buffer 被关闭（import 时 print 可能报 closed file）
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     os.environ['LOGURU_COLORIZE'] = 'False'
 
 import asyncio
@@ -85,6 +86,7 @@ from routes.settings_routes import router as settings_router
 from routes.stats_routes import router as stats_router
 from routes.scheduler_routes import router as scheduler_router
 from routes.llm_usage_routes import router as llm_usage_router
+from routes.exec_routes import router as exec_router
 
 app.include_router(character_router)
 app.include_router(chat_router)
@@ -100,6 +102,7 @@ app.include_router(settings_router)
 app.include_router(stats_router)
 app.include_router(scheduler_router)
 app.include_router(llm_usage_router)
+app.include_router(exec_router)
 
 # ==================== 生命周期管理 ====================
 async def startup_event():
