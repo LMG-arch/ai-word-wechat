@@ -4634,12 +4634,6 @@
                         <label><input type="checkbox" id="enable-auto-avatar-update" onchange="saveSettingsFromForm()"> 年龄阶段变化时自动刷新头像</label>
                     </div>
                     <div class="form-group">
-                        <label><input type="checkbox" id="chat-use-llm" onchange="saveSettingsFromForm()"> 角色对话使用语言模型（关闭则仅模板兜底，不调用 LLM）</label>
-                    </div>
-                    <div class="form-group">
-                        <label><input type="checkbox" id="memory-use-embedding" onchange="saveSettingsFromForm()"> 记忆使用向量嵌入与语义召回（关闭则仅用关键词重叠，不调用向量/重排 API）</label>
-                    </div>
-                    <div class="form-group">
                         <label>图片默认大小</label>
                         <select id="default-image-size" onchange="saveSettingsFromForm()" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;font-size:14px;">
                             <option value="512x512">512x512（快速）</option>
@@ -4710,8 +4704,6 @@
                     if (document.getElementById('enable-death-mechanism')) document.getElementById('enable-death-mechanism').checked = !!settings.enable_death_mechanism;
                     if (document.getElementById('enable-accidental-death')) document.getElementById('enable-accidental-death').checked = !!settings.enable_accidental_death;
                     if (document.getElementById('enable-auto-avatar-update')) document.getElementById('enable-auto-avatar-update').checked = settings.enable_auto_avatar_update !== false;
-                    if (document.getElementById('chat-use-llm')) document.getElementById('chat-use-llm').checked = settings.chat_use_llm !== false;
-                    if (document.getElementById('memory-use-embedding')) document.getElementById('memory-use-embedding').checked = settings.memory_use_embedding !== false;
                     if (document.getElementById('min-lifespan')) document.getElementById('min-lifespan').value = settings.min_lifespan || 80;
                     if (document.getElementById('max-lifespan')) document.getElementById('max-lifespan').value = settings.max_lifespan || 100;
                     if (document.getElementById('default-image-size')) document.getElementById('default-image-size').value = settings.default_image_size || '1024x1024';
@@ -4730,8 +4722,6 @@
                     enable_death_mechanism: !!document.getElementById('enable-death-mechanism')?.checked,
                     enable_accidental_death: !!document.getElementById('enable-accidental-death')?.checked,
                     enable_auto_avatar_update: !!document.getElementById('enable-auto-avatar-update')?.checked,
-                    chat_use_llm: !!document.getElementById('chat-use-llm')?.checked,
-                    memory_use_embedding: !!document.getElementById('memory-use-embedding')?.checked,
                     min_lifespan: parseInt(document.getElementById('min-lifespan')?.value || '80'),
                     max_lifespan: parseInt(document.getElementById('max-lifespan')?.value || '100'),
                     default_image_size: document.getElementById('default-image-size')?.value || '1024x1024'

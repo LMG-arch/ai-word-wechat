@@ -249,3 +249,14 @@ def test_map_world_and_llm_usage_stats_ok():
     assert r2.status_code == 200
     assert r2.json().get("success") is True
 
+
+def test_pick_enabled_llm_prefers_higher_priority():
+    from models import ApiConfig
+    from storage import pick_enabled_llm_config
+
+    cfgs = [
+        ApiConfig(id="a", name="low", api_type="llm", provider="x", api_url="http://x", api_key="k", priority=1, is_enabled=True),
+        ApiConfig(id="b", name="high", api_type="llm", provider="x", api_url="http://x", api_key="k", priority=10, is_enabled=True),
+    ]
+    assert pick_enabled_llm_config(cfgs).id == "b"
+

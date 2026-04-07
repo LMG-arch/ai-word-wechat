@@ -328,10 +328,6 @@ class Settings(BaseModel):
     character_residences: Dict[str, str] = Field(default_factory=dict)
     default_image_size: str = "1024x1024"
     user_profile: UserProfile = Field(default_factory=UserProfile)
-    # 角色私聊是否调用语言模型；False 时仅用模板兜底回复，不消耗 LLM
-    chat_use_llm: bool = True
-    # 记忆写入/召回是否调用向量嵌入 API；False 时仅用关键词重叠，不调用向量与重排接口
-    memory_use_embedding: bool = True
 
 
 class ApiConfig(BaseModel):

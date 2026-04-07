@@ -23,13 +23,14 @@ from config import DATA_DIR, AVATARS_DIR, IMAGE_PROMPTS_DIR, VALID_IMAGE_SIZES, 
 from models import (
     Character, TaskItem, TaskType, CharacterSchedule, MomentPost,
     LlmUsageRecord, SuggestOccupationRequest, SuggestPersonalityRequest,
-    GenerateAvatarRequest,
+    GenerateAvatarRequest, ApiConfig,
 )
 from storage import (
     load_json, save_json, get_characters, save_characters,
     get_tasks, save_tasks, get_settings, save_settings,
     get_schedules, save_schedules, get_moments, save_moments,
-    get_api_configs, save_api_configs, get_api_config_by_id
+    get_api_configs, save_api_configs, get_api_config_by_id,
+    pick_enabled_llm_config, pick_enabled_vector_config,
 )
 
 # =====================================================================
@@ -208,7 +209,7 @@ def get_image_prompt_url(filename: str) -> Optional[str]:
 async def llm_choose_image_size(prompt: str, context: str = "") -> str:
     """调用LLM根据提示词内容自行选择图片大小"""
     configs = get_api_configs()
-    llm_config = next((c for c in configs if c.api_type == 'llm' and c.is_enabled), None)
+    llm_config = pick_enabled_llm_config(configs)
     if not llm_config:
         return "1024x1024"  # 默认返回
     
@@ -266,22 +267,9 @@ async def generate_ai_reply(
     from services.character_service import update_character_location
     from models import Company
 
-    # 1. 获取 API 配置
-    from storage import get_settings
-    settings = get_settings()
-    if not settings.chat_use_llm:
-        return get_fallback_reply(character, user_input)
-
+    # 1. 使用「API 配置」中已启用的 LLM（按 priority；角色可绑定 llm_model_id），无配置时才走模板兜底
     configs = get_api_configs()
-    llm_config = None
-    
-    # 优先使用角色单独设置的模型
-    if character.llm_model_id:
-        llm_config = get_api_config_by_id(character.llm_model_id)
-    
-    # 否则使用全局启用的 LLM 配置
-    if not llm_config:
-        llm_config = next((c for c in configs if c.api_type == 'llm' and c.is_enabled), None)
+    llm_config = pick_enabled_llm_config(configs, character.llm_model_id)
     
     if not llm_config:
         return get_fallback_reply(character, user_input)
@@ -688,7 +676,7 @@ async def build_self_portrait_image_prompt(character: Character) -> str:
     )
 
     configs = get_api_configs()
-    llm_config = next((c for c in configs if c.api_type == "llm" and c.is_enabled), None)
+    llm_config = pick_enabled_llm_config(configs)
     if not llm_config:
         return fallback
 
@@ -738,7 +726,7 @@ async def try_chat_self_portrait_image(character: Character) -> Optional[str]:
 async def generate_moment_content(character: Character, request) -> str:
     """生成朋友圈文字内容"""
     configs = get_api_configs()
-    llm_config = next((c for c in configs if c.api_type == 'llm' and c.is_enabled), None)
+    llm_config = pick_enabled_llm_config(configs)
     if not llm_config:
         return f"今天心情不错～"
     
@@ -783,7 +771,7 @@ async def generate_moment_image_plan(
     注意：此处不写 disk；由调用方在真正出图后调用 save_image_prompt_md，保证 md 与图像 API 入参一致。
     """
     configs = get_api_configs()
-    llm_config = next((c for c in configs if c.api_type == 'llm' and c.is_enabled), None)
+    llm_config = pick_enabled_llm_config(configs)
     if not llm_config:
         return _fallback_moment_image_plan(character, moment_content, mood)
 
@@ -851,7 +839,7 @@ async def generate_auto_comment_text(
 ) -> str:
     """生成自动评论文本"""
     configs = get_api_configs()
-    llm_config = next((c for c in configs if c.api_type == 'llm' and c.is_enabled), None)
+    llm_config = pick_enabled_llm_config(configs)
     if not llm_config:
         return random.choice(["不错！", "哈哈哈", "挺好的", "赞👍", "有意思"])
     
@@ -884,7 +872,7 @@ async def generate_auto_comment_text(
 async def generate_new_signature(character: Character, memory_context: str = "") -> Optional[str]:
     """AI 生成新个性签名"""
     configs = get_api_configs()
-    llm_config = next((c for c in configs if c.api_type == 'llm' and c.is_enabled), None)
+    llm_config = pick_enabled_llm_config(configs)
     if not llm_config:
         return None
     
@@ -917,7 +905,7 @@ async def generate_new_signature(character: Character, memory_context: str = "")
 async def llm_generate_world_map(user_prompt: str) -> Optional[Dict[str, Any]]:
     """调用 LLM 生成世界地图"""
     configs = get_api_configs()
-    llm_config = next((c for c in configs if c.api_type == 'llm' and c.is_enabled), None)
+    llm_config = pick_enabled_llm_config(configs)
     if not llm_config:
         return None
     
@@ -964,14 +952,9 @@ async def llm_generate_world_map(user_prompt: str) -> Optional[Dict[str, Any]]:
 # =====================================================================
 
 async def get_embedding(text: str) -> Optional[List[float]]:
-    """获取文本的向量嵌入"""
+    """使用 API 配置中已启用的向量模型（按 priority）请求嵌入；无配置则返回 None。"""
     configs = get_api_configs()
-    vector_config = None
-    for config in configs:
-        if config.api_type == 'vector' and config.is_enabled:
-            vector_config = config
-            break
-    
+    vector_config = pick_enabled_vector_config(configs)
     if not vector_config:
         return None
     
@@ -1001,6 +984,61 @@ async def get_embedding(text: str) -> Optional[List[float]]:
     return None
 
 
+async def rerank_documents_order(query: str, documents: List[str], cfg: ApiConfig) -> Optional[List[int]]:
+    """
+    使用 API 配置中的重排模型对文档排序，返回按相关性从高到低排列的下标列表。
+    兼容 results[].index + relevance_score、与 documents 等长的 scores 等常见 JSON 结构。
+    """
+    if not documents or not cfg:
+        return None
+    try:
+        headers = {"Authorization": f"Bearer {cfg.api_key}", "Content-Type": "application/json"}
+        payload: Dict[str, Any] = {
+            "query": query,
+            "documents": documents,
+            "top_n": len(documents),
+        }
+        if cfg.selected_model:
+            payload["model"] = cfg.selected_model
+        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=25)) as session:
+            async with session.post(cfg.api_url, headers=headers, json=payload) as response:
+                if response.status != 200:
+                    return None
+                result = await response.json()
+        rlist = result.get("results")
+        if isinstance(rlist, list) and rlist:
+            items = sorted(
+                rlist,
+                key=lambda x: float(x.get("relevance_score", x.get("score", 0))),
+                reverse=True,
+            )
+            out: List[int] = []
+            for it in items:
+                idx = it.get("index")
+                if isinstance(idx, int) and 0 <= idx < len(documents):
+                    out.append(idx)
+            seen = set(out)
+            for i in range(len(documents)):
+                if i not in seen:
+                    out.append(i)
+            return out if out else None
+        scores = result.get("scores") or result.get("relevance_scores")
+        if isinstance(scores, list) and len(scores) == len(documents):
+            return sorted(range(len(scores)), key=lambda i: float(scores[i]), reverse=True)
+        data = result.get("data")
+        if isinstance(data, list) and data and isinstance(data[0], dict) and "index" in data[0]:
+            items = sorted(
+                data,
+                key=lambda x: float(x.get("relevance_score", x.get("score", 0))),
+                reverse=True,
+            )
+            idxs = [int(x["index"]) for x in items if isinstance(x.get("index"), int) and 0 <= int(x["index"]) < len(documents)]
+            return idxs if idxs else None
+    except Exception:
+        pass
+    return None
+
+
 # =====================================================================
 #  AI 建议生成（职业/性格）
 # =====================================================================
@@ -1008,7 +1046,7 @@ async def get_embedding(text: str) -> Optional[List[float]]:
 async def suggest_occupation_for_character(request: SuggestOccupationRequest) -> str:
     """AI 建议职业"""
     configs = get_api_configs()
-    llm_config = next((c for c in configs if c.api_type == 'llm' and c.is_enabled), None)
+    llm_config = pick_enabled_llm_config(configs)
     if not llm_config:
         return "自由职业者"
     
@@ -1035,7 +1073,7 @@ async def suggest_occupation_for_character(request: SuggestOccupationRequest) ->
 async def suggest_personality_for_character(request: SuggestPersonalityRequest) -> str:
     """AI 建议性格"""
     configs = get_api_configs()
-    llm_config = next((c for c in configs if c.api_type == 'llm' and c.is_enabled), None)
+    llm_config = pick_enabled_llm_config(configs)
     if not llm_config:
         return "开朗"
     
@@ -1099,7 +1137,7 @@ async def _generate_task_image(task: TaskItem, assignee: Optional[Character]) ->
 async def _generate_task_code(task: TaskItem, assignee: Optional[Character]) -> str:
     """生成任务代码"""
     configs = get_api_configs()
-    llm_config = next((c for c in configs if c.api_type == 'llm' and c.is_enabled), None)
+    llm_config = pick_enabled_llm_config(configs)
     if not llm_config:
         return f"# 任务: {task.title}\n# 暂无代码输出"
     
@@ -1131,7 +1169,7 @@ async def _generate_task_code(task: TaskItem, assignee: Optional[Character]) -> 
 async def _generate_task_text(task: TaskItem, assignee: Optional[Character]) -> str:
     """生成任务文本"""
     configs = get_api_configs()
-    llm_config = next((c for c in configs if c.api_type == 'llm' and c.is_enabled), None)
+    llm_config = pick_enabled_llm_config(configs)
     if not llm_config:
         return f"关于任务「{task.title}」的分析报告..."
     
@@ -1164,7 +1202,7 @@ async def _generate_task_text(task: TaskItem, assignee: Optional[Character]) -> 
 async def _generate_task_research(task: TaskItem, assignee: Optional[Character]) -> str:
     """生成任务研究报告"""
     configs = get_api_configs()
-    llm_config = next((c for c in configs if c.api_type == 'llm' and c.is_enabled), None)
+    llm_config = pick_enabled_llm_config(configs)
     if not llm_config:
         return f"研究报告：{task.title}\n\n待补充..."
     
@@ -1201,7 +1239,7 @@ async def _generate_task_research(task: TaskItem, assignee: Optional[Character])
 async def ai_auto_review_task(task: TaskItem, assignee: Character) -> Dict[str, Any]:
     """AI 自动审核任务"""
     configs = get_api_configs()
-    llm_config = next((c for c in configs if c.api_type == 'llm' and c.is_enabled), None)
+    llm_config = pick_enabled_llm_config(configs)
     if not llm_config:
         return _simple_rule_based_review(task, assignee)
     

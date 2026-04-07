@@ -16,7 +16,7 @@ from datetime import datetime
 from models import Memory, MemoryType
 from models import MomentPost
 from storage import (
-    load_json, save_json, get_characters, get_settings, get_api_configs
+    load_json, save_json, get_characters, get_api_configs, pick_enabled_rerank_config
 )
 from config import (
     MEMORIES_FILE, MEMORY_DB_FILE, MILLISECONDS_PER_DAY
@@ -200,16 +200,14 @@ async def store_memory(
     related_entities: Optional[List[str]] = None,
     metadata: Optional[Dict[str, Any]] = None,
 ) -> Memory:
-    """存储记忆"""
+    """存储记忆（向量来自 API 配置中已启用的 embedding 模型，无配置则不写入向量）。"""
     from services.ai_service import get_embedding
 
-    settings = get_settings()
     embedding = None
-    if settings.memory_use_embedding:
-        try:
-            embedding = await get_embedding(content[:500])
-        except Exception:
-            pass
+    try:
+        embedding = await get_embedding(content[:500])
+    except Exception:
+        pass
     
     memory = Memory(
         id=str(uuid.uuid4()),
@@ -530,10 +528,9 @@ async def recall_memories(
     top_k: int = 10,
     time_range: tuple = None
 ) -> List[Memory]:
-    """召回相关记忆"""
-    from services.ai_service import get_embedding
+    """召回相关记忆：先用向量配置做相似度粗排，若有 rerank 配置再精排。"""
+    from services.ai_service import get_embedding, rerank_documents_order
 
-    settings = get_settings()
     char_memories = get_character_memories(character_id, limit=300)
     
     if time_range:
@@ -543,9 +540,7 @@ async def recall_memories(
             if start_time <= m.timestamp <= end_time
         ]
     
-    query_embedding = None
-    if settings.memory_use_embedding:
-        query_embedding = await get_embedding(query)
+    query_embedding = await get_embedding(query)
     
     scored_memories = []
     for memory in char_memories:
@@ -562,7 +557,25 @@ async def recall_memories(
         scored_memories.append((memory, final_score))
     
     scored_memories.sort(key=lambda x: x[1], reverse=True)
-    result = [m for m, score in scored_memories[:top_k]]
+    pool_size = max(top_k * 6, 36)
+    pool = scored_memories[: min(pool_size, len(scored_memories))]
+    memories_only = [m for m, _ in pool]
+    cfg_rerank = pick_enabled_rerank_config(get_api_configs())
+    if cfg_rerank and len(memories_only) > 1:
+        docs = [m.content[:500] for m in memories_only]
+        order = await rerank_documents_order(query, docs, cfg_rerank)
+        if order:
+            reordered = []
+            seen = set()
+            for i in order:
+                if isinstance(i, int) and 0 <= i < len(memories_only) and i not in seen:
+                    seen.add(i)
+                    reordered.append(memories_only[i])
+            for i in range(len(memories_only)):
+                if i not in seen:
+                    reordered.append(memories_only[i])
+            memories_only = reordered
+    result = memories_only[:top_k]
     
     for memory in result:
         memory.access_count += 1

@@ -387,6 +387,37 @@ def get_api_config_by_id(config_id: str) -> Optional[ApiConfig]:
     return None
 
 
+def pick_enabled_llm_config(configs: List[ApiConfig], character_llm_id: Optional[str] = None) -> Optional[ApiConfig]:
+    """在已启用的 API 配置中选 LLM：角色可绑定 llm_model_id，否则取 priority 最高（同优先级取 updated_at 较新）。"""
+    if character_llm_id:
+        c = next((x for x in configs if x.id == character_llm_id), None)
+        if c and c.api_type == "llm" and c.is_enabled:
+            return c
+    llms = [c for c in configs if c.api_type == "llm" and c.is_enabled]
+    if not llms:
+        return None
+    llms.sort(key=lambda x: (getattr(x, "priority", 0), getattr(x, "updated_at", 0)), reverse=True)
+    return llms[0]
+
+
+def pick_enabled_vector_config(configs: List[ApiConfig]) -> Optional[ApiConfig]:
+    """已启用的向量嵌入配置，按 priority / updated_at 选用。"""
+    vecs = [c for c in configs if c.api_type == "vector" and c.is_enabled]
+    if not vecs:
+        return None
+    vecs.sort(key=lambda x: (getattr(x, "priority", 0), getattr(x, "updated_at", 0)), reverse=True)
+    return vecs[0]
+
+
+def pick_enabled_rerank_config(configs: List[ApiConfig]) -> Optional[ApiConfig]:
+    """已启用的重排模型配置，按 priority / updated_at 选用。"""
+    rrs = [c for c in configs if c.api_type == "rerank" and c.is_enabled]
+    if not rrs:
+        return None
+    rrs.sort(key=lambda x: (getattr(x, "priority", 0), getattr(x, "updated_at", 0)), reverse=True)
+    return rrs[0]
+
+
 # ==================== 角色历史 ====================
 
 def get_character_histories(character_id: Optional[str] = None) -> List[CharacterHistoryEntry]:

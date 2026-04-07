@@ -85,8 +85,6 @@ async def update_app_settings(settings_data: Dict[str, Any]):
     merged["heartbeat_interval_seconds"] = max(
         10, min(600, int(merged.get("heartbeat_interval_seconds", current_settings.heartbeat_interval_seconds)))
     )
-    merged["chat_use_llm"] = bool(merged.get("chat_use_llm", current_settings.chat_use_llm))
-    merged["memory_use_embedding"] = bool(merged.get("memory_use_embedding", current_settings.memory_use_embedding))
     merged["min_lifespan"] = int(merged.get("min_lifespan", current_settings.min_lifespan))
     merged["max_lifespan"] = int(merged.get("max_lifespan", current_settings.max_lifespan))
     if merged["min_lifespan"] > merged["max_lifespan"]:
