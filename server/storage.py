@@ -13,11 +13,12 @@ from typing import Optional, List, Dict, Any
 
 from models import (
     Character, ChatMessage, MomentPost, TaskItem, Company, EconomyLog,
-    CharacterSchedule, LocationRecord, LogEntry, Settings, ApiConfig,
+    CharacterSchedule, LocationRecord, LogEntry, Settings, ApiConfig, UserProfile,
     Memory, PrivateGroupChat, CharacterHistoryEntry, MemoryType,
-    LlmUsageRecord, SuggestOccupationRequest, SuggestPersonalityRequest
+    LlmUsageRecord, ImageUsageRecord, SuggestOccupationRequest, SuggestPersonalityRequest
 )
 from config import (
+    DATA_DIR, AVATARS_DIR,
     CHARACTERS_FILE, MESSAGES_FILE, MOMENTS_FILE, SCHEDULES_FILE,
     SETTINGS_FILE, LOGS_FILE, TASKS_FILE, COMPANIES_FILE,
     ECONOMY_LOGS_FILE, LOCATION_HISTORY_FILE, CHARACTER_HISTORY_FILE,
@@ -183,6 +184,33 @@ def save_characters(characters: List[Character]):
     save_json(CHARACTERS_FILE, [char.model_dump() for char in characters])
 
 
+def repair_broken_local_avatar_urls() -> int:
+    """
+    avatar_url 若为 /avatars/<file> 但 web/data 下均无该文件，则清空引用，避免反复 404。
+    启动时在 sync_legacy 之后调用。
+    """
+    legacy_av = os.path.join(DATA_DIR, "avatars")
+    chars = get_characters()
+    fixed = 0
+    for c in chars:
+        u = c.avatar_url
+        if not u or not isinstance(u, str):
+            continue
+        if not u.startswith("/avatars/"):
+            continue
+        fn = u[len("/avatars/"):].strip()
+        if not fn or ".." in fn or "/" in fn or "\\" in fn:
+            continue
+        primary = os.path.join(AVATARS_DIR, fn)
+        legacy = os.path.join(legacy_av, fn)
+        if not os.path.isfile(primary) and not os.path.isfile(legacy):
+            c.avatar_url = None
+            fixed += 1
+    if fixed:
+        save_characters(chars)
+    return fixed
+
+
 # ==================== 消息存储 ====================
 
 def get_messages() -> List[ChatMessage]:
@@ -322,8 +350,11 @@ def get_settings() -> Settings:
             "heartbeat_interval_seconds": 60,
             "heartbeat_last_run_time": 0,
             "world_elapsed_ms": 0,
+            "user_profile": UserProfile().model_dump(),
         }
     )
+    if isinstance(data, dict) and not data.get("user_profile"):
+        data["user_profile"] = UserProfile().model_dump()
     settings = Settings(**data) if isinstance(data, dict) else Settings()
     settings.time_speed = max(1, min(30, int(settings.time_speed)))
     settings.auto_moment_interval_minutes = max(1, min(120, int(settings.auto_moment_interval_minutes)))
@@ -399,9 +430,22 @@ def record_character_history(character: Character, event_type: str, description:
 
 # ==================== LLM 用量记录 ====================
 
-def get_llm_usage_records(limit: int = 200) -> List[LlmUsageRecord]:
+def get_llm_usage_records(limit: int = 200) -> List[Any]:
+    """llm_usage.json 混存文本 LLM 记录与图像 API 记录，需按字段区分。"""
     data = load_json(LLM_USAGE_FILE, [])
-    records = [LlmUsageRecord(**item) for item in data]
+    records: List[Any] = []
+    for item in data:
+        if not isinstance(item, dict):
+            continue
+        try:
+            if "prompt_tokens" in item:
+                records.append(LlmUsageRecord(**item))
+            elif "success" in item:
+                records.append(ImageUsageRecord(**item))
+            else:
+                records.append(LlmUsageRecord(**item))
+        except Exception:
+            continue
     records.sort(key=lambda x: x.timestamp, reverse=True)
     return records[:limit]
 

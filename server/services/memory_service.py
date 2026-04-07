@@ -201,14 +201,15 @@ async def store_memory(
     metadata: Optional[Dict[str, Any]] = None,
 ) -> Memory:
     """存储记忆"""
-    # 获取向量嵌入
     from services.ai_service import get_embedding
-    
+
+    settings = get_settings()
     embedding = None
-    try:
-        embedding = await get_embedding(content[:500])
-    except Exception:
-        pass
+    if settings.memory_use_embedding:
+        try:
+            embedding = await get_embedding(content[:500])
+        except Exception:
+            pass
     
     memory = Memory(
         id=str(uuid.uuid4()),
@@ -266,6 +267,8 @@ def get_relationship_intimacy(viewer_id: str, author_id: str) -> float:
 def can_view_moment(viewer_id: Optional[str], post: MomentPost) -> bool:
     """检查是否可以查看朋友圈"""
     if not viewer_id:
+        return True
+    if viewer_id == "user":
         return True
     if viewer_id == post.author_id:
         return True
@@ -529,7 +532,8 @@ async def recall_memories(
 ) -> List[Memory]:
     """召回相关记忆"""
     from services.ai_service import get_embedding
-    
+
+    settings = get_settings()
     char_memories = get_character_memories(character_id, limit=300)
     
     if time_range:
@@ -539,7 +543,9 @@ async def recall_memories(
             if start_time <= m.timestamp <= end_time
         ]
     
-    query_embedding = await get_embedding(query)
+    query_embedding = None
+    if settings.memory_use_embedding:
+        query_embedding = await get_embedding(query)
     
     scored_memories = []
     for memory in char_memories:

@@ -233,3 +233,19 @@ def test_create_task_with_json_body(monkeypatch):
     assert resp.json()["data"]["title"] == "冒烟任务"
     assert len(bucket) == 1
 
+
+def test_map_world_and_llm_usage_stats_ok():
+    """地图世界坐标与用量统计接口应返回 JSON 200（避免 500 / 混用记录解析错误）。"""
+    import main
+
+    client = TestClient(main.app)
+    r = client.get("/api/map/world")
+    assert r.status_code == 200
+    body = r.json()
+    assert body.get("success") is True
+    assert "characters" in (body.get("data") or {})
+
+    r2 = client.get("/api/llm-usage/stats")
+    assert r2.status_code == 200
+    assert r2.json().get("success") is True
+

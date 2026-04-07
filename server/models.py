@@ -299,6 +299,14 @@ class Memory(BaseModel):
     metadata: dict = Field(default_factory=dict)
 
 
+class UserProfile(BaseModel):
+    """真实用户（操作者）资料，与 AI 角色区分；朋友圈点赞/评论使用 author_id=\"user\" 与此处昵称、头像一致。"""
+    nickname: str = "用户"
+    avatar_url: Optional[str] = None
+    signature: str = ""
+    experience: str = ""
+
+
 class Settings(BaseModel):
     time_speed: int = 30
     enable_death_mechanism: bool = False
@@ -319,6 +327,11 @@ class Settings(BaseModel):
     api_configs: Dict[str, Any] = Field(default_factory=dict)
     character_residences: Dict[str, str] = Field(default_factory=dict)
     default_image_size: str = "1024x1024"
+    user_profile: UserProfile = Field(default_factory=UserProfile)
+    # 角色私聊是否调用语言模型；False 时仅用模板兜底回复，不消耗 LLM
+    chat_use_llm: bool = True
+    # 记忆写入/召回是否调用向量嵌入 API；False 时仅用关键词重叠，不调用向量与重排接口
+    memory_use_embedding: bool = True
 
 
 class ApiConfig(BaseModel):

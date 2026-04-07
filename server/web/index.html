@@ -1356,6 +1356,31 @@
             <div class="list-container">
                 <div style="padding: 16px;">
                     <div class="info-card">
+                        <div class="info-card-title">我的账号（真实用户）</div>
+                        <div class="item-subtitle" style="margin-bottom:8px;">用于朋友圈点赞/评论与发圈，与 AI 角色无关。</div>
+                        <div class="form-group">
+                            <label>昵称</label>
+                            <input type="text" id="user-profile-nickname" placeholder="显示名称" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;">
+                        </div>
+                        <div class="form-group">
+                            <label>头像</label>
+                            <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+                                <div id="user-profile-avatar-preview" style="width:56px;height:56px;border-radius:8px;background:#eee;display:flex;align-items:center;justify-content:center;font-size:20px;">我</div>
+                                <input type="file" id="user-profile-avatar-input" accept="image/*" style="display:none" onchange="onUserProfileAvatarFile(event)">
+                                <button type="button" class="btn btn-secondary" onclick="document.getElementById('user-profile-avatar-input').click()">选择</button>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>个性签名</label>
+                            <input type="text" id="user-profile-signature" placeholder="一句话介绍自己" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;">
+                        </div>
+                        <div class="form-group">
+                            <label>经历 / 简介</label>
+                            <textarea id="user-profile-experience" rows="3" placeholder="可写背景、爱好等（用于 AI 理解你的评论风格）" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;"></textarea>
+                        </div>
+                        <button type="button" class="btn btn-primary" onclick="saveUserProfile()">保存我的资料</button>
+                    </div>
+                    <div class="info-card">
                         <div class="info-card-title">系统与数据</div>
                         <div class="list-item" onclick="showEconomyPage()">
                             <div class="item-content">
@@ -1501,8 +1526,9 @@
             <!-- 动态生成 -->
         </div>
         <div class="chat-input-area">
+            <input type="file" id="chat-image-input" accept="image/*" style="display:none" onchange="onChatImageFileSelected(event)">
             <input type="text" class="chat-input" id="chat-input" placeholder="输入消息..." onkeypress="if(event.key==='Enter') sendChatMessage()">
-            <button class="send-btn" style="background:#999;" onclick="sendImageMessage()">图</button>
+            <button type="button" class="send-btn" style="background:#999;" onclick="sendImageMessage()">图</button>
             <button class="send-btn" style="background:#888;" onclick="sendVoiceMessage()">语</button>
             <button class="send-btn" onclick="sendChatMessage()">发送</button>
         </div>
@@ -1802,9 +1828,21 @@
         </div>
     </div>
 
+    <!-- 朋友圈绘画提示词（小窗预览，不跳转） -->
+    <div class="modal-overlay" id="image-prompt-modal" onclick="if (event.target === this) closeImagePromptModal()">
+        <div class="modal" style="max-width: 420px; max-height: 78vh;" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <span class="modal-title">绘画提示词</span>
+                <button type="button" class="modal-close" onclick="closeImagePromptModal()" aria-label="关闭">×</button>
+            </div>
+            <div class="modal-body" id="image-prompt-modal-body" style="max-height: 62vh; overflow: auto; font-size: 13px; line-height: 1.5; white-space: pre-wrap; word-break: break-word; color: #333; background: #f7f7f7; border-radius: 6px; padding: 12px; margin: 0 16px 16px;"></div>
+        </div>
+    </div>
+
     <script>
         // API 基础地址
         const API_BASE = window.location.origin + '/api';
+        window.cachedUserProfile = { nickname: '用户', avatar_url: null, signature: '', experience: '' };
         let discoverMapPollTimer = null;
         let discoverMapMetaKey = '';
         let discoverMapBuilt = false;
@@ -1929,8 +1967,15 @@
                     fetch(`${API_BASE}/llm-usage/stats`),
                     fetch(`${API_BASE}/llm-usage/history?limit=50`)
                 ]);
-                const statsData = await statsRes.json();
-                const historyData = await historyRes.json();
+                const statsText = await statsRes.text();
+                const historyText = await historyRes.text();
+                let statsData, historyData;
+                try { statsData = statsText ? JSON.parse(statsText) : {}; } catch (e) {
+                    throw new Error((statsText && statsText.slice(0, 120)) || '用量统计非 JSON');
+                }
+                try { historyData = historyText ? JSON.parse(historyText) : {}; } catch (e) {
+                    throw new Error((historyText && historyText.slice(0, 120)) || '用量历史非 JSON');
+                }
                 const stats = statsData.success ? statsData.data : {};
                 const records = historyData.success ? historyData.data : [];
                 const formatNum = (n) => Number(n || 0).toLocaleString();
@@ -1974,9 +2019,9 @@
                     </div>
                 `).join('') : '<div style="padding:8px;color:var(--text-hint);">暂无数据</div>';
                 
-                // 历史记录表格 - 区分 LLM 和图像
-                const isImageEndpoint = (ep) => ['avatar_generation', 'avatar_refresh', 'task_image_generation', 'task_image', 'moment_image'].includes(ep);
-                const filteredRecords = records.filter(r => !isImageEndpoint(r.endpoint));
+                // 历史记录表格 - 区分 LLM（有 token）与图像 API（有 success）
+                const isLlmUsageRow = (r) => typeof r.prompt_tokens === 'number';
+                const filteredRecords = records.filter(isLlmUsageRow);
                 const recordsHtml = filteredRecords.length > 0 ? `
                     <table style="width:100%;border-collapse:collapse;font-size:12px;">
                         <thead><tr style="background:var(--bg-color);border-bottom:1px solid var(--divider);">
@@ -2002,8 +2047,7 @@
                     </table>
                 ` : '<div style="padding:8px;color:var(--text-hint);">暂无记录</div>';
                 
-                // 图像历史记录
-                const imageRecords = records.filter(r => isImageEndpoint(r.endpoint));
+                const imageRecords = records.filter(r => typeof r.success === 'boolean');
                 const imageRecordsHtml = imageRecords.length > 0 ? `
                     <table style="width:100%;border-collapse:collapse;font-size:12px;">
                         <thead><tr style="background:var(--bg-color);border-bottom:1px solid var(--divider);">
@@ -2016,7 +2060,7 @@
                                 <tr style="border-bottom:1px solid var(--divider);">
                                     <td style="padding:4px;">${formatTimestamp(r.timestamp)}</td>
                                     <td style="padding:4px;">${escapeHtml(r.endpoint || '-')}</td>
-                                    <td style="padding:4px;">${r.prompt_tokens > 0 ? '<span style="color:var(--success-color, #07c160);">✅ 成功</span>' : '<span style="color:var(--error-color, #fa5151);">❌ 失败</span>'}</td>
+                                    <td style="padding:4px;">${r.success === true ? '<span style="color:var(--success-color, #07c160);">✅ 成功</span>' : '<span style="color:var(--error-color, #fa5151);">❌ 失败</span>'}</td>
                                 </tr>
                             `).join('')}
                         </tbody>
@@ -3556,7 +3600,8 @@
 
         function renderMessageBubble(msg) {
             if (msg.message_type === 'image' && msg.image_url) {
-                return `<div>${escapeHtml(msg.content || '[图片消息]')}</div><img src="${msg.image_url}" style="margin-top:6px; width: 180px; max-width: 100%; border-radius: 8px;">`;
+                const imgSrc = getAvatarUrl(msg.image_url);
+                return `<div>${escapeHtml(msg.content || '[图片消息]')}</div><img src="${escapeHtml(imgSrc)}" style="margin-top:6px; width: 180px; max-width: 100%; border-radius: 8px;">`;
             }
             if (msg.message_type === 'voice' && msg.voice_url) {
                 return `<div>${escapeHtml(msg.content || '[语音消息]')}</div><audio controls src="${msg.voice_url}" style="margin-top:6px; width: 180px;"></audio>`;
@@ -3564,11 +3609,46 @@
             return escapeHtml(msg.content || '');
         }
 
-        async function sendImageMessage() {
-            if (!currentConversation) return;
-            const imageUrl = prompt('请输入图片URL');
-            if (!imageUrl) return;
-            await sendMediaMessage('image', imageUrl);
+        async function uploadChatImageFile(file) {
+            const fd = new FormData();
+            fd.append('file', file);
+            const res = await fetch(`${API_BASE}/uploads/chat-image`, { method: 'POST', body: fd });
+            const text = await res.text();
+            let data;
+            try {
+                data = text ? JSON.parse(text) : {};
+            } catch (e) {
+                throw new Error((text && text.slice(0, 120)) || '上传响应不是 JSON');
+            }
+            if (!res.ok || !data.success) {
+                throw new Error((data && data.detail) || `上传失败 HTTP ${res.status}`);
+            }
+            return data.data.url;
+        }
+
+        async function onChatImageFileSelected(ev) {
+            const f = ev.target.files && ev.target.files[0];
+            ev.target.value = '';
+            if (!f || !currentConversation) {
+                if (!currentConversation) showToast('请先打开聊天');
+                return;
+            }
+            try {
+                showToast('正在上传图片…');
+                const url = await uploadChatImageFile(f);
+                await sendMediaMessage('image', url);
+                showToast('图片已发送');
+            } catch (err) {
+                showToast('发送失败：' + (err.message || err));
+            }
+        }
+
+        function sendImageMessage() {
+            if (!currentConversation) {
+                showToast('请先打开聊天');
+                return;
+            }
+            document.getElementById('chat-image-input').click();
         }
 
         async function sendVoiceMessage() {
@@ -3911,6 +3991,15 @@
 
             try {
                 await ensureCharactersCached();
+                try {
+                    const sr = await fetch(`${API_BASE}/settings`);
+                    if (sr.ok) {
+                        const sj = await sr.json();
+                        if (sj.success && sj.data && sj.data.user_profile) {
+                            window.cachedUserProfile = sj.data.user_profile;
+                        }
+                    }
+                } catch (e) { /* 忽略 */ }
                 const [momentsResp, memorialResp] = await Promise.all([
                     fetch(`${API_BASE}/moments`),
                     fetch(`${API_BASE}/memorials`)
@@ -3941,11 +4030,18 @@
                             <button class="btn btn-primary" onclick="postUserMoment()">发表</button>
                         </div>
                         ${moments.length > 0 ? moments.map(post => {
-                            // 查找角色头像
                             const authorChar = cachedCharacters.find(c => c.id === post.author_id);
-                            const authorAvatarHtml = authorChar && authorChar.avatar_url 
-                                ? `<img src="${getAvatarUrl(authorChar.avatar_url)}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" onerror="this.style.display='none';this.parentElement.textContent='${escapeHtml((post.author_name || '?').slice(0, 1))}';">`
-                                : escapeHtml((post.author_name || '?').slice(0, 1));
+                            let authorAvatarHtml;
+                            if (post.author_id === 'user') {
+                                const uav = (window.cachedUserProfile && window.cachedUserProfile.avatar_url) ? window.cachedUserProfile.avatar_url : null;
+                                authorAvatarHtml = uav
+                                    ? `<img src="${escapeHtml(getAvatarUrl(uav))}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" onerror="this.style.display='none';this.parentElement.textContent='${escapeHtml((post.author_name || '?').slice(0, 1))}';">`
+                                    : escapeHtml((post.author_name || '?').slice(0, 1));
+                            } else {
+                                authorAvatarHtml = authorChar && authorChar.avatar_url
+                                    ? `<img src="${getAvatarUrl(authorChar.avatar_url)}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" onerror="this.style.display='none';this.parentElement.textContent='${escapeHtml((post.author_name || '?').slice(0, 1))}';">`
+                                    : escapeHtml((post.author_name || '?').slice(0, 1));
+                            }
                             const imgUrl = post.image_url || `https://picsum.photos/seed/m${encodeURIComponent(String(post.id).slice(0, 16))}/800/600`;
                             const comments = (post.comments || []).slice(0, 8);
                             const commentsBlock = comments.length ? `
@@ -3962,7 +4058,7 @@
                                         <div class="moment-img-wrap">
                                             <img src="${escapeHtml(imgUrl)}" alt="" loading="lazy" onerror="this.src='https://picsum.photos/seed/fallback/800/600'">
                                         </div>
-                                        ${post.image_prompt_file ? `<div style="margin-top:4px;"><a href="/api/image-prompts/${escapeHtml(post.image_prompt_file)}" target="_blank" style="font-size:12px;color:#07c160;text-decoration:none;">🎨 查看绘画提示词</a></div>` : ''}
+                                        ${post.image_prompt_file ? `<div style="margin-top:6px;"><button type="button" class="btn btn-secondary" style="font-size:12px;padding:4px 12px;border-radius:4px;" onclick='openImagePromptModal(${JSON.stringify(post.image_prompt_file)})'>🎨 绘画提示词</button></div>` : ''}
                                         <div class="moment-meta">${formatTime(post.timestamp)}</div>
                                         ${commentsBlock}
                                         <div class="moment-actions-bar">
@@ -4145,11 +4241,35 @@
             }
             try {
                 const metaRes = await fetch(`${API_BASE}/map/meta`);
-                const metaJson = await metaRes.json();
+                if (!metaRes.ok) {
+                    const errText = await metaRes.text().catch(() => '');
+                    let detail = errText.slice(0, 160) || `HTTP ${metaRes.status}`;
+                    if (errText && errText.trim().startsWith('{')) {
+                        try { detail = JSON.parse(errText).detail || detail; } catch (e) { /* 非 JSON */ }
+                    }
+                    throw new Error(detail);
+                }
+                const metaText = await metaRes.text();
+                let metaJson;
+                try { metaJson = metaText ? JSON.parse(metaText) : {}; } catch (e) {
+                    throw new Error((metaText && metaText.slice(0, 120)) || '地图元数据非 JSON');
+                }
                 const meta = metaJson.success ? metaJson.data : {};
                 const metaKey = JSON.stringify(meta);
                 const worldRes = await fetch(`${API_BASE}/map/world`);
-                const worldJson = await worldRes.json();
+                if (!worldRes.ok) {
+                    const errText = await worldRes.text().catch(() => '');
+                    let detail = errText.slice(0, 160) || `HTTP ${worldRes.status}`;
+                    if (errText && errText.trim().startsWith('{')) {
+                        try { detail = JSON.parse(errText).detail || detail; } catch (e) { /* 非 JSON */ }
+                    }
+                    throw new Error(detail);
+                }
+                const worldText = await worldRes.text();
+                let worldJson;
+                try { worldJson = worldText ? JSON.parse(worldText) : {}; } catch (e) {
+                    throw new Error((worldText && worldText.slice(0, 120)) || '地图数据非 JSON');
+                }
                 const worldData = worldJson.success ? (worldJson.data || {}) : {};
                 const points = worldData.characters || worldData.data || [];
                 const companies = worldData.companies || [];
@@ -4514,6 +4634,12 @@
                         <label><input type="checkbox" id="enable-auto-avatar-update" onchange="saveSettingsFromForm()"> 年龄阶段变化时自动刷新头像</label>
                     </div>
                     <div class="form-group">
+                        <label><input type="checkbox" id="chat-use-llm" onchange="saveSettingsFromForm()"> 角色对话使用语言模型（关闭则仅模板兜底，不调用 LLM）</label>
+                    </div>
+                    <div class="form-group">
+                        <label><input type="checkbox" id="memory-use-embedding" onchange="saveSettingsFromForm()"> 记忆使用向量嵌入与语义召回（关闭则仅用关键词重叠，不调用向量/重排 API）</label>
+                    </div>
+                    <div class="form-group">
                         <label>图片默认大小</label>
                         <select id="default-image-size" onchange="saveSettingsFromForm()" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;font-size:14px;">
                             <option value="512x512">512x512（快速）</option>
@@ -4560,6 +4686,21 @@
 
                 if (result.success) {
                     const settings = result.data;
+                    if (settings.user_profile) {
+                        window.cachedUserProfile = settings.user_profile;
+                        const up = settings.user_profile;
+                        if (document.getElementById('user-profile-nickname')) document.getElementById('user-profile-nickname').value = up.nickname || '用户';
+                        if (document.getElementById('user-profile-signature')) document.getElementById('user-profile-signature').value = up.signature || '';
+                        if (document.getElementById('user-profile-experience')) document.getElementById('user-profile-experience').value = up.experience || '';
+                        const prev = document.getElementById('user-profile-avatar-preview');
+                        if (prev) {
+                            if (up.avatar_url) {
+                                prev.innerHTML = `<img src="${escapeHtml(getAvatarUrl(up.avatar_url))}" style="width:100%;height:100%;object-fit:cover;border-radius:8px;">`;
+                            } else {
+                                prev.textContent = (up.nickname || '我').slice(0, 1);
+                            }
+                        }
+                    }
                     if (document.getElementById('time-speed')) document.getElementById('time-speed').value = settings.time_speed;
                     if (document.getElementById('ui-language')) {
                         document.getElementById('ui-language').value = settings.ui_language || 'zh-CN';
@@ -4569,6 +4710,8 @@
                     if (document.getElementById('enable-death-mechanism')) document.getElementById('enable-death-mechanism').checked = !!settings.enable_death_mechanism;
                     if (document.getElementById('enable-accidental-death')) document.getElementById('enable-accidental-death').checked = !!settings.enable_accidental_death;
                     if (document.getElementById('enable-auto-avatar-update')) document.getElementById('enable-auto-avatar-update').checked = settings.enable_auto_avatar_update !== false;
+                    if (document.getElementById('chat-use-llm')) document.getElementById('chat-use-llm').checked = settings.chat_use_llm !== false;
+                    if (document.getElementById('memory-use-embedding')) document.getElementById('memory-use-embedding').checked = settings.memory_use_embedding !== false;
                     if (document.getElementById('min-lifespan')) document.getElementById('min-lifespan').value = settings.min_lifespan || 80;
                     if (document.getElementById('max-lifespan')) document.getElementById('max-lifespan').value = settings.max_lifespan || 100;
                     if (document.getElementById('default-image-size')) document.getElementById('default-image-size').value = settings.default_image_size || '1024x1024';
@@ -4587,6 +4730,8 @@
                     enable_death_mechanism: !!document.getElementById('enable-death-mechanism')?.checked,
                     enable_accidental_death: !!document.getElementById('enable-accidental-death')?.checked,
                     enable_auto_avatar_update: !!document.getElementById('enable-auto-avatar-update')?.checked,
+                    chat_use_llm: !!document.getElementById('chat-use-llm')?.checked,
+                    memory_use_embedding: !!document.getElementById('memory-use-embedding')?.checked,
                     min_lifespan: parseInt(document.getElementById('min-lifespan')?.value || '80'),
                     max_lifespan: parseInt(document.getElementById('max-lifespan')?.value || '100'),
                     default_image_size: document.getElementById('default-image-size')?.value || '1024x1024'
@@ -4621,6 +4766,51 @@
             await saveSettingsFromForm();
         }
 
+        async function onUserProfileAvatarFile(ev) {
+            const f = ev.target.files && ev.target.files[0];
+            ev.target.value = '';
+            if (!f) return;
+            try {
+                showToast('正在上传头像…');
+                const url = await uploadChatImageFile(f);
+                window._pendingUserAvatarUrl = url;
+                const prev = document.getElementById('user-profile-avatar-preview');
+                if (prev) {
+                    prev.innerHTML = `<img src="${escapeHtml(getAvatarUrl(url))}" style="width:100%;height:100%;object-fit:cover;border-radius:8px;">`;
+                }
+                showToast('头像已选择，请点击保存');
+            } catch (e) {
+                showToast('上传失败：' + (e.message || e));
+            }
+        }
+
+        async function saveUserProfile() {
+            const nickname = (document.getElementById('user-profile-nickname')?.value || '').trim() || '用户';
+            const signature = (document.getElementById('user-profile-signature')?.value || '').trim();
+            const experience = (document.getElementById('user-profile-experience')?.value || '').trim();
+            const avatar_url = window._pendingUserAvatarUrl != null ? window._pendingUserAvatarUrl : (window.cachedUserProfile && window.cachedUserProfile.avatar_url);
+            try {
+                const response = await fetch(`${API_BASE}/settings`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        user_profile: { nickname, signature, experience, avatar_url: avatar_url || null }
+                    })
+                });
+                const text = await response.text();
+                let result;
+                try { result = text ? JSON.parse(text) : {}; } catch (e) {
+                    throw new Error((text && text.slice(0, 120)) || '服务器返回非 JSON');
+                }
+                if (!result.success) throw new Error(result.detail || '保存失败');
+                window.cachedUserProfile = result.data.user_profile || { nickname, signature, experience, avatar_url };
+                window._pendingUserAvatarUrl = null;
+                showToast('我的资料已保存');
+            } catch (e) {
+                showToast('保存失败：' + (e.message || e));
+            }
+        }
+
         function applyUiLanguage(language) {
             const titleMap = {
                 '聊天': 'Chats',
@@ -4644,10 +4834,13 @@
             document.documentElement.lang = language === 'en-US' ? 'en' : 'zh-CN';
         }
 
+        let logsLastFailAt = 0;
         async function loadLogs() {
             try {
                 const response = await fetch(`${API_BASE}/logs`);
+                if (!response.ok) return;
                 const result = await response.json();
+                logsLastFailAt = 0;
 
                 const container = document.getElementById('log-content');
                 if (result.success && result.data.length > 0) {
@@ -4663,6 +4856,12 @@
                     container.innerHTML = '<div style="color: #666; text-align: center; padding: 20px;">暂无日志</div>';
                 }
             } catch (error) {
+                const msg = (error && error.message) ? String(error.message) : String(error);
+                if (msg.includes('Failed to fetch') || msg.includes('NetworkError')) {
+                    const now = Date.now();
+                    if (now - logsLastFailAt > 60000) logsLastFailAt = now;
+                    return;
+                }
                 console.error('加载日志失败:', error);
             }
         }
@@ -4744,6 +4943,28 @@
                 return `<img src="${escapeHtml(url)}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" onerror="this.style.display='none';this.parentElement.textContent='${escapeHtml(fallbackText || '?')}';">`;
             }
             return escapeHtml(fallbackText || '?');
+        }
+
+        async function openImagePromptModal(filename) {
+            if (!filename) return;
+            const overlay = document.getElementById('image-prompt-modal');
+            const body = document.getElementById('image-prompt-modal-body');
+            if (!overlay || !body) return;
+            body.textContent = '加载中…';
+            overlay.classList.add('show');
+            try {
+                const url = `${window.location.origin}/api/image-prompts/${encodeURIComponent(filename)}`;
+                const r = await fetch(url);
+                const text = await r.text();
+                body.textContent = r.ok ? (text.trim() || '（文件为空）') : `加载失败（HTTP ${r.status}）`;
+            } catch (e) {
+                body.textContent = '加载失败：' + (e && e.message ? e.message : String(e));
+            }
+        }
+
+        function closeImagePromptModal() {
+            const overlay = document.getElementById('image-prompt-modal');
+            if (overlay) overlay.classList.remove('show');
         }
 
         function showToast(message) {
@@ -5551,66 +5772,43 @@
             }
         }
 
-        // ==================== 点赞/评论角色选择器 ====================
+        // ==================== 朋友圈点赞/评论（使用「我的账号」user，不再冒充角色）====================
         let lcCurrentMomentId = '';
-        let lcCurrentAction = ''; // 'like' or 'comment'
+        let lcCurrentAction = '';
 
         function closeLikeCommentSelect() {
-            document.getElementById('like-comment-char-select-modal').classList.remove('show');
+            const m = document.getElementById('like-comment-char-select-modal');
+            if (m) m.classList.remove('show');
         }
 
         async function showLikeCommentSelect(momentId, action) {
             lcCurrentMomentId = momentId;
             lcCurrentAction = action;
-            
-            if (cachedCharacters.length === 0) {
-                try {
-                    const response = await fetch(`${API_BASE}/characters`);
-                    const result = await response.json();
-                    cachedCharacters = result.success ? (result.data || []) : [];
-                } catch (e) {
-                    console.error('获取角色列表失败:', e);
-                    showToast('获取角色列表失败');
-                    return;
+            try {
+                const sr = await fetch(`${API_BASE}/settings`);
+                if (sr.ok) {
+                    const sj = await sr.json();
+                    if (sj.success && sj.data && sj.data.user_profile) {
+                        window.cachedUserProfile = sj.data.user_profile;
+                    }
                 }
-            }
-
-            if (cachedCharacters.length === 0) {
-                showToast('没有可用的角色，请先创建角色');
-                return;
-            }
-
-            const titleEl = document.getElementById('lc-select-title');
-            titleEl.textContent = action === 'like' ? '选择点赞角色' : '选择评论角色';
-            
-            const listEl = document.getElementById('lc-char-list');
-            listEl.innerHTML = cachedCharacters.map(char => {
-                const avatarHtml = char.avatar_url 
-                    ? `<img src="${getAvatarUrl(char.avatar_url)}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" onerror="this.style.display='none';this.parentElement.textContent='${escapeHtml((char.name || '?').slice(0, 1))}';">`
-                    : escapeHtml((char.name || '?').slice(0, 1));
-                return `
-                    <div class="lc-char-item" onclick="performLikeComment('${char.id}', '${escapeHtml(char.name)}')">
-                        <div class="lc-char-avatar">${avatarHtml}</div>
-                        <div class="lc-char-info">
-                            <div class="lc-char-name">${escapeHtml(char.name)}</div>
-                            <div class="lc-char-desc">${escapeHtml((char.personality || '').slice(0, 30))}</div>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-
-            document.getElementById('like-comment-char-select-modal').classList.add('show');
+            } catch (e) { /* ignore */ }
+            const nick = (window.cachedUserProfile && window.cachedUserProfile.nickname) || '用户';
+            await performLikeComment('user', nick);
         }
 
         async function performLikeComment(characterId, characterName) {
             closeLikeCommentSelect();
-            
             if (lcCurrentAction === 'like') {
                 try {
                     const response = await fetch(`${API_BASE}/moments/${lcCurrentMomentId}/like?author_id=${encodeURIComponent(characterId)}`, { method: 'POST' });
-                    const result = await response.json();
+                    const text = await response.text();
+                    let result;
+                    try { result = text ? JSON.parse(text) : {}; } catch (e) {
+                        throw new Error((text && text.slice(0, 100)) || '服务器返回非 JSON');
+                    }
                     if (!result.success) throw new Error(result.detail || '点赞失败');
-                    showToast(`${characterName} 已点赞`);
+                    showToast('已点赞');
                     loadMemorials();
                 } catch (error) {
                     showToast('点赞失败：' + error.message);
@@ -5622,9 +5820,13 @@
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ author_id: characterId, auto_generate: true })
                     });
-                    const result = await response.json();
+                    const text = await response.text();
+                    let result;
+                    try { result = text ? JSON.parse(text) : {}; } catch (e) {
+                        throw new Error((text && text.slice(0, 100)) || '服务器返回非 JSON');
+                    }
                     if (!result.success) throw new Error(result.detail || '评论失败');
-                    showToast(`${characterName} 已评论`);
+                    showToast('已评论');
                     loadMemorials();
                 } catch (error) {
                     showToast('评论失败：' + error.message);

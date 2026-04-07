@@ -10,16 +10,20 @@ import time
 import uuid
 import json
 import random
+import base64
+import re
+import logging
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 
 import aiohttp
 
 # 使用相对导入，从主包导入所需依赖
-from config import DATA_DIR, IMAGE_PROMPTS_DIR, VALID_IMAGE_SIZES
+from config import DATA_DIR, AVATARS_DIR, IMAGE_PROMPTS_DIR, VALID_IMAGE_SIZES, MILLISECONDS_PER_DAY
 from models import (
     Character, TaskItem, TaskType, CharacterSchedule, MomentPost,
-    LlmUsageRecord, SuggestOccupationRequest, SuggestPersonalityRequest
+    LlmUsageRecord, SuggestOccupationRequest, SuggestPersonalityRequest,
+    GenerateAvatarRequest,
 )
 from storage import (
     load_json, save_json, get_characters, save_characters,
@@ -263,6 +267,11 @@ async def generate_ai_reply(
     from models import Company
 
     # 1. 获取 API 配置
+    from storage import get_settings
+    settings = get_settings()
+    if not settings.chat_use_llm:
+        return get_fallback_reply(character, user_input)
+
     configs = get_api_configs()
     llm_config = None
     
@@ -489,16 +498,120 @@ def get_fallback_reply(character: Character, user_input: str) -> str:
 
 
 # =====================================================================
-#  AI 头像生成
+#  AI 头像 / 配图生成（统一落盘为 /avatars/*.png，避免仅有路径无文件）
 # =====================================================================
 
-async def generate_avatar(character: Character) -> Optional[str]:
-    """调用图像 API 生成角色头像"""
+def _write_avatar_png(image_bytes: bytes) -> str:
+    """写入 web/avatars，返回浏览器可用相对路径。"""
+    os.makedirs(AVATARS_DIR, exist_ok=True)
+    name = f"{uuid.uuid4().hex}.png"
+    path = os.path.join(AVATARS_DIR, name)
+    with open(path, "wb") as f:
+        f.write(image_bytes)
+    return f"/avatars/{name}"
+
+
+async def _try_mirror_remote_to_avatars(url: str) -> Optional[str]:
+    """将公网临时图拉取到本地，减少链接失效与路径不一致。"""
+    if not url or not (url.startswith("http://") or url.startswith("https://")):
+        return None
+    try:
+        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=120)) as session:
+            async with session.get(url) as response:
+                if response.status != 200:
+                    return None
+                data = await response.read()
+                if not data:
+                    return None
+                return _write_avatar_png(data)
+    except Exception:
+        return None
+
+
+def _normalize_avatar_b64_to_bytes(raw: str) -> Optional[bytes]:
+    if not raw or not isinstance(raw, str):
+        return None
+    s = raw.strip()
+    if s.startswith("data:") and "," in s:
+        s = s.split(",", 1)[1]
+    s = re.sub(r"\s+", "", s)
+    try:
+        return base64.b64decode(s, validate=False)
+    except Exception:
+        return None
+
+
+async def generate_image_from_prompt(
+    prompt: str,
+    *,
+    character_id: str = "",
+    image_size: Optional[str] = None,
+) -> Optional[str]:
+    """
+    调用已配置的图像 API，返回可给前端使用的 URL：
+    - 优先写入本地后返回 /avatars/xxx.png
+    - http(s) 在下载失败时仍返回原链接
+    """
+    if not (prompt or "").strip():
+        return None
     configs = get_api_configs()
     image_config = next((c for c in configs if c.api_type == 'image' and c.is_enabled), None)
     if not image_config:
         return None
-    
+    if image_size and image_size in VALID_IMAGE_SIZES:
+        size = image_size
+    else:
+        size = await llm_choose_image_size(prompt, context="")
+    try:
+        headers = {"Authorization": f"Bearer {image_config.api_key}", "Content-Type": "application/json"}
+        payload = {
+            "model": image_config.selected_model or "dall-e-3",
+            "prompt": prompt.strip(),
+            "size": size,
+            "n": 1,
+        }
+        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=120)) as session:
+            async with session.post(image_config.api_url, headers=headers, json=payload) as response:
+                if response.status != 200:
+                    record_image_usage(image_config, "avatar_generation", character_id, success=False)
+                    return None
+                result = await response.json()
+                record_image_usage(image_config, "avatar_generation", character_id, success=True)
+                image_val = None
+                data_list = result.get("data")
+                if isinstance(data_list, list) and data_list:
+                    first = data_list[0]
+                    if isinstance(first, dict):
+                        image_val = first.get("url") or first.get("b64_json")
+                if not image_val:
+                    image_val = result.get("url") or result.get("image_url")
+                if not image_val:
+                    record_image_usage(image_config, "avatar_generation", character_id, success=False, error_message="empty image response")
+                    return None
+                if not isinstance(image_val, str):
+                    image_val = str(image_val)
+
+                if image_val.startswith("http://") or image_val.startswith("https://"):
+                    local = await _try_mirror_remote_to_avatars(image_val)
+                    return local or image_val
+
+                img_bytes = _normalize_avatar_b64_to_bytes(image_val)
+                if img_bytes:
+                    try:
+                        return _write_avatar_png(img_bytes)
+                    except OSError:
+                        record_image_usage(image_config, "avatar_generation", character_id, success=False, error_message="write avatar failed")
+                        return None
+
+                record_image_usage(image_config, "avatar_generation", character_id, success=False, error_message="unrecognized image payload")
+                return None
+    except Exception as e:
+        record_image_usage(image_config, "avatar_generation", character_id, success=False, error_message=str(e))
+        return None
+
+
+async def generate_avatar(character: Character) -> Optional[str]:
+    """按完整角色信息生成头像（生命周期/心跳调用）。"""
     settings = get_settings()
     world_time_text = ""
     try:
@@ -508,40 +621,113 @@ async def generate_avatar(character: Character) -> Optional[str]:
         world_time_text = f"世界时间：第{days}天 {hours}:00"
     except Exception:
         pass
-    
-    prompt = f"Generate an avatar for a character named {character.name}, {character.age} years old, {character.gender}, {character.occupation}, personality: {character.personality}. {world_time_text}"
-    
+    prompt = (
+        f"Generate an avatar for a character named {character.name}, {character.age} years old, "
+        f"{character.gender}, {character.occupation}, personality: {character.personality}. {world_time_text}"
+    )
+    return await generate_image_from_prompt(prompt, character_id=character.id)
+
+
+async def generate_avatar_from_request(request: GenerateAvatarRequest) -> Dict[str, Any]:
+    """前端 / 朋友圈配图：POST body 为 GenerateAvatarRequest，返回 { success, data?, error? }。"""
+    prompt = (request.avatar_prompt or "").strip()
+    if not prompt:
+        return {"success": False, "error": "缺少头像或配图提示词"}
+    cid = (request.character_id or "").strip()
+    size = (request.image_size or "").strip() or None
+    url = await generate_image_from_prompt(prompt, character_id=cid, image_size=size)
+    if not url:
+        return {"success": False, "error": "图像生成失败，请检查图像模型配置"}
+    prompt_file = save_image_prompt_md(prompt, title="AI 配图", image_url=url) or None
+    return {
+        "success": True,
+        "data": {
+            "image_url": url,
+            "prompt": request.avatar_prompt,
+            "prompt_file": prompt_file,
+        },
+    }
+
+
+def user_wants_self_portrait(user_text: str) -> bool:
+    """用户是否在对话中明确请求「角色给自己画一张当前状态/自拍」。"""
+    t = (user_text or "").strip()
+    if len(t) < 4 or len(t) > 400:
+        return False
+    low = t.lower()
+    direct = (
+        "画一张你", "给我画", "你画一张", "生成一张你的", "发张你的照片", "发一张你的图",
+        "你现在什么样子", "你现在的照片", "看看你长", "你长什么样", "给我看看你",
+        "自拍一张", "来张自拍", "拍一张你", "你现在的样子", "当前状态的照片",
+        "draw yourself", "selfie", "picture of you", "send me a photo of you",
+    )
+    if any(k in t for k in direct) or any(k in low for k in ("draw yourself", "your selfie")):
+        return True
+    if ("画" in t or "图" in t or "照片" in t) and ("你" in t or "自己" in t):
+        return True
+    return False
+
+
+async def build_self_portrait_image_prompt(character: Character) -> str:
+    """
+    结合人设、世界时间、日程推断地点与当前坐标，生成一条用于文生图的画面描述（中英皆可）。
+    """
+    from services.world_service import pick_schedule_location_for_world_time, world_hour_of_day
+
+    settings = get_settings()
+    we = int(settings.world_elapsed_ms or 0)
+    hour = world_hour_of_day(we)
+    day_index = we // max(1, MILLISECONDS_PER_DAY)
+    _, plan_loc = pick_schedule_location_for_world_time(character, we)
+    loc = (character.current_location_id or "").strip() or plan_loc
+
+    fallback = (
+        f"Realistic candid photo of {character.name}, {character.age} years old {character.gender}, "
+        f"{character.occupation}, at {loc} around {int(hour)}:00 local world time, "
+        f"natural lighting, expressive face, environment visible, no text, no watermark, high quality"
+    )
+
+    configs = get_api_configs()
+    llm_config = next((c for c in configs if c.api_type == "llm" and c.is_enabled), None)
+    if not llm_config:
+        return fallback
+
+    brief = (character.personality or "")[:300]
+    user_msg = (
+        f"角色：{character.name}，{character.age}岁，{character.gender}，职业：{character.occupation}。\n"
+        f"性格要点：{brief}\n"
+        f"虚拟世界约第{day_index}天，约 {hour:.1f} 点；此刻所在或常情地点：{loc}。\n\n"
+        "请只输出**一条**可直接用于文生图模型的画面描述（中或英均可）：写实摄影/肖像风格，体现此刻状态、服装与场景光线；"
+        "不要剧情旁白、不要对话、不要水印与字幕说明。80～180 字内，一段说完。"
+    )
     try:
-        headers = {"Authorization": f"Bearer {image_config.api_key}", "Content-Type": "application/json"}
-        size = await llm_choose_image_size(prompt, context=str(character.model_dump()))
+        headers = {"Authorization": f"Bearer {llm_config.api_key}", "Content-Type": "application/json"}
         data = {
-            "model": image_config.selected_model or "dall-e-3",
-            "prompt": prompt,
-            "size": size,
-            "n": 1,
+            "model": llm_config.selected_model or "gpt-3.5-turbo",
+            "messages": [{"role": "user", "content": user_msg}],
+            "temperature": 0.65,
+            "max_tokens": 400,
         }
-        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=120)) as session:
-            async with session.post(image_config.api_url, headers=headers, json=data) as response:
-                if response.status == 200:
-                    result = await response.json()
-                    record_image_usage(image_config, "avatar_generation", character.id, success=True)
-                    image_url = None
-                    data_list = result.get("data")
-                    if isinstance(data_list, list) and data_list:
-                        first = data_list[0]
-                        if isinstance(first, dict):
-                            image_url = first.get("url") or first.get("b64_json")
-                    if not image_url:
-                        image_url = result.get("url") or result.get("image_url")
-                    if image_url:
-                        return image_url if isinstance(image_url, str) else str(image_url)
-                    record_image_usage(image_config, "avatar_generation", character.id, success=False, error_message="empty image response")
-                    return None
-                else:
-                    record_image_usage(image_config, "avatar_generation", character.id, success=False)
-                    return None
+        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=30)) as session:
+            async with session.post(llm_config.api_url, headers=headers, json=data) as response:
+                if response.status != 200:
+                    return fallback
+                result = await response.json()
+                record_llm_usage(result, llm_config, "self_portrait_prompt", character.id)
+                text = openai_choice_text(result).strip()
+                return text if len(text) >= 12 else fallback
     except Exception as e:
-        record_image_usage(image_config, "avatar_generation", character.id, success=False, error_message=str(e))
+        logging.debug("build_self_portrait_image_prompt: %s", e)
+        return fallback
+
+
+async def try_chat_self_portrait_image(character: Character) -> Optional[str]:
+    """为对话「自绘形象」生成图片 URL（通常为 /avatars/… 或 https）。"""
+    try:
+        prompt = await build_self_portrait_image_prompt(character)
+        return await generate_image_from_prompt(prompt, character_id=character.id)
+    except Exception as e:
+        logging.debug("try_chat_self_portrait_image: %s", e)
         return None
 
 
@@ -592,23 +778,32 @@ async def generate_moment_image_plan(
     moment_content: str,
     mood: Optional[str] = None
 ) -> Dict[str, Any]:
-    """生成朋友圈配图方案"""
+    """
+    生成朋友圈配图用的「文生图提示词」文本。
+    注意：此处不写 disk；由调用方在真正出图后调用 save_image_prompt_md，保证 md 与图像 API 入参一致。
+    """
     configs = get_api_configs()
     llm_config = next((c for c in configs if c.api_type == 'llm' and c.is_enabled), None)
     if not llm_config:
         return _fallback_moment_image_plan(character, moment_content, mood)
-    
-    prompt = f"角色{character.name}（{character.occupation}）发了一条朋友圈：{moment_content[:200]}\n请描述适合配的图，用一段话描述画面内容。"
-    
+
+    mood_hint = f"\n情绪/氛围：{mood}" if mood else ""
+    user_msg = (
+        f"角色《{character.name}》（{character.occupation}）发了一条朋友圈：\n{moment_content[:500]}{mood_hint}\n\n"
+        "请输出**一条**可直接用于文生图模型的画面描述（中文即可）：\n"
+        "— 写清主体、环境、光线、色调与构图，80～200 字，两句以内，语义完整收尾，不要标题或引号。\n"
+        "— 不要写拍摄器材、水印、字幕说明；不要续写朋友圈正文剧情。"
+    )
+
     try:
         headers = {"Authorization": f"Bearer {llm_config.api_key}", "Content-Type": "application/json"}
         data = {
             "model": llm_config.selected_model or "gpt-3.5-turbo",
-            "messages": [{"role": "user", "content": prompt}],
-            "temperature": 0.7,
-            "max_tokens": 100,
+            "messages": [{"role": "user", "content": user_msg}],
+            "temperature": 0.65,
+            "max_tokens": 380,
         }
-        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=15)) as session:
+        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=25)) as session:
             async with session.post(llm_config.api_url, headers=headers, json=data) as response:
                 if response.status != 200:
                     return _fallback_moment_image_plan(character, moment_content, mood)
@@ -618,8 +813,8 @@ async def generate_moment_image_plan(
                 if not image_prompt:
                     return _fallback_moment_image_plan(character, moment_content, mood)
                 return {
-                    "prompt": image_prompt,
-                    "filename": save_image_prompt_md(image_prompt, title=f"朋友圈配图 - {character.name}"),
+                    "prompt": image_prompt.strip(),
+                    "image_kind": "scene",
                 }
     except Exception:
         return _fallback_moment_image_plan(character, moment_content, mood)
@@ -640,7 +835,7 @@ def _fallback_moment_image_plan(
     prompt = random.choice(fallback_prompts)
     return {
         "prompt": prompt,
-        "filename": save_image_prompt_md(prompt, title=f"朋友圈配图 - {character.name}"),
+        "image_kind": "scene",
     }
 
 

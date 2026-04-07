@@ -65,7 +65,15 @@ async def update_app_settings(settings_data: Dict[str, Any]):
     from models import Settings
     current_settings = get_settings()
     merged = current_settings.model_dump()
-    merged.update({key: value for key, value in settings_data.items() if value is not None})
+    incoming = {key: value for key, value in settings_data.items() if value is not None}
+    up_in = incoming.pop("user_profile", None)
+    merged.update(incoming)
+    if up_in is not None and isinstance(up_in, dict):
+        cur_up = merged.get("user_profile") or {}
+        if isinstance(cur_up, dict):
+            merged["user_profile"] = {**cur_up, **up_in}
+        else:
+            merged["user_profile"] = up_in
     merged["time_speed"] = max(1, min(30, int(merged.get("time_speed", current_settings.time_speed))))
     merged["enable_auto_moment_interactions"] = bool(
         merged.get("enable_auto_moment_interactions", current_settings.enable_auto_moment_interactions)
@@ -77,6 +85,8 @@ async def update_app_settings(settings_data: Dict[str, Any]):
     merged["heartbeat_interval_seconds"] = max(
         10, min(600, int(merged.get("heartbeat_interval_seconds", current_settings.heartbeat_interval_seconds)))
     )
+    merged["chat_use_llm"] = bool(merged.get("chat_use_llm", current_settings.chat_use_llm))
+    merged["memory_use_embedding"] = bool(merged.get("memory_use_embedding", current_settings.memory_use_embedding))
     merged["min_lifespan"] = int(merged.get("min_lifespan", current_settings.min_lifespan))
     merged["max_lifespan"] = int(merged.get("max_lifespan", current_settings.max_lifespan))
     if merged["min_lifespan"] > merged["max_lifespan"]:

@@ -9,6 +9,7 @@ import json
 import os
 import time
 import random
+import hashlib
 from typing import Optional, List, Dict, Any
 
 from config import (
@@ -156,21 +157,40 @@ async def ensure_world_map_initialized():
 
 
 def resolve_location_base(location_name: str) -> tuple[float, float]:
-    """解析地点基础坐标"""
+    """解析地点基础坐标（名称或 bind 与日程地点一致时均可命中）。"""
     meta = get_active_world_map()
     for lm in (meta.get("landmarks") or []):
         if lm.get("name") == location_name:
+            return float(lm.get("x", 50)), float(lm.get("y", 50))
+    for lm in (meta.get("landmarks") or []):
+        if lm.get("bind") == location_name:
             return float(lm.get("x", 50)), float(lm.get("y", 50))
     return 50.0, 50.0
 
 
 def resolve_location_coordinates(
     location_name: str,
-    drift: bool = True
+    character_id: Optional[str] = None,
+    *,
+    drift_bucket: Optional[int] = None,
+    drift: bool = True,
 ) -> tuple[float, float]:
-    """解析地点坐标（可加入随机漂移）"""
+    """
+    解析地点坐标。
+    若提供 character_id 与 drift_bucket，则使用确定性微偏移（同一角色在同一时间段内位置稳定）。
+    否则使用随机漂移（兼容旧调用）。
+    """
     x, y = resolve_location_base(location_name)
-    if drift:
+    if not drift:
+        return round(max(0, min(100, x)), 2), round(max(0, min(100, y)), 2)
+    if character_id is not None and drift_bucket is not None:
+        seed = f"{location_name}|{character_id}|{drift_bucket}"
+        h = hashlib.md5(seed.encode("utf-8")).hexdigest()
+        jx = (int(h[0:8], 16) % 20001) / 10000.0 * 4.0 - 2.0
+        jy = (int(h[8:16], 16) % 20001) / 10000.0 * 4.0 - 2.0
+        x += jx
+        y += jy
+    else:
         x += random.uniform(-2, 2)
         y += random.uniform(-2, 2)
     return round(max(0, min(100, x)), 2), round(max(0, min(100, y)), 2)
@@ -308,3 +328,51 @@ async def generate_schedule_for_character(character, day_index: int) -> Any:
     save_schedules(schedules)
     
     return schedule
+
+
+def plan_location_name_for_world_hour(hour: float) -> str:
+    """
+    与 pick_schedule_location_for_world_time 使用同一套时段→地点映射（整数小时桶）。
+    用于地图插值：在相邻整点地点之间移动。
+    """
+    hi = int(hour) % 24
+    loc_map = {
+        (6, 9): "家中",
+        (9, 12): "办公室",
+        (12, 14): "餐厅",
+        (14, 18): "办公室",
+        (18, 22): "社交场所",
+        (22, 24): "家中",
+        (0, 6): "家中",
+    }
+    for (a, b), name in loc_map.items():
+        if a <= hi < b:
+            return name
+    return "家中"
+
+
+def compute_character_map_xy(character, world_elapsed_ms: int, drift_bucket: int) -> tuple[float, float]:
+    """
+    根据世界时间在「当前整点日程地点」与「下一整点地点」之间插值，并叠加缓慢绕行，
+    使角色在地图上持续移动而非钉死在地标中心。
+    """
+    import math
+
+    hour = world_hour_of_day(world_elapsed_ms)
+    h0 = int(hour)
+    t = hour - h0
+    loc_a = plan_location_name_for_world_hour(float(h0))
+    loc_b = plan_location_name_for_world_hour(float((h0 + 1) % 24))
+    xa, ya = resolve_location_base(loc_a)
+    xb, yb = resolve_location_base(loc_b)
+    x = xa + (xb - xa) * t
+    y = ya + (yb - ya) * t
+    phase = math.fmod(world_elapsed_ms / 150000.0, 2 * math.pi)
+    x += 0.65 * math.cos(phase)
+    y += 0.65 * math.sin(phase)
+    seed = hashlib.md5(f"{character.id}|{drift_bucket}".encode("utf-8")).hexdigest()
+    jx = (int(seed[0:8], 16) % 2001) / 10000.0 * 0.85
+    jy = (int(seed[8:16], 16) % 2001) / 10000.0 * 0.85
+    x += jx * math.sin(world_elapsed_ms / 300000.0)
+    y += jy * math.cos(world_elapsed_ms / 280000.0)
+    return round(max(2.0, min(98.0, x)), 2), round(max(2.0, min(98.0, y)), 2)
