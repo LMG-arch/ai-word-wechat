@@ -5,7 +5,7 @@ import time
 import os
 
 from config import DATA_DIR, AVATARS_DIR, IMAGE_PROMPTS_DIR
-from models import ChatMessage, SendMessageRequest, Character
+from models import ChatMessage, SendMessageRequest, Character, SimulatePrivateGroupChatRequest
 from storage import (
     get_messages, save_messages, get_characters, save_characters,
     get_private_groups, save_private_groups, get_logs, save_logs,
@@ -100,7 +100,11 @@ async def send_message(request: SendMessageRequest):
     save_messages(messages)
     
     reply_prompt = user_text if user_text else ("用户发送了图片消息" if request.message_type == "image" else "用户发送了语音消息")
-    reply_content = await generate_ai_reply(character, reply_prompt)
+    reply_content = await generate_ai_reply(
+        character, reply_prompt, request.conversation_id
+    )
+    if not reply_content:
+        reply_content = "……"
     
     ai_message = ChatMessage(
         conversation_id=request.conversation_id,
@@ -170,14 +174,10 @@ async def get_private_group_messages(group_id: str):
 
 
 @router.post("/api/groups/private/{group_id}/simulate")
-async def simulate_private_group_chat(group_id: str, request):
+async def simulate_private_group_chat(
+    group_id: str, body: SimulatePrivateGroupChatRequest
+):
     """模拟私人群聊对话（系统生成，用户只读）"""
-    # Dynamic import to avoid circular dependency
-    from pydantic import BaseModel
-    class SimulatePrivateGroupChatRequest(BaseModel):
-        topic: Optional[str] = None
-    req = SimulatePrivateGroupChatRequest(**(request.__dict__ if hasattr(request, '__dict__') else {}))
-    
     groups = get_private_groups()
     group = next((g for g in groups if g.id == group_id and g.is_active), None)
     if not group:
@@ -188,7 +188,7 @@ async def simulate_private_group_chat(group_id: str, request):
     if any(mid not in char_map for mid in group.member_ids):
         raise HTTPException(status_code=400, detail="Group members not found")
 
-    await append_private_group_exchange(group, req.topic if hasattr(req, 'topic') else None)
+    await append_private_group_exchange(group, body.topic)
     conv_id = f"group:{group.id}"
     messages = get_messages()
     recent = [m for m in messages if m.conversation_id == conv_id]

@@ -7,13 +7,18 @@ import random
 import re
 
 from config import DATA_DIR
-from models import TaskItem, TaskType, TaskStatus, TaskAssigneeType, Character
+from models import (
+    TaskItem, TaskType, TaskStatus, TaskAssigneeType, Character,
+    CreateTaskRequest, AssignTaskRequest, AutoTakeTaskRequest,
+    SubmitTaskRequest, ReviewTaskRequest,
+)
 from storage import (
     get_tasks, save_tasks, get_characters, get_companies,
     get_logs, save_logs, get_settings,
 )
-from services.task_service import choose_task_assignee, apply_reflection_after_task
+from services.task_service import apply_reflection_after_task, apply_auto_take_task_at_index
 from services.ai_service import (
+    openai_choice_text,
     llm_choose_image_size,
     record_image_usage, save_image_prompt_md,
     get_api_configs,
@@ -205,7 +210,7 @@ async def _generate_task_code(task: TaskItem, assignee: Optional[Character]) -> 
             async with session.post(llm_config.api_url, headers=headers, json=data) as resp:
                 if resp.status == 200:
                     result = await resp.json()
-                    content = result.get('choices', [{}])[0].get('message', {}).get('content', '').strip()
+                    content = openai_choice_text(result)
                     code_match = re.search(r'```python\s*([\s\S]*?)```', content, re.DOTALL)
                     if code_match:
                         return code_match.group(1).strip()
@@ -254,8 +259,8 @@ async def _generate_task_research(task: TaskItem, assignee: Optional[Character])
             async with session.post(llm_config.api_url, headers=headers, json=data) as resp:
                 if resp.status == 200:
                     result = await resp.json()
-                    content = result.get('choices', [{}])[0].get('message', {}).get('content', '').strip()
-                    return content
+                    content = openai_choice_text(result)
+                    return content if content else f"{assignee.name if assignee else '角色'} 提交了调研分析报告"
     except Exception:
         pass
     return f"{assignee.name if assignee else '角色'} 提交了调研分析报告"
@@ -288,8 +293,8 @@ async def _generate_task_text(task: TaskItem, assignee: Optional[Character]) -> 
             async with session.post(llm_config.api_url, headers=headers, json=data) as resp:
                 if resp.status == 200:
                     result = await resp.json()
-                    content = result.get('choices', [{}])[0].get('message', {}).get('content', '').strip()
-                    return content
+                    content = openai_choice_text(result)
+                    return content if content else f"{assignee.name if assignee else '角色'} 已完成任务：{task.title}"
     except Exception:
         pass
     return f"{assignee.name if assignee else '角色'} 已完成任务：{task.title}"
@@ -312,23 +317,12 @@ async def get_task_detail(task_id: str):
 
 
 @router.post("/api/tasks")
-async def create_task(request):
-    from pydantic import BaseModel
-    class CreateTaskRequest(BaseModel):
-        title: str
-        description: str
-        task_type: TaskType = TaskType.TEXT
-        reward: float = 100.0
-        assignee_type: TaskAssigneeType = TaskAssigneeType.PERSONAL
-        assignee_id: Optional[str] = None
-        company_id: Optional[str] = None
-    
-    req = CreateTaskRequest(**(request.__dict__ if hasattr(request, '__dict__') else {}))
+async def create_task(body: CreateTaskRequest):
     tasks = get_tasks()
     task = TaskItem(
-        title=req.title, description=req.description, task_type=req.task_type,
-        reward=max(1.0, float(req.reward)), assignee_type=req.assignee_type,
-        assignee_id=req.assignee_id, company_id=req.company_id,
+        title=body.title, description=body.description, task_type=body.task_type,
+        reward=max(1.0, float(body.reward)), assignee_type=body.assignee_type,
+        assignee_id=body.assignee_id, company_id=body.company_id,
     )
     tasks.append(task)
     save_tasks(tasks)
@@ -337,106 +331,59 @@ async def create_task(request):
 
 
 @router.post("/api/tasks/{task_id}/assign")
-async def assign_task(task_id: str, request):
-    from pydantic import BaseModel
-    class AssignTaskRequest(BaseModel):
-        assignee_type: TaskAssigneeType
-        assignee_id: str
-        company_id: Optional[str] = None
-    
-    req = AssignTaskRequest(**(request.__dict__ if hasattr(request, '__dict__') else {}))
+async def assign_task(task_id: str, body: AssignTaskRequest):
     tasks = get_tasks()
     for i, task in enumerate(tasks):
         if task.id != task_id:
             continue
-        task.assignee_type = req.assignee_type
-        task.assignee_id = req.assignee_id
-        task.company_id = req.company_id
+        task.assignee_type = body.assignee_type
+        task.assignee_id = body.assignee_id
+        task.company_id = body.company_id
         task.status = TaskStatus.IN_PROGRESS
         task.updated_at = int(time.time() * 1000)
         tasks[i] = task
         save_tasks(tasks)
-        _add_log("system", "task_assign", f"{task.title} -> {req.assignee_id}")
+        _add_log("system", "task_assign", f"{task.title} -> {body.assignee_id}")
         return {"success": True, "data": task.model_dump()}
     raise HTTPException(status_code=404, detail="Task not found")
 
 
 @router.post("/api/tasks/{task_id}/auto-take")
-async def auto_take_task(task_id: str, request):
-    from pydantic import BaseModel
-    class AutoTakeTaskRequest(BaseModel):
-        preferred_character_id: Optional[str] = None
-    
-    req = AutoTakeTaskRequest(**(request.__dict__ if hasattr(request, '__dict__') else {}))
+async def auto_take_task(task_id: str, body: AutoTakeTaskRequest):
     tasks = get_tasks()
     characters = get_characters()
     companies = get_companies()
     for i, task in enumerate(tasks):
         if task.id != task_id:
             continue
-        if task.assignee_type == TaskAssigneeType.COMPANY and task.company_id:
-            company = next((c for c in companies if c.id == task.company_id), None)
-            if not company:
-                raise HTTPException(status_code=400, detail="Company not found for task")
-            alive_ids = [
-                mid for mid in company.member_ids
-                if any(ch.id == mid and ch.is_alive for ch in characters)
-            ]
-            if not alive_ids:
-                raise HTTPException(status_code=400, detail="No alive company member")
-            preferred = req.preferred_character_id
-            assignee = None
-            if preferred and preferred in alive_ids:
-                assignee = next((ch for ch in characters if ch.id == preferred), None)
-            if not assignee and company.legal_person_id in alive_ids:
-                assignee = next((ch for ch in characters if ch.id == company.legal_person_id), None)
-            if not assignee:
-                assignee = next((ch for ch in characters if ch.id == alive_ids[0]), None)
-            others = [mid for mid in alive_ids if mid != assignee.id]
-            random.shuffle(others)
-            task.collaborator_ids = others[:2]
-            task.assignee_id = assignee.id
-            task.status = TaskStatus.IN_PROGRESS
-            task.updated_at = int(time.time() * 1000)
-            tasks[i] = task
-            save_tasks(tasks)
-            _add_log(assignee.name, "task_take", f"代表公司接取协作任务：{task.title}")
-            return {"success": True, "data": task.model_dump()}
-        assignee = choose_task_assignee(task, characters, req.preferred_character_id)
-        if not assignee:
-            raise HTTPException(status_code=400, detail="No alive character available")
-        task.collaborator_ids = []
-        task.assignee_type = TaskAssigneeType.PERSONAL
-        task.assignee_id = assignee.id
-        task.status = TaskStatus.IN_PROGRESS
-        task.updated_at = int(time.time() * 1000)
-        tasks[i] = task
+        try:
+            assignee_name, mode = apply_auto_take_task_at_index(
+                tasks, i, body.preferred_character_id, characters, companies
+            )
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
         save_tasks(tasks)
-        _add_log(assignee.name, "task_take", f"自行接取任务：{task.title}")
-        return {"success": True, "data": task.model_dump()}
+        msg = (
+            f"代表公司接取协作任务：{task.title}"
+            if mode == "company"
+            else f"自行接取任务：{task.title}"
+        )
+        _add_log(assignee_name, "task_take", msg)
+        return {"success": True, "data": tasks[i].model_dump()}
     raise HTTPException(status_code=404, detail="Task not found")
 
 
 @router.post("/api/tasks/{task_id}/submit")
-async def submit_task(task_id: str, request):
-    from pydantic import BaseModel
-    class SubmitTaskRequest(BaseModel):
-        submitter_id: str
-        execution_notes: str = ""
-        deliverable_text: str = ""
-        deliverable_image_url: Optional[str] = None
-        deliverable_code: str = ""
-    
-    req = SubmitTaskRequest(**(request.__dict__ if hasattr(request, '__dict__') else {}))
+async def submit_task(task_id: str, body: SubmitTaskRequest):
     tasks = get_tasks()
     for i, task in enumerate(tasks):
         if task.id != task_id:
             continue
-        task.submitter_id = req.submitter_id
-        task.execution_notes = req.execution_notes.strip()
-        task.deliverable_text = req.deliverable_text.strip()
-        task.deliverable_image_url = req.deliverable_image_url
-        task.deliverable_code = req.deliverable_code
+        task.submitter_id = body.submitter_id
+        task.execution_notes = body.execution_notes.strip()
+        task.deliverable_text = body.deliverable_text.strip()
+        task.deliverable_image_url = body.deliverable_image_url
+        task.deliverable_code = body.deliverable_code
         task.status = TaskStatus.PENDING_REVIEW
         task.updated_at = int(time.time() * 1000)
         tasks[i] = task
@@ -498,33 +445,25 @@ async def auto_complete_task(task_id: str):
 
 
 @router.post("/api/tasks/{task_id}/review")
-async def review_task(task_id: str, request):
-    from pydantic import BaseModel
-    class ReviewTaskRequest(BaseModel):
-        approved: bool
-        review_notes: str = ""
-        score: float = 50
-        checklist: Optional[Dict[str, Any]] = None
-    
-    req = ReviewTaskRequest(**(request.__dict__ if hasattr(request, '__dict__') else {}))
+async def review_task(task_id: str, body: ReviewTaskRequest):
     tasks = get_tasks()
     characters = get_characters()
     companies = get_companies()
     for i, task in enumerate(tasks):
         if task.id != task_id:
             continue
-        task.review_notes = req.review_notes.strip()
+        task.review_notes = body.review_notes.strip()
         task.review_round += 1
         task.review_history.append({
-            "round": task.review_round, "approved": req.approved,
+            "round": task.review_round, "approved": body.approved,
             "notes": task.review_notes,
-            "score": max(0, min(100, int(req.score))),
-            "checklist": req.checklist,
+            "score": max(0, min(100, int(body.score))),
+            "checklist": body.checklist,
             "timestamp": int(time.time() * 1000),
         })
         task.updated_at = int(time.time() * 1000)
         
-        if req.approved:
+        if body.approved:
             task.status = TaskStatus.COMPLETED
             task.completed_at = int(time.time() * 1000)
             if task.assignee_type == TaskAssigneeType.PERSONAL and task.assignee_id:
@@ -553,7 +492,7 @@ async def review_task(task_id: str, request):
         
         tasks[i] = task
         save_tasks(tasks)
-        await apply_reflection_after_task(task, req.approved, task.review_notes)
+        await apply_reflection_after_task(task, body.approved, task.review_notes)
         
         return {"success": True, "data": task.model_dump()}
     raise HTTPException(status_code=404, detail="Task not found")

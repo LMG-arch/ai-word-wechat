@@ -481,10 +481,10 @@ class SubmitTaskRequest(BaseModel):
 
 
 class ReviewTaskRequest(BaseModel):
-    approved: bool = True
+    approved: bool
     review_notes: str = ""
-    score: int = 80
-    checklist: Dict[str, bool] = Field(default_factory=dict)
+    score: float = 50.0
+    checklist: Optional[Dict[str, Any]] = None
 
 
 class CreateCompanyRequest(BaseModel):
@@ -508,7 +508,7 @@ class AutoTakeTaskRequest(BaseModel):
 
 
 class SimulatePrivateGroupChatRequest(BaseModel):
-    topic: str = "最近怎么样？"
+    topic: Optional[str] = None
 
 
 class RelationshipInteractRequest(BaseModel):
@@ -579,7 +579,8 @@ class SessionManager:
     def add_message(self, conversation_id: str, role: str, content: str):
         if conversation_id not in self.sessions:
             self.sessions[conversation_id] = []
-        self.sessions[conversation_id].append({"role": role, "content": content})
+        safe = content if isinstance(content, str) else ("" if content is None else str(content))
+        self.sessions[conversation_id].append({"role": role, "content": safe})
         if len(self.sessions[conversation_id]) > self.max_context_len * 3:
             self.sessions[conversation_id] = self.sessions[conversation_id][-(self.max_context_len * 2):]
 

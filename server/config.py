@@ -25,6 +25,37 @@ os.makedirs(DATA_DIR, exist_ok=True)
 os.makedirs(AVATARS_DIR, exist_ok=True)
 os.makedirs(IMAGE_PROMPTS_DIR, exist_ok=True)
 
+
+def sync_legacy_asset_directories() -> None:
+    """
+    将历史上保存到 data/avatars、data/image_prompts 的文件复制到当前静态目录（web/avatars 等），
+    避免旧数据在更换挂载路径后出现 404。
+    """
+    import shutil
+
+    legacy_av = os.path.join(DATA_DIR, "avatars")
+    if os.path.isdir(legacy_av) and os.path.normpath(legacy_av) != os.path.normpath(AVATARS_DIR):
+        try:
+            for name in os.listdir(legacy_av):
+                src = os.path.join(legacy_av, name)
+                dst = os.path.join(AVATARS_DIR, name)
+                if os.path.isfile(src) and not os.path.exists(dst):
+                    shutil.copy2(src, dst)
+        except OSError:
+            pass
+
+    legacy_ip = os.path.join(DATA_DIR, "image_prompts")
+    if os.path.isdir(legacy_ip) and os.path.normpath(legacy_ip) != os.path.normpath(IMAGE_PROMPTS_DIR):
+        try:
+            for name in os.listdir(legacy_ip):
+                src = os.path.join(legacy_ip, name)
+                dst = os.path.join(IMAGE_PROMPTS_DIR, name)
+                if os.path.isfile(src) and not os.path.exists(dst):
+                    shutil.copy2(src, dst)
+        except OSError:
+            pass
+
+
 # === 数据文件路径 ===
 DATA_FILES = {
     "characters": os.path.join(DATA_DIR, "characters.json"),

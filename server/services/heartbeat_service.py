@@ -13,31 +13,32 @@ from typing import Optional, List, Dict, Any
 from config import MILLISECONDS_PER_DAY
 
 
-async def run_character_heartbeat(character, characters: List):
+async def run_character_heartbeat(character, all_characters: List):
     """
-    单角色心跳：
-    - 优先处理 pending_intents
-    - 逛朋友圈
-    - 点赞/评论
-    - 小概率发动态
-    - 小概率接取任务
+    单角色心跳。all_characters 须为 get_characters() 的完整列表（同引用），
+    避免仅保存存活子集导致角色数据被覆盖。
     """
     if not character.is_alive:
         return
 
-    from storage import get_moments, get_tasks, save_characters
-    from services.moment_service import has_commented_moment
+    from storage import get_moments, save_moments, get_tasks, save_tasks, save_characters, get_companies
+    from services.moment_service import has_commented_moment, generate_character_moment
     from services.memory_service import can_view_moment
     from services.economy_service import economic_stress_multiplier
     from services.character_service import get_moment_frequency_multiplier
+    from services.task_service import (
+        apply_auto_take_task_at_index,
+        try_heartbeat_take_open_task,
+        apply_exec_submit_task_intent,
+    )
+    from services.ai_service import generate_auto_comment_text
+    from models import GenerateMomentRequest, MomentComment, TaskStatus
 
-    # 1) 优先执行预设意图
     if character.pending_intents:
         intent = character.pending_intents.pop(0)
         action = intent["action"]
         params = intent["params"]
-        
-        # 记录日志
+
         from storage import get_logs, save_logs
         from models import LogEntry
         try:
@@ -57,22 +58,40 @@ async def run_character_heartbeat(character, characters: List):
             save_logs(logs)
         except Exception:
             pass
-        
+
         try:
             if action == "PostMoment":
-                pass  # 需要导入朋友圈生成
+                await generate_character_moment(
+                    character.id,
+                    GenerateMomentRequest(
+                        trigger_type="exec_intent",
+                        event_text=(params or "")[:800] or None,
+                    ),
+                )
             elif action == "TakeTask":
-                pass  # 需要导入任务接取
+                task_id = (params or "").strip()
+                tasks = get_tasks()
+                companies = get_companies()
+                idx = next((i for i, t in enumerate(tasks) if t.id == task_id), None)
+                if idx is not None:
+                    try:
+                        apply_auto_take_task_at_index(
+                            tasks, idx, character.id, all_characters, companies
+                        )
+                        save_tasks(tasks)
+                    except ValueError:
+                        pass
             elif action == "SubmitTask":
-                pass  # 需要导入任务提交
+                tasks = get_tasks()
+                if apply_exec_submit_task_intent(character, params, tasks):
+                    save_tasks(tasks)
             elif action == "MoveTo":
                 from services.world_service import update_character_location
                 update_character_location(character, params, source="ai_action")
-        except Exception as e:
+        except Exception:
             pass
-        
-        # 执行意图后不再进行其他操作
-        save_characters(characters)
+
+        save_characters(all_characters)
         return
 
     stress = economic_stress_multiplier(character)
@@ -84,41 +103,64 @@ async def run_character_heartbeat(character, characters: List):
     task_base = 0.08 * stress
     task_p = min(0.42, task_base)
 
-    # 1) 逛朋友圈
+    moments_dirty = False
     try:
         moments = get_moments()
         moments.sort(key=lambda m: m.timestamp, reverse=True)
         visible = [m for m in moments[:60] if can_view_moment(character.id, m)]
-        
+
         for post in visible[:20]:
             if post.author_id == character.id:
                 continue
-            
+
             if character.id not in (post.liked_by or []) and random.random() < like_p:
                 if post.liked_by is None:
                     post.liked_by = []
                 post.liked_by.append(character.id)
-            
+                moments_dirty = True
+
             if not has_commented_moment(post, character.id) and random.random() < comment_p:
-                pass  # 需要生成评论
-        
+                author = next((c for c in all_characters if c.id == post.author_id), None)
+                if author and author.is_alive:
+                    try:
+                        comment_text = await generate_auto_comment_text(
+                            commenter=character,
+                            author=author,
+                            moment_content=post.content,
+                        )
+                        comment = MomentComment(
+                            moment_id=post.id,
+                            author_id=character.id,
+                            author_name=character.name,
+                            content=comment_text,
+                        )
+                        if post.comments is None:
+                            post.comments = []
+                        post.comments.append(comment)
+                        moments_dirty = True
+                    except Exception:
+                        pass
+
         if random.random() < moment_p:
-            pass  # 需要生成朋友圈
+            try:
+                await generate_character_moment(
+                    character.id,
+                    GenerateMomentRequest(trigger_type="heartbeat", mood=None),
+                )
+            except Exception:
+                pass
 
         if random.random() < task_p:
             tasks = get_tasks()
-            open_tasks = [t for t in tasks if str(t.status) == "open"]
-            if open_tasks:
-                if character.money <= 0 or character.poverty_days >= 1:
-                    task = max(open_tasks, key=lambda t: t.reward)
-                else:
-                    task = random.choice(open_tasks)
-                pass  # 需要接取任务
-        
+            if try_heartbeat_take_open_task(character, tasks, get_companies(), all_characters):
+                save_tasks(tasks)
+
+        if moments_dirty:
+            save_moments(moments)
     except Exception:
         pass
-    
-    save_characters(characters)
+
+    save_characters(all_characters)
 
 
 async def run_heartbeat_tick(limit_characters: int = 30) -> Dict[str, Any]:
@@ -133,7 +175,7 @@ async def run_heartbeat_tick(limit_characters: int = 30) -> Dict[str, Any]:
     sampled = alive if len(alive) <= limit_characters else random.sample(alive, limit_characters)
     
     for char in sampled:
-        await run_character_heartbeat(char, alive)
+        await run_character_heartbeat(char, characters)
     
     save_characters(characters)
     return {"characters": len(alive), "ticked": len(sampled)}
@@ -203,19 +245,36 @@ async def process_encounter_followups(encounter_items: List[Dict[str, Any]]):
                     apply_relationship_interaction(char_ids[i], char_ids[j], "meet")
 
 
-async def append_private_group_exchange(group, topic: str):
-    """追加私聊群对话"""
-    from storage import get_characters
-    
+async def append_private_group_exchange(group, topic: Optional[str] = None):
+    """追加私聊群对话（写入 group 会话消息）"""
+    from storage import get_characters, get_messages, save_messages
+    from services.ai_service import generate_ai_reply
+    from models import ChatMessage
+
     chars = {c.id: c for c in get_characters() if c.is_alive}
     members = [chars[mid] for mid in group.member_ids if mid in chars]
-    
+
     if len(members) < 2:
         return
-    
-    # 模拟对话
+
+    conv_id = f"group:{group.id}"
+    topic_line = (topic or "").strip() or "随便聊聊近况"
+    messages = get_messages()
     for char in members[:2]:
-        pass  # 需要生成对话内容
+        prompt = (
+            f"你们在私聊群里聊天。主题：{topic_line}。"
+            "请简短说一句（20-60 字），像微信群聊，不要复述系统说明。"
+        )
+        reply = await generate_ai_reply(char, prompt, conv_id)
+        messages.append(
+            ChatMessage(
+                conversation_id=conv_id,
+                sender_id=char.id,
+                content=reply,
+                is_from_user=False,
+            )
+        )
+    save_messages(messages)
 
 
 async def heartbeat_task():
@@ -261,13 +320,40 @@ async def task_engine_task():
 
 
 async def scheduler_task():
-    """后台调度器任务"""
+    """后台调度器；若与 main 同时跑会重复调度，建议只启用一处。"""
     import asyncio
+    from datetime import datetime
     from services.scheduler import run_scheduler_tick
-    
+    from storage import get_characters, get_messages, save_messages, get_logs, save_logs
+    from services.ai_service import generate_ai_reply
+    from models import LogEntry
+
+    def add_log(character_name: str, action_type: str, description: str):
+        try:
+            logs = get_logs()
+            now_ms = int(time.time() * 1000)
+            now = datetime.now().strftime("%H:%M:%S")
+            logs.insert(0, LogEntry(
+                timestamp=now, timestamp_ms=now_ms, world_timestamp_ms=0,
+                character_name=character_name, action_type=action_type,
+                description=description,
+            ))
+            if len(logs) > 200:
+                logs = logs[:200]
+            save_logs(logs)
+        except Exception:
+            pass
+
     while True:
         try:
-            await run_scheduler_tick()
+            characters = [c for c in get_characters() if c.is_alive]
+            await run_scheduler_tick(
+                characters=characters,
+                get_ai_reply_func=generate_ai_reply,
+                save_messages_func=save_messages,
+                get_messages_func=get_messages,
+                add_log_func=add_log,
+            )
             await asyncio.sleep(60)
         except Exception:
             await asyncio.sleep(60)

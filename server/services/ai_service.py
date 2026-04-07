@@ -93,6 +93,41 @@ def record_llm_usage(
         pass
 
 
+def openai_choice_text(res_json: Any) -> str:
+    """
+    从 OpenAI 兼容的 chat completion JSON 中取出 assistant 文本。
+    content 为 null、嵌套列表（多段）时都转为 str，避免 None / AttributeError。
+    """
+    if not isinstance(res_json, dict):
+        return ""
+    try:
+        choices = res_json.get("choices") or []
+        if not choices:
+            return ""
+        msg = choices[0].get("message")
+        if not isinstance(msg, dict):
+            return ""
+        raw = msg.get("content")
+    except (TypeError, IndexError, AttributeError):
+        return ""
+    if raw is None:
+        return ""
+    if isinstance(raw, str):
+        return raw.strip()
+    if isinstance(raw, list):
+        parts: List[str] = []
+        for part in raw:
+            if isinstance(part, dict):
+                if part.get("type") == "text" and part.get("text"):
+                    parts.append(str(part["text"]))
+                elif part.get("text") is not None:
+                    parts.append(str(part.get("text")))
+            elif isinstance(part, str):
+                parts.append(part)
+        return "".join(parts).strip()
+    return str(raw).strip()
+
+
 def record_image_usage(config, endpoint: str = "", character_id: Optional[str] = None, success: bool = True, error_message: Optional[str] = None):
     """记录图像 API 调用用量"""
     try:
@@ -197,7 +232,7 @@ async def llm_choose_image_size(prompt: str, context: str = "") -> str:
                 if response.status == 200:
                     result = await response.json()
                     record_llm_usage(result, llm_config, "image_size_selection")
-                    content = result.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
+                    content = openai_choice_text(result)
                     for size in VALID_IMAGE_SIZES:
                         if size in content:
                             return size
@@ -315,101 +350,117 @@ Example: "好的，我现在就过去。[EXEC:MoveTo(餐厅)]"
         
         async with aiohttp.ClientSession() as session:
             async with session.post(llm_config.api_url, headers=headers, json=data) as response:
-                if response.status == 200:
-                    res_json = await response.json()
-                    record_llm_usage(res_json, llm_config, "ai_reply", character.id)
-                    reply = res_json.get('choices', [{}])[0].get('message', {}).get('content', '').strip()
-                    
-                    # 5. 处理 Exec 协议指令
-                    instructions = ExecProtocol.parse_instructions(reply)
-                    for inst in instructions:
-                        action = inst['action']
-                        params = inst['params']
-                        _add_log(character.name, "识别指令", f"Action: {action}, Params: {params}")
-                        
-                        if action in ["Transfer", "MoveTo"]:
-                            try:
-                                if action == "MoveTo":
-                                    update_character_location(character, params, source="ai_action")
-                                    _add_log(character.name, "移动", f"AI 自主决定移动到 {params}")
-                                elif action == "Transfer":
-                                    parts = [p.strip() for p in params.split(",")]
-                                    if len(parts) >= 2:
-                                        amount = float(parts[0])
-                                        target_id = parts[1]
-                                        chars = get_characters()
-                                        sender = next((c for c in chars if c.id == character.id), None)
-                                        receiver = next((c for c in chars if c.id == target_id), None)
-                                        if sender and receiver and sender.money >= amount:
-                                            sender.money -= amount
-                                            receiver.money += amount
-                                            sender.updated_at = int(time.time() * 1000)
-                                            receiver.updated_at = int(time.time() * 1000)
-                                            save_characters(chars)
-                                            _add_log(sender.name, "转账", f"向 {receiver.name} 转账 {amount:.2f}")
-                                            _add_log(receiver.name, "收款", f"收到来自 {sender.name} 的转账 {amount:.2f}")
-                            except Exception as e:
-                                _add_log(character.name, "即时指令失败", str(e))
-                        elif action == "CreateCompany":
-                            try:
-                                company_name = params.strip()
-                                if len(company_name) > 50:
-                                    company_name = company_name[:50]
-                                if character.money < 1000:
-                                    _add_log(character.name, "创建公司失败", "资金不足（至少需要1000元）")
-                                else:
-                                    from storage import get_companies, save_companies
-                                    companies = get_companies()
-                                    new_company = Company(
-                                        name=company_name,
-                                        legal_person_id=character.id,
-                                        member_ids=[character.id],
-                                        funds=500.0,
-                                        location_name=character.current_location_id or "办公室",
-                                    )
-                                    character.money -= 1000
-                                    character.company_id = new_company.id
-                                    companies.append(new_company)
-                                    save_companies(companies)
-                                    save_characters(get_characters())
-                                    _add_log(character.name, "创建公司", f"成功创建公司「{company_name}」，投入500元启动资金")
-                            except Exception as e:
-                                _add_log(character.name, "创建公司失败", str(e))
-                        elif action == "RecruitMember":
-                            try:
+                if response.status != 200:
+                    try:
+                        err_body = (await response.text())[:300]
+                    except Exception:
+                        err_body = ""
+                    _add_log("系统", "对话LLM错误", f"HTTP {response.status} {err_body}")
+                    return get_fallback_reply(character, user_input)
+
+                res_json = await response.json()
+                record_llm_usage(res_json, llm_config, "ai_reply", character.id)
+                raw_msg = res_json.get("choices", [{}])[0].get("message", {})
+                raw_content = raw_msg.get("content") if isinstance(raw_msg, dict) else None
+                if raw_content is None:
+                    reply = ""
+                elif isinstance(raw_content, str):
+                    reply = raw_content.strip()
+                else:
+                    reply = str(raw_content).strip()
+                if not reply:
+                    reply = get_fallback_reply(character, user_input)
+
+                # 5. 处理 Exec 协议指令
+                instructions = ExecProtocol.parse_instructions(reply)
+                for inst in instructions:
+                    action = inst["action"]
+                    params = inst["params"]
+                    _add_log(character.name, "识别指令", f"Action: {action}, Params: {params}")
+
+                    if action in ["Transfer", "MoveTo"]:
+                        try:
+                            if action == "MoveTo":
+                                update_character_location(character, params, source="ai_action")
+                                _add_log(character.name, "移动", f"AI 自主决定移动到 {params}")
+                            elif action == "Transfer":
                                 parts = [p.strip() for p in params.split(",")]
                                 if len(parts) >= 2:
-                                    company_id = parts[0]
+                                    amount = float(parts[0])
                                     target_id = parts[1]
-                                    from storage import get_companies, save_companies
-                                    companies = get_companies()
-                                    company = next((c for c in companies if c.id == company_id), None)
-                                    if company and company.legal_person_id == character.id:
-                                        if target_id not in company.member_ids:
-                                            company.member_ids.append(target_id)
-                                            save_companies(companies)
-                                            target_char = next((c for c in get_characters() if c.id == target_id), None)
-                                            if target_char:
-                                                target_char.company_id = company_id
-                                                save_characters(get_characters())
-                                            _add_log(character.name, "招募", f"成功招募 {target_char.name if target_char else target_id} 加入 {company.name}")
-                                        else:
-                                            _add_log(character.name, "招募失败", f"{target_id} 已经是公司成员")
+                                    chars = get_characters()
+                                    sender = next((c for c in chars if c.id == character.id), None)
+                                    receiver = next((c for c in chars if c.id == target_id), None)
+                                    if sender and receiver and sender.money >= amount:
+                                        sender.money -= amount
+                                        receiver.money += amount
+                                        sender.updated_at = int(time.time() * 1000)
+                                        receiver.updated_at = int(time.time() * 1000)
+                                        save_characters(chars)
+                                        _add_log(sender.name, "转账", f"向 {receiver.name} 转账 {amount:.2f}")
+                                        _add_log(receiver.name, "收款", f"收到来自 {sender.name} 的转账 {amount:.2f}")
+                        except Exception as e:
+                            _add_log(character.name, "即时指令失败", str(e))
+                    elif action == "CreateCompany":
+                        try:
+                            company_name = params.strip()
+                            if len(company_name) > 50:
+                                company_name = company_name[:50]
+                            if character.money < 1000:
+                                _add_log(character.name, "创建公司失败", "资金不足（至少需要1000元）")
+                            else:
+                                from storage import get_companies, save_companies
+                                companies = get_companies()
+                                new_company = Company(
+                                    name=company_name,
+                                    legal_person_id=character.id,
+                                    member_ids=[character.id],
+                                    funds=500.0,
+                                    location_name=character.current_location_id or "办公室",
+                                )
+                                character.money -= 1000
+                                character.company_id = new_company.id
+                                companies.append(new_company)
+                                save_companies(companies)
+                                save_characters(get_characters())
+                                _add_log(character.name, "创建公司", f"成功创建公司「{company_name}」，投入500元启动资金")
+                        except Exception as e:
+                            _add_log(character.name, "创建公司失败", str(e))
+                    elif action == "RecruitMember":
+                        try:
+                            parts = [p.strip() for p in params.split(",")]
+                            if len(parts) >= 2:
+                                company_id = parts[0]
+                                target_id = parts[1]
+                                from storage import get_companies, save_companies
+                                companies = get_companies()
+                                company = next((c for c in companies if c.id == company_id), None)
+                                if company and company.legal_person_id == character.id:
+                                    if target_id not in company.member_ids:
+                                        company.member_ids.append(target_id)
+                                        save_companies(companies)
+                                        target_char = next((c for c in get_characters() if c.id == target_id), None)
+                                        if target_char:
+                                            target_char.company_id = company_id
+                                            save_characters(get_characters())
+                                        _add_log(character.name, "招募", f"成功招募 {target_char.name if target_char else target_id} 加入 {company.name}")
                                     else:
-                                        _add_log(character.name, "招募失败", "你不是该公司法人或公司不存在")
-                            except Exception as e:
-                                _add_log(character.name, "招募失败", str(e))
-                        else:
-                            character.pending_intents.append({"action": action, "params": params, "created_at": int(time.time() * 1000)})
-                            _add_log(character.name, "计划", f"已将 {action} 加入待办意图")
+                                        _add_log(character.name, "招募失败", f"{target_id} 已经是公司成员")
+                                else:
+                                    _add_log(character.name, "招募失败", "你不是该公司法人或公司不存在")
+                        except Exception as e:
+                            _add_log(character.name, "招募失败", str(e))
+                    else:
+                        character.pending_intents.append({"action": action, "params": params, "created_at": int(time.time() * 1000)})
+                        _add_log(character.name, "计划", f"已将 {action} 加入待办意图")
 
-                    # 6. 更新 Session 并检查压缩
-                    session_manager.add_message(conv_id, "assistant", reply)
-                    if len(history) > 10:
-                        await compress_context(character, conv_id, history)
-                        session_manager.sessions[conv_id] = history[-4:]
+                # 6. 更新 Session 并检查压缩
+                session_manager.add_message(conversation_id, "assistant", reply)
+                if len(history) > 10:
+                    await compress_context(character, conversation_id, history)
+                    session_manager.sessions[conversation_id] = history[-4:]
 
-                    return reply
+                return reply
     except Exception as e:
         _add_log("系统", "对话异常", str(e))
         return get_fallback_reply(character, user_input)
@@ -474,8 +525,18 @@ async def generate_avatar(character: Character) -> Optional[str]:
                 if response.status == 200:
                     result = await response.json()
                     record_image_usage(image_config, "avatar_generation", character.id, success=True)
-                    image_url = result.get("data", [{}])[0].get("url", "")
-                    return image_url
+                    image_url = None
+                    data_list = result.get("data")
+                    if isinstance(data_list, list) and data_list:
+                        first = data_list[0]
+                        if isinstance(first, dict):
+                            image_url = first.get("url") or first.get("b64_json")
+                    if not image_url:
+                        image_url = result.get("url") or result.get("image_url")
+                    if image_url:
+                        return image_url if isinstance(image_url, str) else str(image_url)
+                    record_image_usage(image_config, "avatar_generation", character.id, success=False, error_message="empty image response")
+                    return None
                 else:
                     record_image_usage(image_config, "avatar_generation", character.id, success=False)
                     return None
@@ -516,10 +577,12 @@ async def generate_moment_content(character: Character, request) -> str:
         }
         async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=15)) as session:
             async with session.post(llm_config.api_url, headers=headers, json=data) as response:
-                if response.status == 200:
-                    result = await response.json()
-                    record_llm_usage(result, llm_config, "moment_content", character.id)
-                    return result.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
+                if response.status != 200:
+                    return f"今天心情不错～"
+                result = await response.json()
+                record_llm_usage(result, llm_config, "moment_content", character.id)
+                reply = openai_choice_text(result)
+                return reply if reply else f"今天心情不错～"
     except Exception:
         return f"今天心情不错～"
 
@@ -547,14 +610,17 @@ async def generate_moment_image_plan(
         }
         async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=15)) as session:
             async with session.post(llm_config.api_url, headers=headers, json=data) as response:
-                if response.status == 200:
-                    result = await response.json()
-                    record_llm_usage(result, llm_config, "moment_image_plan", character.id)
-                    image_prompt = result.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
-                    return {
-                        "prompt": image_prompt,
-                        "filename": save_image_prompt_md(image_prompt, title=f"朋友圈配图 - {character.name}"),
-                    }
+                if response.status != 200:
+                    return _fallback_moment_image_plan(character, moment_content, mood)
+                result = await response.json()
+                record_llm_usage(result, llm_config, "moment_image_plan", character.id)
+                image_prompt = openai_choice_text(result)
+                if not image_prompt:
+                    return _fallback_moment_image_plan(character, moment_content, mood)
+                return {
+                    "prompt": image_prompt,
+                    "filename": save_image_prompt_md(image_prompt, title=f"朋友圈配图 - {character.name}"),
+                }
     except Exception:
         return _fallback_moment_image_plan(character, moment_content, mood)
 
@@ -606,10 +672,12 @@ async def generate_auto_comment_text(
         }
         async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=15)) as session:
             async with session.post(llm_config.api_url, headers=headers, json=data) as response:
-                if response.status == 200:
-                    result = await response.json()
-                    record_llm_usage(result, llm_config, "auto_comment", commenter.id)
-                    return result.get("choices", [{}])[0].get("message", {}).get("content", "").strip()[:80]
+                if response.status != 200:
+                    return random.choice(["不错！", "哈哈哈", "挺好的", "赞👍", "有意思"])
+                result = await response.json()
+                record_llm_usage(result, llm_config, "auto_comment", commenter.id)
+                text = openai_choice_text(result)[:80]
+                return text if text else random.choice(["不错！", "哈哈哈", "挺好的", "赞👍", "有意思"])
     except Exception:
         return random.choice(["不错！", "哈哈哈", "挺好的", "赞👍", "有意思"])
 
@@ -637,10 +705,12 @@ async def generate_new_signature(character: Character, memory_context: str = "")
         }
         async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=15)) as session:
             async with session.post(llm_config.api_url, headers=headers, json=data) as response:
-                if response.status == 200:
-                    result = await response.json()
-                    record_llm_usage(result, llm_config, "signature_generation", character.id)
-                    return result.get("choices", [{}])[0].get("message", {}).get("content", "").strip()[:30]
+                if response.status != 200:
+                    return None
+                result = await response.json()
+                record_llm_usage(result, llm_config, "signature_generation", character.id)
+                text = openai_choice_text(result)[:30]
+                return text if text else None
     except Exception:
         return None
 
@@ -679,16 +749,17 @@ async def llm_generate_world_map(user_prompt: str) -> Optional[Dict[str, Any]]:
         }
         async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=30)) as session:
             async with session.post(llm_config.api_url, headers=headers, json=data) as response:
-                if response.status == 200:
-                    result = await response.json()
-                    record_llm_usage(result, llm_config, "world_map_generation")
-                    content = result.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
-                    # 尝试解析 JSON
-                    import re
-                    json_match = re.search(r'\{.*\}', content, re.DOTALL)
-                    if json_match:
-                        return json.loads(json_match.group())
+                if response.status != 200:
                     return None
+                result = await response.json()
+                record_llm_usage(result, llm_config, "world_map_generation")
+                content = openai_choice_text(result)
+                # 尝试解析 JSON
+                import re
+                json_match = re.search(r'\{.*\}', content, re.DOTALL)
+                if json_match:
+                    return json.loads(json_match.group())
+                return None
     except Exception:
         return None
 
@@ -722,9 +793,12 @@ async def get_embedding(text: str) -> Optional[List[float]]:
         
         async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=15)) as session:
             async with session.post(vector_config.api_url, headers=headers, json=data) as response:
-                if response.status == 200:
-                    result = await response.json()
-                    embedding = result.get('data', [{}])[0].get('embedding', [])
+                if response.status != 200:
+                    return None
+                result = await response.json()
+                row = (result.get("data") or [{}])[0] if isinstance(result.get("data"), list) else {}
+                embedding = row.get("embedding") if isinstance(row, dict) else None
+                if isinstance(embedding, list) and len(embedding) > 0:
                     return embedding
     except Exception as e:
         pass
@@ -753,10 +827,12 @@ async def suggest_occupation_for_character(request: SuggestOccupationRequest) ->
         }
         async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=15)) as session:
             async with session.post(llm_config.api_url, headers=headers, json=data) as response:
-                if response.status == 200:
-                    result = await response.json()
-                    record_llm_usage(result, llm_config, "suggest_occupation")
-                    return result.get("choices", [{}])[0].get("message", {}).get("content", "").strip()[:30]
+                if response.status != 200:
+                    return "自由职业者"
+                result = await response.json()
+                record_llm_usage(result, llm_config, "suggest_occupation")
+                text = openai_choice_text(result)[:30]
+                return text if text else "自由职业者"
     except Exception:
         return "自由职业者"
 
@@ -778,10 +854,12 @@ async def suggest_personality_for_character(request: SuggestPersonalityRequest) 
         }
         async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=15)) as session:
             async with session.post(llm_config.api_url, headers=headers, json=data) as response:
-                if response.status == 200:
-                    result = await response.json()
-                    record_llm_usage(result, llm_config, "suggest_personality")
-                    return result.get("choices", [{}])[0].get("message", {}).get("content", "").strip()[:30]
+                if response.status != 200:
+                    return "开朗"
+                result = await response.json()
+                record_llm_usage(result, llm_config, "suggest_personality")
+                text = openai_choice_text(result)[:30]
+                return text if text else "开朗"
     except Exception:
         return "开朗"
 
@@ -846,10 +924,11 @@ async def _generate_task_code(task: TaskItem, assignee: Optional[Character]) -> 
         }
         async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=60)) as session:
             async with session.post(llm_config.api_url, headers=headers, json=data) as response:
-                if response.status == 200:
-                    result = await response.json()
-                    record_llm_usage(result, llm_config, "task_code", assignee.id if assignee else None)
-                    return result.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
+                if response.status != 200:
+                    return f"# 任务: {task.title}\n# 代码生成失败"
+                result = await response.json()
+                record_llm_usage(result, llm_config, "task_code", assignee.id if assignee else None)
+                return openai_choice_text(result) or f"# 任务: {task.title}\n# 代码生成失败"
     except Exception:
         return f"# 任务: {task.title}\n# 代码生成失败"
 
@@ -877,10 +956,12 @@ async def _generate_task_text(task: TaskItem, assignee: Optional[Character]) -> 
         }
         async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=30)) as session:
             async with session.post(llm_config.api_url, headers=headers, json=data) as response:
-                if response.status == 200:
-                    result = await response.json()
-                    record_llm_usage(result, llm_config, "task_text", assignee.id if assignee else None)
-                    return result.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
+                if response.status != 200:
+                    return f"关于任务「{task.title}」的分析报告..."
+                result = await response.json()
+                record_llm_usage(result, llm_config, "task_text", assignee.id if assignee else None)
+                text = openai_choice_text(result)
+                return text if text else f"关于任务「{task.title}」的分析报告..."
     except Exception:
         return f"关于任务「{task.title}」的分析报告..."
 
@@ -908,10 +989,12 @@ async def _generate_task_research(task: TaskItem, assignee: Optional[Character])
         }
         async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=45)) as session:
             async with session.post(llm_config.api_url, headers=headers, json=data) as response:
-                if response.status == 200:
-                    result = await response.json()
-                    record_llm_usage(result, llm_config, "task_research", assignee.id if assignee else None)
-                    return result.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
+                if response.status != 200:
+                    return f"研究报告：{task.title}\n\n待补充..."
+                result = await response.json()
+                record_llm_usage(result, llm_config, "task_research", assignee.id if assignee else None)
+                text = openai_choice_text(result)
+                return text if text else f"研究报告：{task.title}\n\n待补充..."
     except Exception:
         return f"研究报告：{task.title}\n\n待补充..."
 
@@ -948,19 +1031,20 @@ async def ai_auto_review_task(task: TaskItem, assignee: Character) -> Dict[str, 
         }
         async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=20)) as session:
             async with session.post(llm_config.api_url, headers=headers, json=data) as response:
-                if response.status == 200:
-                    result = await response.json()
-                    record_llm_usage(result, llm_config, "ai_task_review", assignee.id)
-                    content = result.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
-                    import re
-                    json_match = re.search(r'\{.*\}', content, re.DOTALL)
-                    if json_match:
-                        review = json.loads(json_match.group())
-                        return {
-                            "approved": review.get("approved", True),
-                            "score": min(100, max(0, int(review.get("score", 75)))),
-                            "review_notes": review.get("review_notes", "AI 审核通过"),
-                        }
+                if response.status != 200:
+                    return _simple_rule_based_review(task, assignee)
+                result = await response.json()
+                record_llm_usage(result, llm_config, "ai_task_review", assignee.id)
+                content = openai_choice_text(result)
+                import re
+                json_match = re.search(r'\{.*\}', content, re.DOTALL)
+                if json_match:
+                    review = json.loads(json_match.group())
+                    return {
+                        "approved": review.get("approved", True),
+                        "score": min(100, max(0, int(review.get("score", 75)))),
+                        "review_notes": review.get("review_notes", "AI 审核通过"),
+                    }
     except Exception:
         pass
     
@@ -997,8 +1081,15 @@ async def compress_context(character: Character, conversation_id: str, messages:
     
     if not messages:
         return ""
-    
-    summary_text = "\n".join([f"{m.get('role', '')}: {m.get('content', '')}" for m in messages[-5:]])
+
+    def _line(m: Dict[str, Any]) -> str:
+        r = m.get("role")
+        c = m.get("content")
+        rs = r if isinstance(r, str) else ("" if r is None else str(r))
+        cs = c if isinstance(c, str) else ("" if c is None else str(c))
+        return f"{rs}: {cs}"
+
+    summary_text = "\n".join(_line(m) if isinstance(m, dict) else "" for m in messages[-5:])
     
     await store_memory(
         character_id=character.id,

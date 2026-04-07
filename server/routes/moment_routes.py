@@ -5,7 +5,7 @@ import time
 import os
 
 from config import DATA_DIR
-from models import MomentPost, MomentCommentRequest, GenerateMomentRequest
+from models import MomentPost, MomentCommentRequest, GenerateMomentRequest, UserCreateMomentRequest
 from storage import (
     get_moments, save_moments, get_settings, save_settings,
     get_characters, get_logs, save_logs,
@@ -53,23 +53,15 @@ async def list_moments(viewer_id: Optional[str] = None, limit: int = 50):
 
 
 @router.post("/api/users/moments")
-async def create_user_moment(request):
+async def create_user_moment(body: UserCreateMomentRequest):
     """用户发布朋友圈"""
-    from pydantic import BaseModel
-    class UserCreateMomentRequest(BaseModel):
-        content: str
-        image_url: Optional[str] = None
-        generate_image: bool = False
-        image_prompt: Optional[str] = None
-    
-    req = UserCreateMomentRequest(**(request.__dict__ if hasattr(request, '__dict__') else {}))
-    content = (req.content or "").strip()
+    content = (body.content or "").strip()
     if not content:
         raise HTTPException(status_code=400, detail="content is required")
-    image_url = req.image_url
+    image_url = body.image_url
     prompt_file = None
-    if req.generate_image:
-        hint = (req.image_prompt or content).strip()[:600]
+    if body.generate_image:
+        hint = (body.image_prompt or content).strip()[:600]
         gen = await generate_avatar({
             "avatar_prompt": f"Lifestyle / scene photograph for social feed, visual idea: {hint}. High quality, no text, no watermark.",
             "style": "realistic",

@@ -1,5 +1,185 @@
 [
   {
+    "id": "94f1b7af-8667-40e1-9fd3-eeae0a18d84d",
+    "timestamp": "12:14:14",
+    "timestamp_ms": 1775535254346,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "heartbeat",
+    "description": "tick=7 alive=7"
+  },
+  {
+    "id": "00ba0b81-72cd-4825-8a25-30a1526aa8d7",
+    "timestamp": "12:13:45",
+    "timestamp_ms": 1775535225536,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "age_growth_error",
+    "description": "'Character' object has no attribute 'age_stage'"
+  },
+  {
+    "id": "dd0be4fd-178b-4ccb-99c1-625a256e059e",
+    "timestamp": "12:13:14",
+    "timestamp_ms": 1775535194326,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "heartbeat",
+    "description": "tick=7 alive=7"
+  },
+  {
+    "id": "9d06fcf0-b7a7-410d-9ecd-83d02a6f09ab",
+    "timestamp": "12:12:14",
+    "timestamp_ms": 1775535134304,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "heartbeat",
+    "description": "tick=7 alive=7"
+  },
+  {
+    "id": "7464c04a-dbb8-4336-bb64-2dae0c9249da",
+    "timestamp": "12:11:14",
+    "timestamp_ms": 1775535074269,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "heartbeat",
+    "description": "tick=7 alive=7"
+  },
+  {
+    "id": "2e4e0c33-4082-4394-83ee-8c22ab398aa6",
+    "timestamp": "12:09:45",
+    "timestamp_ms": 1775534985551,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "heartbeat",
+    "description": "tick=7 alive=7"
+  },
+  {
+    "id": "bfac7fd8-fc44-4b62-8b73-5a4a3379e732",
+    "timestamp": "12:08:26",
+    "timestamp_ms": 1775534906420,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "heartbeat",
+    "description": "tick=7 alive=7"
+  },
+  {
+    "id": "6c4fd5fa-a89d-479a-95b8-2c1228548254",
+    "timestamp": "12:08:26",
+    "timestamp_ms": 1775534906117,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "age_growth_error",
+    "description": "'Character' object has no attribute 'age_stage'"
+  },
+  {
+    "id": "80cce0c3-3df4-41fe-b919-dad8f2e066d0",
+    "timestamp": "12:07:26",
+    "timestamp_ms": 1775534846388,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "heartbeat",
+    "description": "tick=7 alive=7"
+  },
+  {
+    "id": "166fe3c3-f660-4d0e-a200-536e01010391",
+    "timestamp": "12:06:26",
+    "timestamp_ms": 1775534786352,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "heartbeat",
+    "description": "tick=7 alive=7"
+  },
+  {
+    "id": "e67552f2-8af7-4068-9136-3432e99750c0",
+    "timestamp": "12:05:26",
+    "timestamp_ms": 1775534726308,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "heartbeat",
+    "description": "tick=7 alive=7"
+  },
+  {
+    "id": "3047a157-c609-40d8-97c9-74c9ce410796",
+    "timestamp": "12:04:26",
+    "timestamp_ms": 1775534666283,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "heartbeat",
+    "description": "tick=7 alive=7"
+  },
+  {
+    "id": "bfec7c8e-76ae-449f-a01c-be0ec62a2e95",
+    "timestamp": "12:03:26",
+    "timestamp_ms": 1775534606255,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "heartbeat",
+    "description": "tick=7 alive=7"
+  },
+  {
+    "id": "da597565-d0d8-4d30-954e-0bb68bd517d0",
+    "timestamp": "12:03:26",
+    "timestamp_ms": 1775534606107,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "age_growth_error",
+    "description": "'Character' object has no attribute 'age_stage'"
+  },
+  {
+    "id": "300cf144-505d-4bd5-b775-ab2b38d483fb",
+    "timestamp": "12:02:26",
+    "timestamp_ms": 1775534546215,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "heartbeat",
+    "description": "tick=7 alive=7"
+  },
+  {
+    "id": "8d6e1618-f5da-4e93-b8bb-0fd1a5da3e8f",
+    "timestamp": "12:01:26",
+    "timestamp_ms": 1775534486154,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "heartbeat",
+    "description": "tick=7 alive=7"
+  },
+  {
+    "id": "85961f1f-a587-4a62-810e-6393cfe5f486",
+    "timestamp": "12:00:26",
+    "timestamp_ms": 1775534426131,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "heartbeat",
+    "description": "tick=7 alive=7"
+  },
+  {
+    "id": "29066510-f08b-4a56-b7ec-e4778cfc8570",
+    "timestamp": "11:59:56",
+    "timestamp_ms": 1775534396121,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "scheduler",
+    "description": "角色主动发消息 1 次"
+  },
+  {
+    "id": "5727f74d-c2a3-4f4d-bfa5-3c2afc718e33",
+    "timestamp": "11:59:56",
+    "timestamp_ms": 1775534396115,
+    "world_timestamp_ms": 0,
+    "character_name": "林晓",
+    "action_type": "主动联系",
+    "description": "主动发送：有点感慨，想跟你聊聊近况。..."
+  },
+  {
+    "id": "78d31ecb-f51d-4cdb-a335-1d0364603d38",
+    "timestamp": "11:59:26",
+    "timestamp_ms": 1775534366108,
+    "world_timestamp_ms": 0,
+    "character_name": "system",
+    "action_type": "heartbeat",
+    "description": "tick=7 alive=7"
+  },
+  {
     "id": "738568fd-aa25-4f64-b9cd-2889c83b8dde",
     "timestamp": "13:56:28",
     "timestamp_ms": 1775454988761,
@@ -1618,185 +1798,5 @@
     "character_name": "林晓",
     "action_type": "heartbeat",
     "description": "浏览朋友圈 13 条"
-  },
-  {
-    "id": "78a82e8a-032a-430c-a088-cf1dfa22d19b",
-    "timestamp": "21:56:41",
-    "timestamp_ms": 1775397401339,
-    "world_timestamp_ms": 446380796,
-    "character_name": "林柔",
-    "action_type": "heartbeat",
-    "description": "浏览朋友圈 6 条"
-  },
-  {
-    "id": "3b4308c0-19ff-480c-9f12-39fd3d6de283",
-    "timestamp": "21:56:41",
-    "timestamp_ms": 1775397401313,
-    "world_timestamp_ms": 446380796,
-    "character_name": "小秦",
-    "action_type": "heartbeat",
-    "description": "浏览朋友圈 9 条"
-  },
-  {
-    "id": "9bb8a63a-cce5-4736-b531-5ae5859191ae",
-    "timestamp": "21:56:41",
-    "timestamp_ms": 1775397401288,
-    "world_timestamp_ms": 446380796,
-    "character_name": "测试角色",
-    "action_type": "heartbeat",
-    "description": "浏览朋友圈 4 条"
-  },
-  {
-    "id": "c7592f21-edde-4080-bf25-8befd21e54bf",
-    "timestamp": "21:56:41",
-    "timestamp_ms": 1775397401258,
-    "world_timestamp_ms": 446380796,
-    "character_name": "小李",
-    "action_type": "heartbeat",
-    "description": "浏览朋友圈 8 条"
-  },
-  {
-    "id": "f5c81987-9c57-4556-8efe-db5528d6eda8",
-    "timestamp": "21:55:41",
-    "timestamp_ms": 1775397341211,
-    "world_timestamp_ms": 446320792,
-    "character_name": "system",
-    "action_type": "heartbeat",
-    "description": "tick=7 alive=7"
-  },
-  {
-    "id": "cffa6b54-566d-44b9-8d1a-d86a66ec8cba",
-    "timestamp": "21:55:41",
-    "timestamp_ms": 1775397341207,
-    "world_timestamp_ms": 446320792,
-    "character_name": "林屿",
-    "action_type": "heartbeat",
-    "description": "浏览朋友圈 10 条"
-  },
-  {
-    "id": "33cacea8-e654-46cb-933a-4d075dc0b712",
-    "timestamp": "21:55:41",
-    "timestamp_ms": 1775397341182,
-    "world_timestamp_ms": 446320792,
-    "character_name": "林晓",
-    "action_type": "heartbeat",
-    "description": "浏览朋友圈 10 条"
-  },
-  {
-    "id": "dad9670c-321c-4d92-abf7-8fb361a13891",
-    "timestamp": "21:55:41",
-    "timestamp_ms": 1775397341159,
-    "world_timestamp_ms": 446320792,
-    "character_name": "林晓",
-    "action_type": "heartbeat",
-    "description": "浏览朋友圈 13 条"
-  },
-  {
-    "id": "d44be2ff-8bc8-4df8-a290-a4f598615f63",
-    "timestamp": "21:55:41",
-    "timestamp_ms": 1775397341137,
-    "world_timestamp_ms": 446320792,
-    "character_name": "林柔",
-    "action_type": "heartbeat",
-    "description": "浏览朋友圈 6 条"
-  },
-  {
-    "id": "4b9ff0a2-47fa-4243-827e-f1a8553e4f08",
-    "timestamp": "21:55:41",
-    "timestamp_ms": 1775397341067,
-    "world_timestamp_ms": 446320792,
-    "character_name": "小秦",
-    "action_type": "moment_post",
-    "description": "发布朋友圈：晨光刚好，咖啡微温。32 岁不慌不忙，一"
-  },
-  {
-    "id": "4d1126a4-5ecb-4d23-81f2-02e213dd1504",
-    "timestamp": "21:55:41",
-    "timestamp_ms": 1775397341060,
-    "world_timestamp_ms": 446320792,
-    "character_name": "系统",
-    "action_type": "错误",
-    "description": "头像生成异常: name 'character_title' is not defined"
-  },
-  {
-    "id": "e95bad7c-265a-46b9-8c59-d1797c53ec30",
-    "timestamp": "21:55:41",
-    "timestamp_ms": 1775397341050,
-    "world_timestamp_ms": 446320792,
-    "character_name": "系统",
-    "action_type": "头像生成",
-    "description": "头像生成成功"
-  },
-  {
-    "id": "6e54ac36-efc6-4741-8ef0-ca40d4f3b909",
-    "timestamp": "21:55:41",
-    "timestamp_ms": 1775397341046,
-    "world_timestamp_ms": 446320792,
-    "character_name": "系统",
-    "action_type": "头像保存",
-    "description": "头像已保存到本地: df8eb7295b3644c29d12d5fdfc22c1f8.png"
-  },
-  {
-    "id": "aaa674d5-4f22-46c5-a816-f7ac419a6e53",
-    "timestamp": "21:55:36",
-    "timestamp_ms": 1775397336061,
-    "world_timestamp_ms": 446320792,
-    "character_name": "系统",
-    "action_type": "头像生成",
-    "description": "正在生成头像: A cozy morning study scene with soft golden sunlig..."
-  },
-  {
-    "id": "0ef1e2dd-0487-4d9a-b266-48ddcf839ff6",
-    "timestamp": "21:55:30",
-    "timestamp_ms": 1775397330710,
-    "world_timestamp_ms": 446260781,
-    "character_name": "小秦",
-    "action_type": "heartbeat",
-    "description": "浏览朋友圈 8 条"
-  },
-  {
-    "id": "e456397a-b709-46bc-9755-cf82821eda2f",
-    "timestamp": "21:55:30",
-    "timestamp_ms": 1775397330687,
-    "world_timestamp_ms": 446260781,
-    "character_name": "测试角色",
-    "action_type": "heartbeat",
-    "description": "浏览朋友圈 4 条"
-  },
-  {
-    "id": "75502435-287b-41d9-aeee-50ba90d53e22",
-    "timestamp": "21:55:30",
-    "timestamp_ms": 1775397330662,
-    "world_timestamp_ms": 446260781,
-    "character_name": "小李",
-    "action_type": "heartbeat",
-    "description": "浏览朋友圈 9 条"
-  },
-  {
-    "id": "7f41382e-8b9f-46a1-b718-7f066a4292fb",
-    "timestamp": "21:54:30",
-    "timestamp_ms": 1775397270627,
-    "world_timestamp_ms": 446200768,
-    "character_name": "system",
-    "action_type": "heartbeat",
-    "description": "tick=7 alive=7"
-  },
-  {
-    "id": "37f72cfa-95af-462b-a95a-2704cb930e66",
-    "timestamp": "21:54:30",
-    "timestamp_ms": 1775397270623,
-    "world_timestamp_ms": 446200768,
-    "character_name": "林屿",
-    "action_type": "heartbeat",
-    "description": "浏览朋友圈 10 条"
-  },
-  {
-    "id": "0214680b-07ce-4c3f-9ef6-2db6f14b6395",
-    "timestamp": "21:54:30",
-    "timestamp_ms": 1775397270599,
-    "world_timestamp_ms": 446200768,
-    "character_name": "林晓",
-    "action_type": "heartbeat",
-    "description": "浏览朋友圈 10 条"
   }
 ]

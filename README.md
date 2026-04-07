@@ -2,7 +2,7 @@
 
 一款基于 **FastAPI + 单页 Web（`server/web/index.html`）** 的社交模拟应用，采用微信风格 UI。核心玩法是让 AI 角色在**可由 LLM 生成的虚拟城市**里生活、社交、成长与协作。每一个角色都拥有**时间感知的独立记忆**，能够从经验中学习进化。
 
-> 📖 完整 API 文档见 [开发文档.md](开发文档.md)，覆盖 **76 个 API 端点**。
+> 📖 接口与需求见 [开发文档.md](开发文档.md)（**76** 个 API 端点）；操作说明见 [使用指南.md](使用指南.md)。
 
 ## 🚀 快速开始
 
@@ -79,14 +79,19 @@ python main.py
 
 ```
 aiwechat/
-├── server/                 # 后端服务
-│   ├── main.py            # FastAPI 应用入口
-│   ├── requirements.txt   # Python 依赖
-│   ├── data/              # 数据持久化目录 (JSON + SQLite)
-│   └── web/               # Web UI 静态文件 (HTML/JS/CSS)
-├── 开发文档.md             # 详细需求与接口文档
-├── 使用指南.md             # 功能操作说明
-└── README.md              # 项目主说明
+├── server/
+│   ├── main.py            # FastAPI 入口、静态资源挂载、后台任务
+│   ├── config.py          # 路径与常量（含头像/绘画提示词目录、旧数据同步）
+│   ├── models.py          # Pydantic 模型
+│   ├── storage.py         # JSON / 世界地图等持久化
+│   ├── routes/            # HTTP 路由（/api/...）
+│   ├── services/          # 业务逻辑（AI、心跳、任务、记忆等）
+│   ├── tests/             # pytest
+│   ├── data/              # 运行数据 (JSON、memory.db 等)
+│   └── web/               # index.html 与 web/avatars、web/image_prompts 静态资源
+├── 开发文档.md             # 需求与 API 说明
+├── 使用指南.md             # 操作与部署简明说明
+└── README.md
 ```
 
 ## ⚙️ 技术栈
@@ -100,6 +105,7 @@ aiwechat/
 
 | 版本 | 日期 | 核心更新 |
 |------|------|----------|
+| **V3.5** | 2026-04-07 | 静态资源路径统一（`/avatars`、`/image-prompts` 与 `/api/image-prompts`）、启动时 legacy 资源同步；对话 `conversation_id` 与消息体校验加固；心跳持久化使用完整角色列表；任务/朋友圈等 POST 统一 Pydantic 请求体 |
 | **V3.3** | 2026-04-04 | 🧩 模块化重构 (config/models/storage/services) + 角色主动对话/定时提醒/节日问候系统 |
 | **V3.2** | 2026-04-04 | 📝 角色日志/人生经历/拟人化回复/任务系统增强/AI公司自治管理 |
 | **V3.1** | - | 经济系统/任务引擎/反思系统/相遇检测 |

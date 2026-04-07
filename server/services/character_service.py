@@ -17,7 +17,10 @@ ResidenceName = str
 WorldTimeMs = int
 
 # 使用相对导入
-from models import Character, CharacterHistoryEntry, Settings
+from models import (
+    Character, CharacterHistoryEntry, Settings,
+    SuggestOccupationRequest, SuggestPersonalityRequest,
+)
 from storage import (
     load_json, save_json, get_characters, save_characters,
     get_settings, save_settings, get_api_configs
@@ -414,13 +417,13 @@ async def generate_new_signature(character: Character, memory_context: str = "")
 #  AI 建议
 # =====================================================================
 
-async def suggest_occupation_for_character(request) -> str:
+async def suggest_occupation_for_character(request: SuggestOccupationRequest) -> str:
     """AI 建议职业"""
     from services.ai_service import suggest_occupation_for_character as ai_suggest_occ
     return await ai_suggest_occ(request)
 
 
-async def suggest_personality_for_character(request) -> str:
+async def suggest_personality_for_character(request: SuggestPersonalityRequest) -> str:
     """AI 建议性格"""
     from services.ai_service import suggest_personality_for_character as ai_suggest_pers
     return await ai_suggest_pers(request)

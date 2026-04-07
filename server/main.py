@@ -52,19 +52,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ==================== 路径常量 ====================
-DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
+# ==================== 路径常量（与 config 一致，避免保存目录与静态挂载不一致导致 404）====================
+from config import DATA_DIR, AVATARS_DIR, IMAGE_PROMPTS_DIR
+
 os.makedirs(DATA_DIR, exist_ok=True)
-
-AVATARS_DIR = os.path.join(os.path.dirname(__file__), "data", "avatars")
-os.makedirs(AVATARS_DIR, exist_ok=True)
-
-IMAGE_PROMPTS_DIR = os.path.join(DATA_DIR, "image_prompts")
-os.makedirs(IMAGE_PROMPTS_DIR, exist_ok=True)
 
 # ==================== 静态文件挂载 ====================
 app.mount("/avatars", StaticFiles(directory=AVATARS_DIR), name="avatars")
 app.mount("/image-prompts", StaticFiles(directory=IMAGE_PROMPTS_DIR), name="image-prompts")
+# 与前端 /api/* 风格一致：`get_image_prompt_url`、朋友圈「查看绘画提示词」链接使用此路径
+app.mount("/api/image-prompts", StaticFiles(directory=IMAGE_PROMPTS_DIR), name="api-image-prompts")
 
 # ==================== 根路由 ====================
 @app.get("/")
@@ -107,6 +104,10 @@ app.include_router(exec_router)
 # ==================== 生命周期管理 ====================
 async def startup_event():
     """启动后台心跳任务"""
+    from config import sync_legacy_asset_directories
+
+    sync_legacy_asset_directories()
+
     from storage import get_settings, save_settings
     from services.heartbeat_service import run_heartbeat_tick, process_encounter_followups
     from services.task_service import run_task_engine

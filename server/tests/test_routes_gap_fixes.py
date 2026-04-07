@@ -202,3 +202,34 @@ def test_character_logs_exact_name_not_substring(monkeypatch):
     names = {x["character_name"] for x in resp.json()["data"]}
     assert names == {"张三", "系统"}
 
+
+def test_create_task_with_json_body(monkeypatch):
+    """POST /api/tasks 应正确解析 JSON body。"""
+    import main
+    import routes.task_routes as task_routes
+
+    bucket: list = []
+    monkeypatch.setattr(task_routes, "get_tasks", lambda: list(bucket))
+
+    def _save(ts):
+        bucket.clear()
+        bucket.extend(ts)
+
+    monkeypatch.setattr(task_routes, "save_tasks", _save)
+    monkeypatch.setattr(task_routes, "_add_log", lambda *a, **k: None)
+
+    client = TestClient(main.app)
+    resp = client.post(
+        "/api/tasks",
+        json={
+            "title": "冒烟任务",
+            "description": "d",
+            "task_type": "text",
+            "reward": 10.0,
+            "assignee_type": "personal",
+        },
+    )
+    assert resp.status_code == 200
+    assert resp.json()["data"]["title"] == "冒烟任务"
+    assert len(bucket) == 1
+

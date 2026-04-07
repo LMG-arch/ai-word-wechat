@@ -33,6 +33,7 @@ from services.ai_service import (
     generate_avatar as ai_generate_avatar,
     save_image_prompt_md,
     record_llm_usage, generate_new_signature, generate_auto_comment_text,
+    openai_choice_text,
 )
 from services.memory_service import store_memory, get_character_memories, MemoryType, build_memory_context
 from services.moment_service import fallback_moment_image_url
@@ -297,7 +298,7 @@ async def suggest_occupation(request: SuggestOccupationRequest):
                 if response.status == 200:
                     result = await response.json()
                     record_llm_usage(result, llm_config, "suggest_occupation")
-                    content = result.get('choices', [{}])[0].get('message', {}).get('content', '')
+                    content = openai_choice_text(result)
                     suggestions = [s.strip() for s in content.replace('，', ',').split(',') if s.strip()]
                     return {"success": True, "data": {"suggestions": suggestions[:5]}}
     except Exception:
@@ -327,8 +328,8 @@ async def suggest_personality(request: SuggestPersonalityRequest):
                 if response.status == 200:
                     result = await response.json()
                     record_llm_usage(result, llm_config, "suggest_personality")
-                    content = result.get('choices', [{}])[0].get('message', {}).get('content', '').strip()
-                    return {"success": True, "data": {"personality": content}}
+                    content = openai_choice_text(result)
+                    return {"success": True, "data": {"personality": content or "性格温和"}}
     except Exception:
         pass
     return {"success": True, "data": {"personality": "性格温和"}}
@@ -377,7 +378,7 @@ async def generate_character(request: GenerateCharacterRequest):
                 if response.status == 200:
                     result = await response.json()
                     record_llm_usage(result, llm_config, "generate_character")
-                    content = result.get('choices', [{}])[0].get('message', {}).get('content', '')
+                    content = openai_choice_text(result)
                     json_match = re.search(r'\{[\s\S]*\}', content)
                     if json_match:
                         character_data = json.loads(json_match.group())

@@ -289,7 +289,7 @@ async def run_scheduler_tick(
         if char and char.is_alive:
             # 通过 AI 生成提醒消息
             prompt = f"你是一个助手，请转达这条提醒：{reminder['content']}"
-            reply = await get_ai_reply_func(char, prompt)
+            reply = await get_ai_reply_func(char, prompt, char.id)
             msg = ChatMessage(
                 conversation_id=char.id,
                 sender_id=char.id,

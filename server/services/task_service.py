@@ -57,6 +57,108 @@ def choose_task_assignee(task, characters: List, preferred_character_id: Optiona
     return scored[0][0] if scored else None
 
 
+def apply_auto_take_task_at_index(
+    tasks: List,
+    index: int,
+    preferred_character_id: Optional[str],
+    characters: List,
+    companies: List,
+) -> Any:
+    """
+    Auto-take: mutate tasks[index] in place. Returns (assignee_name, mode)
+    where mode is \"company\" or \"personal\". Raises ValueError on failure.
+    """
+    from models import TaskAssigneeType, TaskStatus
+
+    task = tasks[index]
+    if task.assignee_type == TaskAssigneeType.COMPANY and task.company_id:
+        company = next((c for c in companies if c.id == task.company_id), None)
+        if not company:
+            raise ValueError("Company not found for task")
+        alive_ids = [
+            mid for mid in company.member_ids
+            if any(ch.id == mid and ch.is_alive for ch in characters)
+        ]
+        if not alive_ids:
+            raise ValueError("No alive company member")
+        preferred = preferred_character_id
+        assignee = None
+        if preferred and preferred in alive_ids:
+            assignee = next((ch for ch in characters if ch.id == preferred), None)
+        if not assignee and company.legal_person_id in alive_ids:
+            assignee = next((ch for ch in characters if ch.id == company.legal_person_id), None)
+        if not assignee:
+            assignee = next((ch for ch in characters if ch.id == alive_ids[0]), None)
+        others = [mid for mid in alive_ids if mid != assignee.id]
+        random.shuffle(others)
+        task.collaborator_ids = others[:2]
+        task.assignee_id = assignee.id
+        task.status = TaskStatus.IN_PROGRESS
+        task.updated_at = int(time.time() * 1000)
+        tasks[index] = task
+        return assignee.name, "company"
+
+    assignee = choose_task_assignee(task, characters, preferred_character_id)
+    if not assignee:
+        raise ValueError("No alive character available")
+    task.collaborator_ids = []
+    task.assignee_type = TaskAssigneeType.PERSONAL
+    task.assignee_id = assignee.id
+    task.status = TaskStatus.IN_PROGRESS
+    task.updated_at = int(time.time() * 1000)
+    tasks[index] = task
+    return assignee.name, "personal"
+
+
+def try_heartbeat_take_open_task(character, tasks: List, companies: List, characters: List) -> bool:
+    """
+    Heartbeat: random open non-company task, assign via auto-take with this character preferred.
+    Caller must save_tasks. Returns True if a task was claimed.
+    """
+    from models import TaskAssigneeType, TaskStatus
+
+    open_idx = [
+        i for i, t in enumerate(tasks)
+        if t.status == TaskStatus.OPEN
+        and not (t.assignee_type == TaskAssigneeType.COMPANY and t.company_id)
+    ]
+    if not open_idx:
+        return False
+    i = random.choice(open_idx)
+    try:
+        apply_auto_take_task_at_index(tasks, i, character.id, characters, companies)
+    except ValueError:
+        return False
+    return True
+
+
+def apply_exec_submit_task_intent(character, params: str, tasks: List) -> bool:
+    """SubmitTask(task_id, notes?) from pending_intents; mutates tasks. Caller saves."""
+    from models import TaskStatus
+
+    raw = (params or "").strip()
+    parts = [p.strip() for p in raw.split(",")]
+    task_id = parts[0] if parts else ""
+    notes = parts[1] if len(parts) > 1 else ""
+    if not task_id:
+        return False
+    for i, task in enumerate(tasks):
+        if task.id != task_id:
+            continue
+        if task.assignee_id != character.id:
+            return False
+        if task.status != TaskStatus.IN_PROGRESS:
+            return False
+        task.submitter_id = character.id
+        task.execution_notes = (notes or "Exec 意图提交").strip()
+        task.deliverable_text = f"{character.name} 提交的任务成果"
+        task.status = TaskStatus.PENDING_REVIEW
+        task.updated_at = int(time.time() * 1000)
+        tasks[i] = task
+        return True
+    return False
+
+
 def create_reflection_from_task(task, approved: bool, review_notes: str) -> Any:
     """从任务创建反思报告"""
     from models import ReflectionReport
