@@ -164,20 +164,30 @@ async def run_character_heartbeat(character, all_characters: List):
 
 
 async def run_heartbeat_tick(limit_characters: int = 30) -> Dict[str, Any]:
-    """心跳 tick - 处理所有角色"""
-    from storage import get_characters, save_characters
-    
+    """心跳 tick - 处理所有角色；同步双人私聊群并小概率推进群内角色对话。"""
+    from storage import get_characters, save_characters, get_private_groups
+    from services.memory_service import sync_private_groups
+
     characters = get_characters()
     alive = [c for c in characters if c.is_alive]
     if not alive:
         return {"characters": 0, "ticked": 0}
-    
+
     sampled = alive if len(alive) <= limit_characters else random.sample(alive, limit_characters)
-    
+
     for char in sampled:
         await run_character_heartbeat(char, characters)
-    
+
     save_characters(characters)
+
+    sync_private_groups()
+    groups = [g for g in get_private_groups() if g.is_active and len(g.member_ids) == 2]
+    if groups and random.random() < 0.12:
+        await append_private_group_exchange(
+            random.choice(groups),
+            random.choice(["近况", "闲聊", "最近怎样", "吐槽一下", "周末打算干啥"]),
+        )
+
     return {"characters": len(alive), "ticked": len(sampled)}
 
 

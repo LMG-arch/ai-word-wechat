@@ -1,5 +1,5 @@
 """AIWeChat chat routes"""
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, BackgroundTasks
 from typing import Optional, List, Dict, Any
 import time
 import os
@@ -10,12 +10,59 @@ from storage import (
     get_messages, save_messages, get_characters, save_characters,
     get_private_groups, save_private_groups, get_logs, save_logs,
 )
-from services.ai_service import generate_ai_reply
+from services.ai_service import (
+    generate_ai_reply,
+    user_wants_self_portrait,
+    try_chat_self_portrait_image,
+)
 from services.memory_service import sync_private_groups
 from services.heartbeat_service import append_private_group_exchange
 from services.character_service import get_residential_landmarks
 
 router = APIRouter()
+
+
+async def _background_ai_reply(conversation_id: str, req_data: Dict[str, Any]):
+    """用户消息已落库后异步生成角色回复，避免前端长时间等待才能看到自己的消息。"""
+    from models import SendMessageRequest, ChatMessage
+
+    request = SendMessageRequest(**req_data)
+    characters = get_characters()
+    character = next((c for c in characters if c.id == conversation_id), None)
+    if not character:
+        return
+
+    user_text = request.content or ""
+    reply_prompt = user_text if user_text else (
+        "用户发送了图片消息" if request.message_type == "image" else "用户发送了语音消息"
+    )
+    reply_content = await generate_ai_reply(character, reply_prompt, conversation_id)
+    if not reply_content:
+        reply_content = "……"
+
+    portrait_url: Optional[str] = None
+    if request.message_type == "text" and user_text and user_wants_self_portrait(user_text):
+        portrait_url = await try_chat_self_portrait_image(character)
+        if portrait_url:
+            reply_content = (reply_content or "").strip()
+            if reply_content and "图" not in reply_content[-20:] and "画" not in reply_content[-10:]:
+                reply_content = reply_content + "\n\n（已按你的请求生成一张我此刻的状态截图）"
+            elif not reply_content:
+                reply_content = "（已按你的请求生成一张我此刻的状态截图）"
+
+    ai_message = ChatMessage(
+        conversation_id=conversation_id,
+        sender_id=character.id,
+        content=reply_content,
+        is_from_user=False,
+        message_type="image" if portrait_url else "text",
+        image_url=portrait_url,
+    )
+    messages = get_messages()
+    messages.append(ai_message)
+    save_messages(messages)
+    save_characters(characters)
+    _add_log(character.name, "对话", f"回复：\"{reply_content[:30]}...\"")
 
 
 def _add_log(character_name: str, action_type: str, description: str):
@@ -67,20 +114,20 @@ async def mark_conversation_read(conversation_id: str):
 
 
 @router.post("/api/messages/send")
-async def send_message(request: SendMessageRequest):
-    """发送消息并获取 AI 回复"""
+async def send_message(request: SendMessageRequest, background_tasks: BackgroundTasks):
+    """先保存用户消息并立即返回；角色回复在后台生成。"""
     messages = get_messages()
     characters = get_characters()
-    
+
     character = None
     for char in characters:
         if char.id == request.conversation_id:
             character = char
             break
-    
+
     if not character:
         raise HTTPException(status_code=404, detail="角色不存在")
-    
+
     user_text = request.content or ""
     if request.message_type == "image" and not request.image_url:
         raise HTTPException(status_code=400, detail="image_url is required for image message")
@@ -94,36 +141,19 @@ async def send_message(request: SendMessageRequest):
         message_type=request.message_type,
         image_url=request.image_url,
         voice_url=request.voice_url,
-        is_from_user=True
+        is_from_user=True,
     )
     messages.append(user_message)
     save_messages(messages)
-    
-    reply_prompt = user_text if user_text else ("用户发送了图片消息" if request.message_type == "image" else "用户发送了语音消息")
-    reply_content = await generate_ai_reply(
-        character, reply_prompt, request.conversation_id
-    )
-    if not reply_content:
-        reply_content = "……"
-    
-    ai_message = ChatMessage(
-        conversation_id=request.conversation_id,
-        sender_id=character.id,
-        content=reply_content,
-        is_from_user=False
-    )
-    messages.append(ai_message)
-    save_messages(messages)
-    
-    save_characters(characters)
-    _add_log(character.name, "对话", f"回复：\"{reply_content[:30]}...\"")
+
+    background_tasks.add_task(_background_ai_reply, request.conversation_id, request.model_dump())
 
     return {
         "success": True,
         "data": {
             "user_message": user_message.model_dump(),
-            "ai_message": ai_message.model_dump()
-        }
+            "pending_reply": True,
+        },
     }
 
 
@@ -138,7 +168,7 @@ async def clear_conversation(conversation_id: str):
 
 @router.post("/api/groups/private/sync")
 async def sync_private_groups_api():
-    """同步私人群聊：亲密度>=21自动建群，失效自动解散"""
+    """同步双人私聊群：亲密度>15 自动建群，降至阈值以下自动解散"""
     summary = sync_private_groups()
     return {"success": True, "data": summary}
 

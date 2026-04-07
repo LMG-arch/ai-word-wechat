@@ -424,8 +424,8 @@ def _pair_key(a: str, b: str) -> str:
     return f"{x}:{y}"
 
 
-def get_active_friend_pairs(min_intimacy: float = 21.0) -> Dict[str, Dict[str, Any]]:
-    """获取活跃好友对"""
+def get_active_friend_pairs(min_intimacy_exclusive: float = 15.0) -> Dict[str, Dict[str, Any]]:
+    """获取亲密度 **严格大于** min_intimacy_exclusive 的好友对（默认 >15 可建双人私聊群）。"""
     with get_memory_conn() as conn:
         rows = conn.execute(
             """
@@ -433,10 +433,10 @@ def get_active_friend_pairs(min_intimacy: float = 21.0) -> Dict[str, Dict[str, A
             FROM relationships
             WHERE relation_type = 'FRIEND_WITH'
               AND valid_to IS NULL
-              AND intimacy >= ?
+              AND intimacy > ?
             ORDER BY valid_from DESC
             """,
-            (min_intimacy,),
+            (min_intimacy_exclusive,),
         ).fetchall()
     pairs: Dict[str, Dict[str, Any]] = {}
     for row in rows:
@@ -457,7 +457,7 @@ def sync_private_groups() -> Dict[str, int]:
     
     groups = get_private_groups()
     chars = {c.id: c for c in get_characters()}
-    active_pairs = get_active_friend_pairs(21.0)
+    active_pairs = get_active_friend_pairs(15.0)
     now_ms = int(time.time() * 1000)
     created = 0
     dissolved = 0
@@ -477,8 +477,8 @@ def sync_private_groups() -> Dict[str, int]:
 
         group = PrivateGroupChat(
             id=str(uuid.uuid4()),
-            name=f"{member_names[0]} 和 {member_names[1]} 的私聊",
             member_ids=member_ids,
+            member_names=[member_names[0], member_names[1]],
             is_active=True,
             created_at=now_ms,
         )

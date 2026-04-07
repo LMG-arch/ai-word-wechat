@@ -1509,9 +1509,9 @@
             <div class="detail-name" id="private-group-title">私人群聊</div>
         </div>
         <div class="chat-messages" id="private-group-messages"></div>
-        <div class="action-bar">
-            <button class="btn btn-secondary" onclick="simulatePrivateGroupChat()">模拟一轮对话</button>
-            <button class="btn btn-secondary" disabled>只读模式</button>
+        <div class="action-bar" style="flex-wrap:wrap;gap:8px;align-items:center;padding:8px 12px;">
+            <button type="button" class="btn btn-secondary" onclick="refreshPrivateGroupMessages()">刷新</button>
+            <span style="font-size:12px;color:var(--text-hint);">仅旁观两名角色对话，不可发言或删群；亲密度回落至阈值以下时群会自动解散。</span>
         </div>
     </div>
 
@@ -2218,7 +2218,7 @@
                 const result = await response.json();
                 if (!result.success || result.data.length === 0) {
                     container.innerHTML = `
-                        <div style="padding:12px 16px;color:var(--text-hint);font-size:13px;">暂无私人群聊，当两角色亲密度突破20时会自动创建</div>
+                        <div style="padding:12px 16px;color:var(--text-hint);font-size:13px;">暂无私人群聊；当两角色亲密度<strong>大于 15</strong>时会自动创建双人私聊（仅可旁观）。</div>
                     `;
                     return;
                 }
@@ -2250,7 +2250,7 @@
                 title.textContent = `${currentPrivateGroup.member_names.join('、')} 的私人群聊`;
                 const messages = result.data.messages || [];
                 if (messages.length === 0) {
-                    container.innerHTML = '<div class="empty-state"><div class="empty-state-text">暂无对话，点击“模拟一轮对话”</div></div>';
+                    container.innerHTML = '<div class="empty-state"><div class="empty-state-text">暂无对话，开启心跳后两名角色会随机互聊；也可点下方刷新</div></div>';
                 } else {
                     container.innerHTML = messages.map(msg => {
                         const isMine = msg.sender_id === currentPrivateGroup.member_ids[0];
@@ -2272,23 +2272,6 @@
         function closePrivateGroupPage() {
             document.getElementById('private-group-page').classList.remove('active');
             currentPrivateGroup = null;
-        }
-
-        async function simulatePrivateGroupChat() {
-            if (!currentPrivateGroup) return;
-            try {
-                const response = await fetch(`${API_BASE}/groups/private/${currentPrivateGroup.id}/simulate`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ topic: '最近生活近况' })
-                });
-                const result = await response.json();
-                if (!result.success) throw new Error(result.detail || '模拟对话失败');
-                showToast('已生成一轮对话');
-                openPrivateGroup(currentPrivateGroup.id);
-            } catch (error) {
-                alert('模拟失败：' + error.message);
-            }
         }
 
         function showAddCharacterModal() {
@@ -3506,6 +3489,7 @@
 
                 currentConversation = characterId;
                 const character = charResult.data;
+                window.chatDetailCharInitial = (character.name && character.name[0]) ? character.name[0] : '?';
 
                 document.getElementById('chat-detail-avatar').innerHTML = character.avatar_url 
                     ? `<img src="${getAvatarUrl(character.avatar_url)}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" onerror="this.style.display='none';this.parentElement.textContent='${escapeHtml(character.name[0])}';">` 
@@ -3557,7 +3541,7 @@
 
                 container.innerHTML = result.data.map(msg => `
                     <div class="message-row ${msg.is_from_user ? 'user' : 'ai'}">
-                        ${!msg.is_from_user ? '<div class="message-avatar">' + (currentConversation ? currentConversation[0].toUpperCase() : '?') + '</div>' : ''}
+                        ${!msg.is_from_user ? '<div class="message-avatar">' + (window.chatDetailCharInitial || '?') + '</div>' : ''}
                         <div class="message-bubble">${renderMessageBubble(msg)}</div>
                     </div>
                 `).join('');
@@ -3565,6 +3549,41 @@
                 container.scrollTop = container.scrollHeight;
             } catch (error) {
                 container.innerHTML = `<div class="empty-state"><div class="empty-state-text">加载失败：${error.message}</div></div>`;
+            }
+        }
+
+        function appendUserMessageToChat(msg) {
+            const container = document.getElementById('chat-messages-container');
+            if (!container || !msg) return;
+            const empty = container.querySelector('.empty-state');
+            const loading = container.querySelector('.loading');
+            if (empty) empty.remove();
+            if (loading) loading.remove();
+            const row = document.createElement('div');
+            row.className = 'message-row user';
+            row.innerHTML = `<div class="message-bubble">${renderMessageBubble(msg)}</div>`;
+            container.appendChild(row);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        async function waitForAiReplyAfterSend(conversationId, userMsgTimestamp) {
+            const ts = typeof userMsgTimestamp === 'number' ? userMsgTimestamp : 0;
+            for (let i = 0; i < 240; i++) {
+                await new Promise(r => setTimeout(r, 500));
+                const page = document.getElementById('chat-detail-page');
+                if (!page || !page.classList.contains('active') || currentConversation !== conversationId) return;
+                try {
+                    const response = await fetch(`${API_BASE}/messages/${conversationId}`);
+                    const result = await response.json();
+                    if (!result.success) continue;
+                    const msgs = result.data || [];
+                    const hasAi = msgs.some(m => !m.is_from_user && (m.timestamp || 0) > ts);
+                    if (hasAi) {
+                        await loadMessages(conversationId);
+                        loadChatList();
+                        return;
+                    }
+                } catch (e) { /* ignore */ }
             }
         }
 
@@ -3588,10 +3607,10 @@
 
                 const result = await response.json();
 
-                if (result.success) {
-                    // 重新加载消息
-                    await loadMessages(currentConversation);
+                if (result.success && result.data && result.data.user_message) {
+                    appendUserMessageToChat(result.data.user_message);
                     loadChatList();
+                    waitForAiReplyAfterSend(currentConversation, result.data.user_message.timestamp);
                 }
             } catch (error) {
                 alert('发送失败：' + error.message);
@@ -3673,15 +3692,21 @@
                     body: JSON.stringify(payload)
                 });
                 const result = await response.json();
-                if (result.success) {
-                    await loadMessages(currentConversation);
+                if (result.success && result.data && result.data.user_message) {
+                    appendUserMessageToChat(result.data.user_message);
                     loadChatList();
+                    waitForAiReplyAfterSend(currentConversation, result.data.user_message.timestamp);
                 } else {
                     throw new Error(result.detail || '发送失败');
                 }
             } catch (error) {
                 alert('发送失败：' + error.message);
             }
+        }
+
+        async function refreshPrivateGroupMessages() {
+            if (!currentPrivateGroup) return;
+            await openPrivateGroup(currentPrivateGroup.id);
         }
 
         // ==================== 设置和统计 ====================
@@ -3984,6 +4009,13 @@
             document.getElementById('task-detail-page').classList.remove('active');
         }
 
+        function resolveMomentLikerName(authorId) {
+            if (!authorId) return '';
+            if (authorId === 'user') return (window.cachedUserProfile && window.cachedUserProfile.nickname) || '用户';
+            const c = cachedCharacters.find(x => x.id === authorId);
+            return c ? c.name : String(authorId).slice(0, 8);
+        }
+
         async function loadMemorials() {
             const container = document.getElementById('memorial-list');
             if (!container) return;
@@ -4048,6 +4080,9 @@
                                 <div class="moment-comments-box">
                                     ${comments.map(c => `<div><span class="name">${escapeHtml(c.author_name || '')}</span>：${escapeHtml(c.content || '')}</div>`).join('')}
                                 </div>` : '';
+                            const likerNames = (post.liked_by || []).map(resolveMomentLikerName).filter(Boolean);
+                            const likersBlock = likerNames.length ? `
+                                <div class="moment-likers" style="font-size:12px;color:#576b95;margin-top:6px;">赞过：${likerNames.map(n => escapeHtml(n)).join('、')}</div>` : '';
                             return `
                             <div class="moment-card" data-moment-id="${escapeHtml(post.id)}">
                                 <div class="moment-row">
@@ -4060,6 +4095,7 @@
                                         </div>
                                         ${post.image_prompt_file ? `<div style="margin-top:6px;"><button type="button" class="btn btn-secondary" style="font-size:12px;padding:4px 12px;border-radius:4px;" onclick='openImagePromptModal(${JSON.stringify(post.image_prompt_file)})'>🎨 绘画提示词</button></div>` : ''}
                                         <div class="moment-meta">${formatTime(post.timestamp)}</div>
+                                        ${likersBlock}
                                         ${commentsBlock}
                                         <div class="moment-actions-bar">
                                             <span style="color:#888;font-size:13px;">👍 ${post.liked_by?.length || 0}　💬 ${post.comments?.length || 0}</span>
