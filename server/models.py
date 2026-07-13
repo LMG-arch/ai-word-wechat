@@ -168,6 +168,7 @@ class ReflectionReport(BaseModel):
     lessons_learned: List[str] = Field(default_factory=list)
     action_items: List[str] = Field(default_factory=list)
     skill_improvements: Dict[str, int] = Field(default_factory=dict)
+    review_notes: Optional[str] = None
     created_at: int = Field(default_factory=lambda: int(time.time() * 1000))
 
 

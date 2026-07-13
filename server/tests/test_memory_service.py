@@ -5,8 +5,15 @@ from services.memory_service import (
     get_relationship_intimacy,
     apply_relationship_interaction,
     build_memory_context,
+    init_memory_db,
 )
 from models import MomentPost, Memory
+
+
+@pytest.fixture(autouse=True)
+def _ensure_memory_db():
+    # 记忆/关系表需先初始化，模拟应用启动时的 init_memory_db()
+    init_memory_db()
 
 
 class TestMomentVisibility:

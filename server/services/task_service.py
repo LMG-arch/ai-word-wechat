@@ -11,10 +11,15 @@ import random
 from typing import Optional, List, Dict, Any
 
 from config import DATA_DIR
+from models import TaskType
 
 
 def _get_task_keywords(task_type) -> List[str]:
-    """获取任务类型关键词"""
+    """获取任务类型关键词（兼容 TaskType 枚举与字符串）"""
+    if isinstance(task_type, TaskType):
+        key = task_type.value
+    else:
+        key = str(task_type).lower()
     keyword_map = {
         "text": ["文案", "写作", "编辑", "策划", "营销", "报告"],
         "image": ["设计", "绘画", "插画", "视觉", "美术", "创意"],
@@ -22,7 +27,7 @@ def _get_task_keywords(task_type) -> List[str]:
         "research": ["研究", "分析", "调研", "调查", "统计", "数据"],
         "design": ["设计", "规划", "方案", "架构", "产品", "体验"],
     }
-    return keyword_map.get(str(task_type).lower(), [])
+    return keyword_map.get(key, [])
 
 
 def choose_task_assignee(task, characters: List, preferred_character_id: Optional[str] = None) -> Optional[Any]:

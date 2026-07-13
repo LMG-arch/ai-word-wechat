@@ -103,73 +103,25 @@ app.include_router(exec_router)
 
 # ==================== 生命周期管理 ====================
 async def startup_event():
-    """启动后台心跳任务"""
+    """启动后台心跳任务与生命周期服务。"""
     from config import sync_legacy_asset_directories
-
-    sync_legacy_asset_directories()
-
-    from storage import get_settings, save_settings
-    from services.heartbeat_service import run_heartbeat_tick, process_encounter_followups
+    from storage import get_settings, save_settings, get_messages, save_messages, get_characters
+    from services.heartbeat_service import run_heartbeat_tick
     from services.task_service import run_task_engine
     from services.scheduler import run_scheduler_tick
-    from services.memory_service import sync_private_groups
-    from services.world_service import detect_encounters
-    from services.memory_service import apply_inactivity_decay
     from services.ai_service import generate_ai_reply
-    from storage import get_characters, save_characters, get_messages, save_messages, get_logs
-    from datetime import datetime
+    from services.memory_service import init_memory_db
 
-    # 年龄增长和社交自动运行的内联实现
-    async def process_age_growth():
-        """处理角色年龄增长"""
-        from services.character_service import get_world_time_ms, get_age_stage_from_age
-        settings = get_settings()
-        now_ms = int(time.time() * 1000)
-        last = getattr(settings, 'last_age_growth_time', 0)
-        if now_ms - last < 24 * 3600 * 1000:  # 每天一次
-            return
-        characters = get_characters()
-        for char in characters:
-            if char.is_alive:
-                char.age += 1
-                new_stage = get_age_stage_from_age(char.age)
-                if char.age_stage != new_stage:
-                    char.age_stage = new_stage
-                    add_log(char.name, "age_growth", f"进入{new_stage}阶段，年龄: {char.age}")
-        save_characters(characters)
-        settings.last_age_growth_time = now_ms
-        save_settings(settings)
+    sync_legacy_asset_directories()
+    # 初始化记忆数据库（memories / relationships 表），否则记忆与关系子系统在运行时不可用
+    try:
+        init_memory_db()
+    except Exception as e:
+        print(f"[启动] 初始化记忆数据库失败: {e}")
 
-    async def process_social_autorun():
-        """社交自动运行 - 角色自动互动"""
-        from services.moment_service import run_moment_auto_interactions
-        settings = get_settings()
-        now_ms = int(time.time() * 1000)
-        last = getattr(settings, 'auto_moment_last_run_time', 0)
-        if now_ms - last < 300000:  # 5分钟一次
-            return
-        await run_moment_auto_interactions(limit=30)
-        settings.auto_moment_last_run_time = now_ms
-        save_settings(settings)
-
-    def add_log(character_name: str, action_type: str, description: str):
-        try:
-            from models import LogEntry
-            from storage import save_logs
-            logs = get_logs()
-            now_ms = int(time.time() * 1000)
-            now = datetime.now().strftime("%H:%M:%S")
-            log = LogEntry(
-                timestamp=now, timestamp_ms=now_ms, world_timestamp_ms=0,
-                character_name=character_name, action_type=action_type,
-                description=description
-            )
-            logs.insert(0, log)
-            if len(logs) > 200:
-                logs = logs[:200]
-            save_logs(logs)
-        except Exception:
-            pass
+    # 年龄增长与社交自动运行逻辑已迁移至 services.lifecycle_service，
+    # main.py 仅负责后台任务的编排（见下方 age_growth_task / social_autorun_task 等协程）。
+    from services.lifecycle_service import process_age_growth, process_social_autorun, add_log
 
     # 初始化世界时间
     settings = get_settings()
@@ -193,14 +145,6 @@ async def startup_event():
                 continue
             try:
                 await process_social_autorun()
-                settings = get_settings()
-                now_ms = int(time.time() * 1000)
-                enc = detect_encounters()
-                await process_encounter_followups(enc.get("items") or [])
-                sync_private_groups()
-                apply_inactivity_decay()
-                settings.auto_moment_last_run_time = now_ms
-                save_settings(settings)
             except Exception as e:
                 add_log("system", "social_autorun_error", str(e)[:120])
 

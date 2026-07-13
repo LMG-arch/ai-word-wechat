@@ -146,19 +146,6 @@ MAX_SIGNATURE_CHANGES = 10  # 最多保留签名变更历史
 # === 图像尺寸配置 ===
 VALID_IMAGE_SIZES = ["256x256", "512x512", "1024x1024"]
 
-# === 年龄阶段 ===
-AGE_STAGE_CHILD = "儿童"
-AGE_STAGE_TEEN = "少年"
-AGE_STAGE_ADULT = "成年"
-AGE_STAGE_ELDER = "老年"
-
-AGE_STAGE_RANGES = {
-    AGE_STAGE_CHILD: (0, 12),
-    AGE_STAGE_TEEN: (13, 17),
-    AGE_STAGE_ADULT: (18, 59),
-    AGE_STAGE_ELDER: (60, 150),
-}
-
 # === 记忆类型 ===
 MEMORY_TYPE_EVENT = "event"
 MEMORY_TYPE_SEMANTIC = "semantic"
@@ -218,21 +205,6 @@ IMAGE_MAX_POLL_ATTEMPTS = 60  # 异步任务最大轮询次数
 IMAGE_POLL_INTERVAL = 5  # 异步任务轮询间隔（秒）
 
 # === 设置默认值 ===
-DEFAULT_SETTINGS = {
-    "time_speed": 1,
-    "world_elapsed_ms": 0,
-    "last_world_update_time": 0,
-    "enable_death_mechanism": False,
-    "enable_accidental_death": False,
-    "min_lifespan": 70,
-    "max_lifespan": 90,
-    "enable_auto_avatar_update": False,
-    "enable_auto_moment_interactions": True,
-    "auto_moment_interval_minutes": 15,
-    "auto_moment_last_run_time": 0,
-    "enable_heartbeat": True,
-    "heartbeat_interval_seconds": 60,
-    "heartbeat_last_run_time": 0,
-    "enable_task_engine": True,
-    "default_image_size": "1024x1024",
-}
+# 注意：运行时实际默认值由 models.Settings 与 storage.get_settings() 统一提供，
+# 此处不再保留一份易与前者冲突的 DEFAULT_SETTINGS（详见重构说明）。
+
