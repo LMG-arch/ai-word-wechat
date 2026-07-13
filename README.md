@@ -105,6 +105,7 @@ aiwechat/
 
 | 版本 | 日期 | 核心更新 |
 |------|------|----------|
+| **V3.6** | 2026-07-14 | 🛠 基于文档的全面重构：修复 4 项致命运行时缺陷（`init_memory_db` 未调用致记忆子系统瘫痪、`storage.add_log` 死亡路径 `datetime` 崩溃、`ReflectionReport` 缺 `review_notes` 致 `/review` 必崩、`_get_task_keywords` 误用 `str(enum)` 致任务分配随机化）；抽离 `services/lifecycle_service.py`；清理 `config.py` 死代码与年龄阶段冲突定义；补齐 pytest 工具链与单测（66 用例全绿）；文档对齐至 90 个 API 端点 |
 | **V3.5** | 2026-04-07 | 静态资源路径统一（`/avatars`、`/image-prompts` 与 `/api/image-prompts`）、启动时 legacy 资源同步；对话 `conversation_id` 与消息体校验加固；心跳持久化使用完整角色列表；任务/朋友圈等 POST 统一 Pydantic 请求体 |
 | **V3.3** | 2026-04-04 | 🧩 模块化重构 (config/models/storage/services) + 角色主动对话/定时提醒/节日问候系统 |
 | **V3.2** | 2026-04-04 | 📝 角色日志/人生经历/拟人化回复/任务系统增强/AI公司自治管理 |
