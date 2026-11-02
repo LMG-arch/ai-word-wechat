@@ -15,7 +15,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Optional, List, Dict, Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 import sqlite3
 
@@ -398,24 +398,33 @@ class ImageUsageStats(BaseModel):
 # ==================== 请求/响应模型 ====================
 
 class CreateCharacterRequest(BaseModel):
-    name: str
-    age: int = 25
-    gender: str = "男"
-    occupation: str
-    personality: str = ""
-    signature: str = ""
-    avatar_url: Optional[str] = None
+    name: str = Field(min_length=1, max_length=30)
+    age: int = Field(default=25, ge=0, le=200)
+    gender: str = Field(default="男", max_length=10)
+    occupation: str = Field(min_length=1, max_length=50)
+    personality: str = Field(default="", max_length=500)
+    signature: str = Field(default="", max_length=200)
+    avatar_url: Optional[str] = Field(default=None, max_length=2000)
     parent_ids: Optional[List[str]] = None
     llm_model_id: Optional[str] = None
-    moment_frequency: str = "normal"
+    moment_frequency: str = Field(default="normal", max_length=20)
+
+    @field_validator("name", "occupation")
+    @classmethod
+    def _strip_not_blank(cls, value: str) -> str:
+        """去除首尾空白，并拒绝空串 / 纯空白（前端校验可被绕过，后端必须兜底）。"""
+        value = (value or "").strip()
+        if not value:
+            raise ValueError("不能为空或仅包含空白字符")
+        return value
 
 
 class SendMessageRequest(BaseModel):
-    conversation_id: str
-    content: str
-    message_type: str = "text"
-    image_url: Optional[str] = None
-    voice_url: Optional[str] = None
+    conversation_id: str = Field(min_length=1, max_length=100)
+    content: str = Field(max_length=5000)
+    message_type: str = Field(default="text", max_length=20)
+    image_url: Optional[str] = Field(default=None, max_length=2000)
+    voice_url: Optional[str] = Field(default=None, max_length=2000)
 
 
 class ChatResponse(BaseModel):

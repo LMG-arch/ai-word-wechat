@@ -5,11 +5,9 @@ AIWeChat 角色服务模块
 
 from __future__ import annotations
 
-import os
 import time
 import random
-from typing import Optional, List, Dict, Any, Tuple
-from datetime import datetime
+from typing import Optional, List, Dict, Any
 
 # 类型别名
 AgeStage = str
@@ -23,10 +21,10 @@ from models import (
 )
 from storage import (
     load_json, save_json, get_characters, save_characters,
-    get_settings, save_settings, get_api_configs
+    get_settings, save_settings
 )
 from config import (
-    CHARACTER_HISTORY_FILE, MILLISECONDS_PER_DAY, WORLD_MONTH_MS
+    CHARACTER_HISTORY_FILE, MILLISECONDS_PER_DAY
 )
 
 # =====================================================================
@@ -101,14 +99,22 @@ def get_moment_frequency_multiplier(character: Character) -> float:
 
 
 def normalize_parent_ids(character: Character, all_character_ids: Optional[set[str]] = None) -> List[str]:
-    """标准化父母ID，移除不存在的ID"""
-    if not all_character_ids:
-        return []
-    valid = [pid for pid in (character.parent_ids or []) if pid in all_character_ids]
-    if valid != (character.parent_ids or []):
-        character.parent_ids = valid
-        return [f"已清理无效父母ID"]
-    return []
+    """规范化父母 ID：去重、剔除自身、剔除不存在的角色，并同步写回。
+
+    返回清理后的父 ID 列表（副作用：更新 character.parent_ids）。
+    旧实现漏了「去重」与「剔除自身」，可能留下脏数据（如自己当自己的父母、重复 ID）。
+    """
+    cleaned: List[str] = []
+    seen: set[str] = set()
+    for pid in (character.parent_ids or []):
+        if not pid or pid == character.id or pid in seen:
+            continue
+        if all_character_ids is not None and pid not in all_character_ids:
+            continue
+        cleaned.append(pid)
+        seen.add(pid)
+    character.parent_ids = cleaned
+    return cleaned
 
 
 def get_dialogue_style_hint(character: Character) -> str:
@@ -138,11 +144,26 @@ def get_occupation_hint(character: Character) -> str:
 
 
 def format_world_elapsed(world_elapsed_ms: int) -> str:
-    """格式化世界时间流逝"""
-    total_hours = int(world_elapsed_ms / (60 * 60 * 1000))
-    days = total_hours // 24
-    hours = total_hours % 24
-    return f"第{days}天 {hours:02d}:00"
+    """格式化世界已运行时长，输出「N年N个月N天」（30 天/月、12 月/年）。
+
+    与前端 `formatWorldTime()` 保持一致，避免同一界面出现两套时间文案。
+    例：0 → "0天"；30 天 → "1个月"；395 天 → "1年1个月5天"。
+    """
+    days_per_month = 30
+    months_per_year = 12
+    total_days = max(0, int(world_elapsed_ms)) // MILLISECONDS_PER_DAY
+    years = total_days // (days_per_month * months_per_year)
+    remain_days = total_days % (days_per_month * months_per_year)
+    months = remain_days // days_per_month
+    days = remain_days % days_per_month
+    parts = []
+    if years:
+        parts.append(f"{years}年")
+    if months:
+        parts.append(f"{months}个月")
+    if days or not parts:
+        parts.append(f"{days}天")
+    return "".join(parts)
 
 
 # =====================================================================
@@ -190,22 +211,32 @@ def can_refresh_signature(character: Character, now_ms: Optional[int] = None) ->
 # =====================================================================
 
 def apply_age_stage_constraints(character: Character) -> List[str]:
-    """应用年龄阶段约束"""
-    notes = []
+    """按年龄阶段修正职业与零花钱上限。
+
+    合并了原 storage 版（老年退休、空职业补学生）与本模块版（零花钱封顶）的逻辑，
+    两者此前各自只做一半，导致「老人不变退休」「空职业青少年不补学生」等遗漏。
+    """
+    notes: List[str] = []
     stage = get_age_stage_from_age(character.age)
-    
+
     if stage == "儿童":
         if character.money > 100:
             character.money = 50
             notes.append("儿童零花钱已调整")
-        character.occupation = "学生"
+        if character.occupation != "学生":
+            character.occupation = "学生"
+            notes.append('年龄阶段调整，职业已修正为"学生"')
     elif stage == "青少年":
         if character.money > 200:
             character.money = 100
             notes.append("青少年零花钱已调整")
-        if character.occupation not in ["学生"]:
+        if character.occupation != "学生":
             character.occupation = "学生"
-    
+            notes.append('青少年阶段职业已修正为"学生"')
+    elif stage == "老年" and character.age >= 65 and character.occupation in ["", "无业", "待定"]:
+        character.occupation = "退休"
+        notes.append('老年阶段职业已设置为"退休"')
+
     return notes
 
 

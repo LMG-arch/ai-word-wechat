@@ -5,9 +5,11 @@ AIWeChat 记忆服务模块
 
 from __future__ import annotations
 
+import contextlib
 import json
 import math
 import random
+import threading
 import time
 import uuid
 import sqlite3
@@ -29,6 +31,27 @@ from config import (
 
 _memory_conn: Optional[sqlite3.Connection] = None
 
+# 共享单连接下的访问锁：串行化读改写，避免多线程/多任务交错破坏事务
+_MEMORY_DB_LOCK = threading.RLock()
+
+
+@contextlib.contextmanager
+def _memory_db():
+    """统一的数据库访问上下文。
+
+    - 加锁：本项目共用一个 sqlite 连接对象，多线程并发 execute 会交错，
+      必须串行化；否则会出现「读到别人未提交的中间态」或事务错乱。
+    - 退出时 commit、异常时 rollback，与 sqlite3.Connection 自身的语义一致。
+    """
+    with _MEMORY_DB_LOCK:
+        conn = get_memory_conn()
+        try:
+            yield conn
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+
 
 def get_memory_conn() -> sqlite3.Connection:
     """获取 SQLite 连接"""
@@ -41,16 +64,19 @@ def get_memory_conn() -> sqlite3.Connection:
         except sqlite3.Error:
             _memory_conn = None
 
-    _memory_conn = sqlite3.connect(MEMORY_DB_FILE)
+    # check_same_thread=False + timeout：允许跨线程使用同一连接（本项目用全局连接），
+    # 并在锁竞争时最多等 30 秒而不是立刻抛 "database is locked"。
+    _memory_conn = sqlite3.connect(MEMORY_DB_FILE, timeout=30, check_same_thread=False)
     _memory_conn.row_factory = sqlite3.Row
     _memory_conn.execute("PRAGMA journal_mode=WAL")
     _memory_conn.execute("PRAGMA synchronous=NORMAL")
+    _memory_conn.execute("PRAGMA busy_timeout=30000")
     return _memory_conn
 
 
 def init_memory_db():
     """初始化记忆数据库"""
-    with get_memory_conn() as conn:
+    with _memory_db() as conn:
         conn.executescript("""
             CREATE TABLE IF NOT EXISTS memories (
                 id TEXT PRIMARY KEY,
@@ -92,7 +118,7 @@ def init_memory_db():
 def migrate_legacy_memories_if_needed():
     """迁移旧版 JSON 记忆到 SQLite"""
     try:
-        with get_memory_conn() as conn:
+        with _memory_db() as conn:
             count = conn.execute("SELECT COUNT(*) FROM memories").fetchone()[0]
             if count > 0:
                 return  # 已有数据，跳过迁移
@@ -103,7 +129,7 @@ def migrate_legacy_memories_if_needed():
     if not data:
         return
     
-    with get_memory_conn() as conn:
+    with _memory_db() as conn:
         for item in data:
             try:
                 mem = Memory(**item)
@@ -166,14 +192,14 @@ def row_to_memory(row: sqlite3.Row) -> Memory:
 
 def get_memories() -> List[Memory]:
     """获取所有记忆（从 SQLite）"""
-    with get_memory_conn() as conn:
+    with _memory_db() as conn:
         rows = conn.execute("SELECT * FROM memories ORDER BY timestamp DESC LIMIT 500").fetchall()
     return [row_to_memory(r) for r in rows]
 
 
 def save_memories(memories: List[Memory]):
     """保存记忆（批量更新）"""
-    with get_memory_conn() as conn:
+    with _memory_db() as conn:
         for m in memories:
             conn.execute(
                 "INSERT OR REPLACE INTO memories (id, character_id, memory_type, content, importance, emotion, related_entities_json, timestamp, valid_from, valid_to, embedding_json, access_count, last_accessed, metadata_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
@@ -184,7 +210,7 @@ def save_memories(memories: List[Memory]):
 
 def get_character_memories(character_id: str, limit: int = 100) -> List[Memory]:
     """获取角色记忆"""
-    with get_memory_conn() as conn:
+    with _memory_db() as conn:
         rows = conn.execute(
             "SELECT * FROM memories WHERE character_id = ? ORDER BY timestamp DESC LIMIT ?",
             (character_id, limit),
@@ -222,7 +248,7 @@ async def store_memory(
         metadata=metadata or {},
     )
     
-    with get_memory_conn() as conn:
+    with _memory_db() as conn:
         conn.execute(
             """
             INSERT INTO memories (
@@ -247,7 +273,7 @@ def get_relationship_intimacy(viewer_id: str, author_id: str) -> float:
     if not viewer_id or not author_id or viewer_id == author_id:
         return 50.0
     
-    with get_memory_conn() as conn:
+    with _memory_db() as conn:
         row = conn.execute(
             """
             SELECT intimacy FROM relationships
@@ -286,7 +312,7 @@ def can_view_moment(viewer_id: Optional[str], post: MomentPost) -> bool:
 
 def _get_active_relationship_row(a: str, b: str) -> Optional[sqlite3.Row]:
     """获取活跃关系行"""
-    with get_memory_conn() as conn:
+    with _memory_db() as conn:
         row = conn.execute(
             """
             SELECT * FROM relationships
@@ -327,7 +353,7 @@ def set_pair_relationship(a: str, b: str, intimacy: float, metadata: Optional[Di
         return
     now_ms = int(time.time() * 1000)
     metadata = metadata or {}
-    with get_memory_conn() as conn:
+    with _memory_db() as conn:
         _close_active_relationships(conn, a, b, now_ms)
         if intimacy >= 20:
             properties = {
@@ -389,7 +415,7 @@ def apply_relationship_interaction(from_id: str, to_id: str, action: str) -> flo
 def apply_inactivity_decay() -> int:
     """应用不活跃衰减"""
     now_ms = int(time.time() * 1000)
-    with get_memory_conn() as conn:
+    with _memory_db() as conn:
         rows = conn.execute(
             """
             SELECT * FROM relationships
@@ -427,7 +453,7 @@ def _pair_key(a: str, b: str) -> str:
 
 def get_active_friend_pairs(min_intimacy_exclusive: float = 15.0) -> Dict[str, Dict[str, Any]]:
     """获取亲密度 **严格大于** min_intimacy_exclusive 的好友对（默认 >15 可建双人私聊群）。"""
-    with get_memory_conn() as conn:
+    with _memory_db() as conn:
         rows = conn.execute(
             """
             SELECT from_id, to_id, intimacy
@@ -583,7 +609,7 @@ async def recall_memories(
         memory.last_accessed = int(time.time() * 1000)
     
     if result:
-        with get_memory_conn() as conn:
+        with _memory_db() as conn:
             conn.executemany(
                 "UPDATE memories SET access_count = ?, last_accessed = ? WHERE id = ?",
                 [(m.access_count, m.last_accessed, m.id) for m in result],

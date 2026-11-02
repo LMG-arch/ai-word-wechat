@@ -1410,6 +1410,13 @@
                             </div>
                             <span>→</span>
                         </div>
+                        <div class="list-item" onclick="showBackupPanel()">
+                            <div class="item-content">
+                                <div class="item-title">💾 数据备份</div>
+                                <div class="item-subtitle">将全部角色 / 消息 / 记忆打包下载</div>
+                            </div>
+                            <span>→</span>
+                        </div>
                         <div class="form-group" style="margin-top: 12px; margin-bottom: 0;">
                             <label>界面语言</label>
                             <select id="ui-language" onchange="updateUiLanguage(this.value)" style="width: 100%;">
@@ -4620,6 +4627,58 @@
                 await showCompanyDetail(companyId);
             } catch (error) {
                 showToast('招募失败：' + error.message);
+            }
+        }
+
+        // 数据备份：展示规模 + 一键下载 zip
+        async function showBackupPanel() {
+            try {
+                const resp = await fetch(`${API_BASE}/export/summary`);
+                const r = await resp.json();
+                if (!r.success) throw new Error(r.detail || '读取失败');
+                const d = r.data;
+                showCustomModal({
+                    title: '💾 数据备份',
+                    content: `
+                        <div class="info-card" style="margin-bottom:12px;">
+                            <div class="info-card-title">当前数据规模</div>
+                            <div class="info-value">JSON 文件：${d.json_file_count} 个（约 ${(d.json_total_size / 1024).toFixed(1)} KB）</div>
+                            <div class="info-value">记忆数据库：${(d.memory_db_size / 1024).toFixed(1)} KB</div>
+                        </div>
+                        <div class="info-card">
+                            <div class="info-card-title">导出全部数据</div>
+                            <div class="item-subtitle" style="white-space:normal; margin-top:6px; line-height:1.7;">
+                                将角色、消息、朋友圈、任务、公司与记忆打包为 zip 下载。<br>
+                                <span style="color:#ff4d4f;">⚠️ 备份包含 API 密钥配置，请妥善保管，勿外传。</span>
+                            </div>
+                            <button class="btn btn-primary" style="width:100%; margin-top:12px;" onclick="downloadBackup()">下载备份 (zip)</button>
+                        </div>
+                    `,
+                    onClose: () => {}
+                });
+            } catch (error) {
+                showToast('读取数据规模失败：' + error.message);
+            }
+        }
+
+        async function downloadBackup() {
+            try {
+                showToast('正在打包，请稍候…');
+                const resp = await fetch(`${API_BASE}/export/backup`);
+                if (!resp.ok) throw new Error('HTTP ' + resp.status);
+                const blob = await resp.blob();
+                const stamp = new Date().toISOString().replace(/[:T]/g, '-').slice(0, 19);
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `ai-word-backup-${stamp}.zip`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                URL.revokeObjectURL(url);
+                showToast('备份已开始下载');
+            } catch (error) {
+                showToast('导出失败：' + error.message);
             }
         }
 

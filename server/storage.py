@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import os
 import random
+import threading
 import time
 from datetime import datetime
 from typing import Optional, List, Dict, Any
@@ -16,21 +17,38 @@ from typing import Optional, List, Dict, Any
 from models import (
     Character, ChatMessage, MomentPost, TaskItem, Company, EconomyLog,
     CharacterSchedule, LocationRecord, LogEntry, Settings, ApiConfig, UserProfile,
-    Memory, PrivateGroupChat, CharacterHistoryEntry, MemoryType,
-    LlmUsageRecord, ImageUsageRecord, SuggestOccupationRequest, SuggestPersonalityRequest
+    PrivateGroupChat, CharacterHistoryEntry,
+    LlmUsageRecord, ImageUsageRecord
 )
 from config import (
     DATA_DIR, AVATARS_DIR,
     CHARACTERS_FILE, MESSAGES_FILE, MOMENTS_FILE, SCHEDULES_FILE,
     SETTINGS_FILE, LOGS_FILE, TASKS_FILE, COMPANIES_FILE,
     ECONOMY_LOGS_FILE, LOCATION_HISTORY_FILE, CHARACTER_HISTORY_FILE,
-    API_CONFIGS_FILE, LLM_USAGE_FILE, WORLD_MAP_FILE, MEMORIES_FILE,
-    MEMORY_DB_FILE, PRIVATE_GROUPS_FILE, WORLD_BIND_KEYS,
-    DEFAULT_WORLD_MAP, AVATAR_REFRESH_INTERVAL_MS, SIGNATURE_REFRESH_INTERVAL_MS,
-    MILLISECONDS_PER_DAY, WORLD_MONTH_MS
+    API_CONFIGS_FILE, LLM_USAGE_FILE, WORLD_MAP_FILE,
+    PRIVATE_GROUPS_FILE, WORLD_BIND_KEYS,
+    DEFAULT_WORLD_MAP, AVATAR_REFRESH_INTERVAL_MS, SIGNATURE_REFRESH_INTERVAL_MS
 )
 
 # ==================== 基础 JSON 读写 ====================
+
+# 同一文件路径的写入锁：避免多请求 / 后台任务并发写造成内容交错
+_FILE_LOCKS: Dict[str, threading.Lock] = {}
+_FILE_LOCKS_GUARD = threading.Lock()
+
+
+def _lock_for(filename: str) -> threading.Lock:
+    """为每个文件路径分配一把独立的锁（懒创建）。"""
+    key = os.path.abspath(filename)
+    lock = _FILE_LOCKS.get(key)
+    if lock is None:
+        with _FILE_LOCKS_GUARD:
+            lock = _FILE_LOCKS.get(key)
+            if lock is None:
+                lock = threading.Lock()
+                _FILE_LOCKS[key] = lock
+    return lock
+
 
 def load_json(filename: str, default=None):
     if default is None:
@@ -39,17 +57,47 @@ def load_json(filename: str, default=None):
         if os.path.exists(filename):
             with open(filename, 'r', encoding='utf-8') as f:
                 return json.load(f)
+    except json.JSONDecodeError as e:
+        # 文件已损坏（多半是历史「非原子写」在中断时留下的半截 JSON）。
+        # 保留现场并改名备份，避免随后被一次正常 save 彻底覆盖、无处追查。
+        try:
+            backup = f"{filename}.corrupt.{int(time.time())}"
+            os.replace(filename, backup)
+            print(f"[storage] 检测到损坏 JSON：{filename}（{e}）；已备份至 {backup}，本次按默认值处理")
+        except Exception as move_err:
+            print(f"[storage] 损坏文件备份失败：{move_err}")
     except Exception as e:
         print(f"Error loading {filename}: {e}")
     return default
 
 
-def save_json(filename: str, data):
-    try:
-        with open(filename, 'w', encoding='utf-8') as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
-    except Exception as e:
-        print(f"Error saving {filename}: {e}")
+def save_json(filename: str, data) -> bool:
+    """原子写入 JSON。
+
+    先写同目录临时文件 → flush + fsync → os.replace 原子替换。
+    这样即使写盘过程中进程被 kill / 磁盘写满，也不会留下半截文件把原有数据毁掉
+    （旧实现直接 open(...,'w') 会先截断原文件，中途失败即全丢）。
+
+    返回 True 表示成功，False 表示失败（调用方可据此提示，而非静默继续）。
+    """
+    lock = _lock_for(filename)
+    tmp = f"{filename}.{os.getpid()}.tmp"
+    with lock:
+        try:
+            with open(tmp, 'w', encoding='utf-8') as f:
+                json.dump(data, f, ensure_ascii=False, indent=2)
+                f.flush()
+                os.fsync(f.fileno())
+            os.replace(tmp, filename)
+            return True
+        except Exception as e:
+            print(f"Error saving {filename}: {e}")
+            try:
+                if os.path.exists(tmp):
+                    os.remove(tmp)
+            except Exception:
+                pass
+            return False
 
 
 # ==================== 世界地图 ====================
@@ -431,13 +479,6 @@ def get_character_histories(character_id: Optional[str] = None) -> List[Characte
     return histories
 
 
-def get_history_entry(character_id: str, history_id: str) -> Optional[CharacterHistoryEntry]:
-    for item in get_character_histories(character_id):
-        if item.id == history_id:
-            return item
-    return None
-
-
 def save_character_histories(histories: List[CharacterHistoryEntry]):
     save_json(CHARACTER_HISTORY_FILE, [item.model_dump() for item in histories])
 
@@ -544,115 +585,6 @@ def get_world_time_ms(settings: Optional[Settings] = None) -> int:
     return max(0, int(settings.world_elapsed_ms))
 
 
-def get_world_time_text(settings: Optional[Settings] = None) -> str:
-    settings = settings or get_settings()
-    return format_world_elapsed(settings.world_elapsed_ms)
-
-
-def format_world_elapsed(world_elapsed_ms: int) -> str:
-    WORLD_DAYS_PER_MONTH = 30
-    MONTHS_PER_YEAR = 12
-    total_days = world_elapsed_ms // MILLISECONDS_PER_DAY
-    years = total_days // (WORLD_DAYS_PER_MONTH * MONTHS_PER_YEAR)
-    remain_days = total_days % (WORLD_DAYS_PER_MONTH * MONTHS_PER_YEAR)
-    months = remain_days // WORLD_DAYS_PER_MONTH
-    days = remain_days % WORLD_DAYS_PER_MONTH
-    parts = []
-    if years:
-        parts.append(f"{years}年")
-    if months:
-        parts.append(f"{months}个月")
-    if days or not parts:
-        parts.append(f"{days}天")
-    return "".join(parts)
-
-
-def get_age_stage_from_age(age: int) -> str:
-    if age <= 12:
-        return "儿童"
-    if age <= 17:
-        return "青少年"
-    if age <= 40:
-        return "青年"
-    if age <= 60:
-        return "中年"
-    return "老年"
-
-
-def get_age_personality_modifier(age: int, base_personality: str) -> str:
-    """根据年龄段生成性格修饰词"""
-    stage = get_age_stage_from_age(age)
-    modifiers = {
-        "儿童": "天真烂漫、好奇活泼、说话简单直接、充满想象力",
-        "青少年": "朝气蓬勃、叛逆独立、追求自我、对新事物充满热情、偶尔冲动",
-        "青年": "积极进取、务实理性、有一定社会经验、追求事业与情感的平衡",
-        "中年": "沉稳内敛、经验丰富、看问题更全面、注重家庭与责任、偶尔感慨时光流逝",
-        "老年": "豁达通透、慈祥和蔼、人生阅历丰富、喜欢回忆往事、说话语速较慢、看淡名利"
-    }
-    modifier = modifiers.get(stage, "")
-    if modifier:
-        return f"{base_personality}\n\n【年龄特征({stage}·{age}岁)】：{modifier}请在言行中体现出{stage}人的气质和心态。"
-    return base_personality
-
-
-def get_moment_frequency_multiplier(character: Character) -> float:
-    """根据角色设置和年龄获取发朋友圈频率倍率"""
-    freq_map = {"low": 0.4, "normal": 1.0, "high": 2.0}
-    base = freq_map.get(character.moment_frequency, 1.0)
-    age = character.age
-    if age <= 12:
-        age_factor = 0.3
-    elif age <= 17:
-        age_factor = 1.5
-    elif age <= 30:
-        age_factor = 1.3
-    elif age <= 40:
-        age_factor = 1.0
-    elif age <= 60:
-        age_factor = 0.6
-    else:
-        age_factor = 0.3
-    return base * age_factor
-
-
-def normalize_parent_ids(character: Character, all_character_ids: Optional[set[str]] = None) -> List[str]:
-    cleaned = []
-    seen = set()
-    for parent_id in character.parent_ids or []:
-        if not parent_id or parent_id == character.id or parent_id in seen:
-            continue
-        if all_character_ids is not None and parent_id not in all_character_ids:
-            continue
-        cleaned.append(parent_id)
-        seen.add(parent_id)
-    character.parent_ids = cleaned
-    return cleaned
-
-
-def get_dialogue_style_hint(character: Character) -> str:
-    stage = character.get_age_stage()
-    hints = {
-        "儿童": "语气天真直接，关注学校、家庭、兴趣和身边的小事。",
-        "青少年": "语气带一点冲劲和敏感，关注学业、朋友、自我认同和未来。",
-        "青年": "语气自然成熟，更多表达工作、理想、情感和现实压力。",
-        "中年": "语气稳重务实，关注责任、家庭、事业和长期规划。",
-        "老年": "语气平和从容，带有人生经验，关注健康、回忆和晚年生活。",
-    }
-    return hints.get(stage, "语气自然，符合当前年龄阶段和人生经历。")
-
-
-def get_occupation_hint(character: Character) -> str:
-    stage = character.get_age_stage()
-    hints = {
-        "儿童": "职业应以学生或儿童身份为主，不应出现正式工作。",
-        "青少年": "职业应以学生、实习生、兼职等阶段性身份为主。",
-        "青年": "职业应体现职业起步或发展阶段，符合技能和背景。",
-        "中年": "职业应体现成熟稳定，和家庭与事业阶段相匹配。",
-        "老年": "职业可为退休、顾问、店主等更符合晚年状态的身份。",
-    }
-    return hints.get(stage, "职业设定应与年龄和经历一致。")
-
-
 def trim_avatar_change_history(character: Character, now_ms: Optional[int] = None) -> List[int]:
     if now_ms is None:
         now_ms = int(time.time() * 1000)
@@ -671,93 +603,6 @@ def trim_signature_change_history(character: Character, now_ms: Optional[int] = 
         if now_ms - ts <= SIGNATURE_REFRESH_INTERVAL_MS
     ]
     return character.signature_change_history
-
-
-def can_refresh_avatar(character: Character, now_ms: Optional[int] = None) -> bool:
-    recent_changes = trim_avatar_change_history(character, now_ms)
-    return len(recent_changes) < 10
-
-
-def can_refresh_signature(character: Character, now_ms: Optional[int] = None) -> bool:
-    recent_changes = trim_signature_change_history(character, now_ms)
-    return len(recent_changes) < 10
-
-
-def apply_age_stage_constraints(character: Character) -> List[str]:
-    notes = []
-    stage = character.get_age_stage()
-    if stage == "儿童":
-        if character.occupation != "学生":
-            old_occupation = character.occupation or "?"
-            character.occupation = "学生"
-            notes.append(f'年龄阶段调整，职业已从"{old_occupation}"修正为"学生"')
-    elif stage == "青少年":
-        if not character.occupation:
-            character.occupation = "学生"
-            notes.append('青少年阶段默认职业已设置为"学生"')
-    elif stage == "老年" and character.age >= 65 and character.occupation in ["", "无业", "待定"]:
-        character.occupation = "退休"
-        notes.append('老年阶段默认职业已设置为"退休"')
-    return notes
-
-
-def ensure_character_defaults(character: Character, settings: Optional[Settings] = None) -> List[str]:
-    settings = settings or get_settings()
-    notes = []
-    if character.stage_entered_at <= 0:
-        character.stage_entered_at = character.created_at or int(time.time() * 1000)
-        notes.append("已补齐阶段进入时间")
-    if character.max_lifespan <= 0:
-        min_lifespan = min(settings.min_lifespan, settings.max_lifespan)
-        max_lifespan = max(settings.min_lifespan, settings.max_lifespan)
-        character.max_lifespan = random.randint(min_lifespan, max_lifespan)
-        notes.append(f"已补齐最大寿命：{character.max_lifespan}岁")
-    if character.avatar_url and character.last_avatar_change_time and not character.avatar_change_history:
-        character.avatar_change_history = [character.last_avatar_change_time]
-        notes.append("已补齐头像变更历史")
-    if character.signature and character.last_signature_change_time and not character.signature_change_history:
-        character.signature_change_history = [character.last_signature_change_time]
-        notes.append("已补齐签名变更历史")
-    if character.debt_balance < 0:
-        character.debt_balance = 0
-    if character.debt_days_overdue < 0:
-        character.debt_days_overdue = 0
-    if character.poverty_days < 0:
-        character.poverty_days = 0
-    normalize_parent_ids(character)
-    notes.extend(apply_age_stage_constraints(character))
-    return notes
-
-
-def build_memorial_record(character: Character) -> Dict[str, Any]:
-    histories = get_character_histories(character.id)
-    # Import here to avoid circular dependency
-    from services.memory_service import get_character_memories
-    memories = get_character_memories(character.id, limit=5)
-    parent_names = []
-    if character.parent_ids:
-        char_map = {item.id: item for item in get_characters()}
-        parent_names = [char_map[parent_id].name for parent_id in character.parent_ids if parent_id in char_map]
-    epitaph = character.signature or f"{character.name}曾在这里生活过。"
-    return {
-        "id": character.id,
-        "name": character.name,
-        "avatar_url": character.avatar_url,
-        "gender": character.gender,
-        "age": character.age,
-        "age_display": character.get_age_display(),
-        "life_stage": character.get_age_stage(),
-        "occupation": character.occupation,
-        "signature": character.signature,
-        "epitaph": epitaph,
-        "death_time": character.death_time,
-        "death_cause": character.death_cause,
-        "world_time_text": get_world_time_text(),
-        "parent_names": parent_names,
-        "history_count": len(histories),
-        "recent_histories": [item.model_dump() for item in histories[:5]],
-        "recent_memories": [item.model_dump() for item in memories[:5]],
-    }
 
 
 def store_memorial_memory(character: Character, cause: str):
@@ -798,49 +643,3 @@ def mark_character_deceased(character: Character, cause: str, now_ms: Optional[i
     return True
 
 
-def apply_parental_support(character: Character, characters: List[Character], stage: str) -> float:
-    if stage not in {"儿童", "青少年"}:
-        return 0.0
-    if not character.parent_ids:
-        return 0.0
-
-    support_total = 0.0
-    per_parent_cap = 18.0 if stage == "儿童" else 10.0
-    minimum_reserve = 20.0
-
-    for parent in characters:
-        if parent.id not in character.parent_ids or not parent.is_alive:
-            continue
-        available = max(0.0, parent.money - minimum_reserve)
-        if available <= 0:
-            continue
-        contribution = min(per_parent_cap, available)
-        if stage == "青少年" and character.money >= 10:
-            contribution = min(contribution, 4.0)
-        if contribution <= 0:
-            continue
-        parent.money -= contribution
-        parent.updated_at = int(time.time() * 1000)
-        support_total += contribution
-
-    return round(support_total, 2)
-
-
-def maybe_get_accidental_death_cause(character: Character) -> Optional[str]:
-    chance = 0.0
-    if character.money < 0:
-        chance += 0.0015
-    if character.age >= 70:
-        chance += 0.001
-    elif character.age >= 50:
-        chance += 0.0004
-    if character.get_age_stage() == "老年":
-        chance += 0.0002
-    if chance > 0 and random.random() < chance:
-        causes = [
-            "突发疾病离世",
-            "意外事故离世",
-            "长期劳累引发并发症离世",
-        ]
-        return random.choice(causes)
-    return None

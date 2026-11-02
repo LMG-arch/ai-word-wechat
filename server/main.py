@@ -86,6 +86,7 @@ from routes.stats_routes import router as stats_router
 from routes.scheduler_routes import router as scheduler_router
 from routes.llm_usage_routes import router as llm_usage_router
 from routes.exec_routes import router as exec_router
+from routes.export_routes import router as export_router
 from routes.upload_routes import router as upload_router
 
 app.include_router(character_router)
@@ -103,6 +104,7 @@ app.include_router(stats_router)
 app.include_router(scheduler_router)
 app.include_router(llm_usage_router)
 app.include_router(exec_router)
+app.include_router(export_router)
 app.include_router(upload_router)
 
 # ==================== 生命周期管理 ====================
