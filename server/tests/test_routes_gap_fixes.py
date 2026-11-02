@@ -84,6 +84,11 @@ def test_life_experience_route_returns_expected_shape(monkeypatch):
 
     import routes.character_routes as character_routes
 
+    # 路由通过顶部 `from storage import get_characters` 绑定函数对象；若该模块已被
+    # 其它测试提前导入，仅 patch storage 不会生效。此处同时 patch 路由模块的引用，
+    # 使本测试与导入顺序无关（否则全量运行时可能因导入顺序不同而误返回 404）。
+    monkeypatch.setattr(character_routes, "get_characters", storage.get_characters)
+
     monkeypatch.setattr(
         character_routes,
         "get_character_memories",

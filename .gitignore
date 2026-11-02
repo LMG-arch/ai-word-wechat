@@ -38,6 +38,7 @@ Thumbs.db
 # Data files (runtime generated)
 server/data/avatars/
 server/data/image_prompts/
+server/data/uploads/
 server/data/*.db
 server/data/*.db-shm
 server/data/*.db-wal

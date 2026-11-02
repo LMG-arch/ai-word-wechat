@@ -53,7 +53,7 @@ app.add_middleware(
 )
 
 # ==================== 路径常量（与 config 一致，避免保存目录与静态挂载不一致导致 404）====================
-from config import DATA_DIR, AVATARS_DIR, IMAGE_PROMPTS_DIR
+from config import DATA_DIR, AVATARS_DIR, IMAGE_PROMPTS_DIR, UPLOADS_DIR
 
 os.makedirs(DATA_DIR, exist_ok=True)
 
@@ -62,6 +62,8 @@ app.mount("/avatars", StaticFiles(directory=AVATARS_DIR), name="avatars")
 app.mount("/image-prompts", StaticFiles(directory=IMAGE_PROMPTS_DIR), name="image-prompts")
 # 与前端 /api/* 风格一致：`get_image_prompt_url`、朋友圈「查看绘画提示词」链接使用此路径
 app.mount("/api/image-prompts", StaticFiles(directory=IMAGE_PROMPTS_DIR), name="api-image-prompts")
+# 聊天图片上传目录：网页端发送图片时 POST /api/uploads/chat-image，落盘后经 /uploads 静态访问
+app.mount("/uploads", StaticFiles(directory=UPLOADS_DIR), name="uploads")
 
 # ==================== 根路由 ====================
 @app.get("/")
@@ -84,6 +86,7 @@ from routes.stats_routes import router as stats_router
 from routes.scheduler_routes import router as scheduler_router
 from routes.llm_usage_routes import router as llm_usage_router
 from routes.exec_routes import router as exec_router
+from routes.upload_routes import router as upload_router
 
 app.include_router(character_router)
 app.include_router(chat_router)
@@ -100,6 +103,7 @@ app.include_router(stats_router)
 app.include_router(scheduler_router)
 app.include_router(llm_usage_router)
 app.include_router(exec_router)
+app.include_router(upload_router)
 
 # ==================== 生命周期管理 ====================
 async def startup_event():

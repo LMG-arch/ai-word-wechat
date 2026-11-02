@@ -19,11 +19,13 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(BASE_DIR, "data")
 AVATARS_DIR = os.path.join(BASE_DIR, "web", "avatars")
 IMAGE_PROMPTS_DIR = os.path.join(BASE_DIR, "web", "image_prompts")
+UPLOADS_DIR = os.path.join(DATA_DIR, "uploads")
 
 # 确保数据目录存在
 os.makedirs(DATA_DIR, exist_ok=True)
 os.makedirs(AVATARS_DIR, exist_ok=True)
 os.makedirs(IMAGE_PROMPTS_DIR, exist_ok=True)
+os.makedirs(UPLOADS_DIR, exist_ok=True)
 
 
 def sync_legacy_asset_directories() -> None:
