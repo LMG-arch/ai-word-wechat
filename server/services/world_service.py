@@ -271,7 +271,7 @@ def detect_encounters(window_minutes: int = 5) -> Dict[str, Any]:
 
 async def generate_schedule_for_character(character, day_index: int) -> Any:
     """为角色生成日程"""
-    from storage import get_schedules, save_schedules
+    from storage import get_schedules, save_schedules, get_settings
     from models import CharacterSchedule, ScheduleEvent
     
     settings = get_settings()

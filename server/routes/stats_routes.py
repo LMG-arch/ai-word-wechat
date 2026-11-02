@@ -74,7 +74,8 @@ async def list_memorials():
 @router.get("/api/memorials/{character_id}")
 async def get_memorial_detail(character_id: str):
     """Get memorial detail for a dead character"""
-    from storage import get_character_histories, get_character_memories
+    from storage import get_character_histories
+    from services.memory_service import get_character_memories
     characters = get_characters()
     for char in characters:
         if char.id != character_id:

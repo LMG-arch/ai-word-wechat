@@ -90,11 +90,11 @@ async def create_company(request: CreateCompanyRequest):
     companies.append(new_company)
     save_companies(companies)
     save_characters(characters)
-    add_log(legal_person.name, "创建公司", f"成功创建公司「{request.name}」，投入500元启动资金")
+    _add_log(legal_person.name, "创建公司", f"成功创建公司「{request.name}」，投入500元启动资金")
     for mid in request.member_ids:
         m = next((c for c in characters if c.id == mid), None)
         if m:
-            add_log(m.name, "加入公司", f"成为 {request.name} 的创始成员")
+            _add_log(m.name, "加入公司", f"成为 {request.name} 的创始成员")
     return {"success": True, "data": new_company.model_dump()}
 
 
@@ -115,7 +115,7 @@ async def recruit_company_member(company_id: str, request: AddCompanyMemberReque
     target.company_id = company_id
     save_companies(companies)
     save_characters(characters)
-    add_log(company.name, "招募", f"成功招募 {target.name} 加入公司")
+    _add_log(company.name, "招募", f"成功招募 {target.name} 加入公司")
     return {"success": True, "data": company.model_dump()}
 
 
@@ -150,7 +150,7 @@ async def ai_manage_companies():
         companies.append(new_company)
         save_companies(companies)
         save_characters(characters)
-        add_log(founder.name, "AI创业", f"自主创建公司「{company_name}」，投入500元启动资金")
+        _add_log(founder.name, "AI创业", f"自主创建公司「{company_name}」，投入500元启动资金")
     
     for company in companies:
         if random.random() < 0.1:
@@ -164,7 +164,7 @@ async def ai_manage_companies():
                     company.member_ids.append(recruit.id)
                     save_companies(companies)
                     save_characters(characters)
-                    add_log(company.name, "AI招募", f"自主招募 {recruit.name} 加入公司")
+                    _add_log(company.name, "AI招募", f"自主招募 {recruit.name} 加入公司")
     
     return {"success": True}
 

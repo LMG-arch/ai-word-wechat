@@ -13,7 +13,8 @@ from models import (
     SubmitTaskRequest, ReviewTaskRequest,
 )
 from storage import (
-    get_tasks, save_tasks, get_characters, get_companies,
+    get_tasks, save_tasks, get_characters, save_characters,
+    get_companies, save_companies,
     get_logs, save_logs, get_settings,
 )
 from services.task_service import apply_reflection_after_task, apply_auto_take_task_at_index

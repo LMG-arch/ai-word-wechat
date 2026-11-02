@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import os
 import random
+import time
 from datetime import datetime
 from typing import Optional, List, Dict, Any
 
@@ -731,7 +732,7 @@ def ensure_character_defaults(character: Character, settings: Optional[Settings]
 def build_memorial_record(character: Character) -> Dict[str, Any]:
     histories = get_character_histories(character.id)
     # Import here to avoid circular dependency
-    from services.memory_system import get_character_memories
+    from services.memory_service import get_character_memories
     memories = get_character_memories(character.id, limit=5)
     parent_names = []
     if character.parent_ids:
@@ -760,16 +761,24 @@ def build_memorial_record(character: Character) -> Dict[str, Any]:
 
 
 def store_memorial_memory(character: Character, cause: str):
-    from services.memory_system import store_memory
+    import asyncio
     from models import MemoryType
+    from services.memory_service import store_memory
     try:
-        store_memory(
+        coro = store_memory(
             character_id=character.id,
             content=f"角色 {character.name} 于 {character.age} 岁离世，原因：{cause}。",
             memory_type=MemoryType.EVENT,
             importance=1.0,
             related_entities=["死亡", "人生终点"]
         )
+        # store_memory 为异步函数：在运行中的事件循环内则调度任务，
+        # 否则同步运行；两种上下文都能落库且不阻塞（纪念记忆为 best-effort）。
+        try:
+            loop = asyncio.get_running_loop()
+            loop.create_task(coro)
+        except RuntimeError:
+            asyncio.run(coro)
     except Exception:
         pass
 

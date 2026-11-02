@@ -14,6 +14,7 @@ from datetime import datetime
 
 # 导入依赖（避免循环导入）
 from config import DATA_DIR
+from models import MomentComment
 
 def fallback_moment_image_url(seed: str) -> str:
     """配图兜底（picsum 占位，保证朋友圈始终图文并茂）。"""

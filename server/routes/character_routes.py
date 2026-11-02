@@ -436,9 +436,10 @@ async def trigger_proactive_message(character_id: str, context: str = "default")
         raise HTTPException(status_code=404, detail="角色不存在")
     if not char.is_alive:
         raise HTTPException(status_code=400, detail="角色已不在世")
-    from services.scheduler import trigger_proactive_message as trigger_msg
-    result = await trigger_msg(char, context=context)
-    return {"success": True, "data": result}
+    from services.scheduler import generate_proactive_message, record_proactive_message
+    result = generate_proactive_message(char, context=context)
+    record_proactive_message(char.id)
+    return {"success": True, "data": {"message": result}}
 
 
 @router.get("/api/characters/{character_id}/life-experience")
