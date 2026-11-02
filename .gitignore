@@ -20,6 +20,11 @@ dist/
 build/
 *.whl
 
+# Test / type-check caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
 # Virtual environment
 venv/
 ENV/
