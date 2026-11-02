@@ -105,6 +105,7 @@ aiwechat/
 
 | 版本 | 日期 | 核心更新 |
 |------|------|----------|
+| **V3.9** | 2026-11-02 | 🔗 未接入端点逐一甄别 + 功能补全：对 26 个未被前端调用的端点逐个读实现判定，补齐 3 个**真实功能缺口**——任务「手动指派执行角色」、任务「人工提交成果」、公司「招募成员」；任务执行者由内部 ID 改为显示角色/公司名称；新增 `tests/test_frontend_parity.py` 把前后端联动做成**自动化契约测试**（断链/方法不匹配即失败）；标注 `POST /companies/{id}/members` 与 `/recruit` 接口冗余为 deprecated。pytest **83→91** 全绿 |
 | **V3.8** | 2026-11-02 | 🔗 前后端联动全面审计：逐调用比对 `(method,path)`，断链 0、方法不匹配 0，36 个 GET 端点冒烟 0×5xx。修复「聊天图片上传」真实断链（新增 `POST /api/uploads/chat-image` + `/uploads` 静态挂载 + 类型/大小校验）；修复 1 处测试隔离脆性；新增上传回归测试，pytest 80→**83** 全绿；端点 90→**91** |
 | **V3.7** | 2026-11-02 | 🔍 静态检查驱动的缺陷修复：pyflakes + 导入一致性校验揪出 **22 处未定义名 NameError**（storage 缺 `time`、memory 缺 `random`、多处路由缺函数引用等）与 **4 类悬空/缺失导入**（`memory_system`→`memory_service`、任务奖金分配函数补实现等）；新增 14 个回归测试，pytest **66→80** 全绿、pyflakes 未定义名归零 |
 | **V3.6** | 2026-07-14 | 🛠 基于文档的全面重构：修复 4 项致命运行时缺陷（`init_memory_db` 未调用致记忆子系统瘫痪、`storage.add_log` 死亡路径 `datetime` 崩溃、`ReflectionReport` 缺 `review_notes` 致 `/review` 必崩、`_get_task_keywords` 误用 `str(enum)` 致任务分配随机化）；抽离 `services/lifecycle_service.py`；清理 `config.py` 死代码与年龄阶段冲突定义；补齐 pytest 工具链与单测（66 用例全绿）；文档对齐至 90 个 API 端点 |

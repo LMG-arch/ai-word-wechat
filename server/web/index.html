@@ -3770,6 +3770,19 @@
             }
         }
 
+        // 将任务执行者的内部 ID 映射为可读名称（角色优先，其次公司，最后回退原 ID）
+        function resolveAssigneeName(task, characterMap, companyMap) {
+            if (!task || !task.assignee_id) return '未指派';
+            const cid = task.assignee_id;
+            if (characterMap && characterMap[cid]) return characterMap[cid].name || cid;
+            if (companyMap && companyMap[cid]) return companyMap[cid].name || cid;
+            if (Array.isArray(cachedCharacters)) {
+                const hit = cachedCharacters.find(c => c.id === cid);
+                if (hit) return hit.name || cid;
+            }
+            return cid;
+        }
+
         function setTaskFilter(filter) {
             currentTaskFilter = filter || 'all';
             // 更新标签高亮
@@ -3808,6 +3821,8 @@
                 const companies = companyResult.success ? (companyResult.data || []) : [];
                 const companyMap = {};
                 companies.forEach(item => { companyMap[item.id] = item; });
+                const characterMap = {};
+                (cachedCharacters || []).forEach(item => { characterMap[item.id] = item; });
                 if (tasks.length === 0) {
                     const emptyMessages = {
                         all: '暂无任务',
@@ -3863,7 +3878,7 @@
                             </div>
                             <div class="item-subtitle" style="white-space:normal;">${escapeHtml(task.description || '暂无描述')}</div>
                             <div class="item-time">类型：${escapeHtml(task.task_type)} · 奖励：${task.reward}</div>
-                            <div class="item-subtitle" style="margin-top:6px;">执行：${escapeHtml(task.assignee_id || '未指派')} ${companyName ? '· 公司：' + escapeHtml(companyName) : ''}</div>
+                            <div class="item-subtitle" style="margin-top:6px;">执行：${escapeHtml(resolveAssigneeName(task, characterMap, companyMap))} ${companyName ? '· 公司：' + escapeHtml(companyName) : ''}</div>
                             <div class="item-subtitle" style="margin-top:6px;">执行说明：${escapeHtml(task.execution_notes || '暂无')}</div>
                             ${deliverableHtml}
                             ${reflection ? `<div class="item-subtitle" style="margin-top:6px;">${reflection}</div>` : ''}
@@ -3953,6 +3968,7 @@
 
         async function showTaskDetail(taskId) {
             try {
+                await ensureCharactersCached();
                 const response = await fetch(`${API_BASE}/tasks/${taskId}`);
                 const result = await response.json();
                 if (!result.success) throw new Error(result.detail || '加载失败');
@@ -3963,9 +3979,31 @@
                         <div class="info-card-title">任务信息</div>
                         <div class="item-subtitle">状态：${escapeHtml(task.status)} · 类型：${escapeHtml(task.task_type)} · 奖励：${task.reward}</div>
                         <div class="item-subtitle" style="margin-top:6px;">描述：${escapeHtml(task.description || '暂无')}</div>
-                        <div class="item-subtitle" style="margin-top:6px;">执行角色：${escapeHtml(task.assignee_id || '未指派')}</div>
+                        <div class="item-subtitle" style="margin-top:6px;">执行角色：${escapeHtml(resolveAssigneeName(task, null, null))}</div>
                         ${task.execution_notes ? `<div class="item-subtitle" style="margin-top:6px;">执行说明：${escapeHtml(task.execution_notes)}</div>` : ''}
                     </div>
+                    ${(task.status === 'open' || task.status === 'in_progress' || task.status === 'failed') ? `
+                        <div class="info-card">
+                            <div class="info-card-title">指派执行角色</div>
+                            <div class="item-subtitle" style="margin-top:6px; white-space:normal;">手动指定一名角色执行该任务，确认后任务状态置为「进行中」。</div>
+                            <select id="task-assignee-select" style="width:100%; margin-top:10px; padding:9px; border:1px solid var(--divider); border-radius:8px; font-size:14px; background:#fff;">
+                                <option value="">-- 请选择角色 --</option>
+                                ${(cachedCharacters || []).map(c => `<option value="${escapeHtml(c.id)}" ${c.id === task.assignee_id ? 'selected' : ''}>${escapeHtml(c.name)} · ${escapeHtml(c.occupation || '无职业')}</option>`).join('')}
+                            </select>
+                            <button class="btn btn-secondary" style="width:100%; margin-top:10px;" onclick="assignTaskTo('${escapeHtml(task.id)}')">确认指派</button>
+                        </div>
+                    ` : ''}
+                    ${(task.status === 'in_progress' || task.status === 'failed') ? `
+                        <div class="info-card">
+                            <div class="info-card-title">人工提交成果</div>
+                            <div class="item-subtitle" style="margin-top:6px; white-space:normal;">以你本人身份提交交付物，提交后进入审核流程。</div>
+                            <input id="task-submit-notes" placeholder="执行说明（可选）" style="width:100%; margin-top:10px; padding:9px; border:1px solid var(--divider); border-radius:8px; font-size:14px; box-sizing:border-box;">
+                            <textarea id="task-submit-text" placeholder="成果文本（可选）" rows="4" style="width:100%; margin-top:8px; padding:9px; border:1px solid var(--divider); border-radius:8px; font-size:14px; box-sizing:border-box; resize:vertical; font-family:inherit;"></textarea>
+                            <textarea id="task-submit-code" placeholder="成果代码（可选）" rows="4" style="width:100%; margin-top:8px; padding:9px; border:1px solid var(--divider); border-radius:8px; font-size:13px; box-sizing:border-box; resize:vertical; font-family:'Cascadia Code','Fira Code',Consolas,monospace;"></textarea>
+                            <input id="task-submit-image" placeholder="成果图片 URL（可选）" style="width:100%; margin-top:8px; padding:9px; border:1px solid var(--divider); border-radius:8px; font-size:14px; box-sizing:border-box;">
+                            <button class="btn btn-primary" style="width:100%; margin-top:10px;" onclick="submitTaskManually('${escapeHtml(task.id)}')">提交审核</button>
+                        </div>
+                    ` : ''}
                     <div class="info-card">
                         <div class="info-card-title">成果展示</div>
                         ${task.deliverable_image_url ? `
@@ -4002,6 +4040,63 @@
                 document.getElementById('task-detail-page').classList.add('active');
             } catch (error) {
                 showToast('任务详情加载失败：' + error.message);
+            }
+        }
+
+        // 手动指派任务执行者
+        async function assignTaskTo(taskId) {
+            const select = document.getElementById('task-assignee-select');
+            const assigneeId = select ? select.value : '';
+            if (!assigneeId) {
+                showToast('请先选择一名执行角色');
+                return;
+            }
+            try {
+                const response = await fetch(`${API_BASE}/tasks/${taskId}/assign`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ assignee_type: 'personal', assignee_id: assigneeId, company_id: null })
+                });
+                const result = await response.json();
+                if (!result.success) throw new Error(result.detail || '指派失败');
+                const name = resolveAssigneeName(result.data, null, null);
+                showToast(`已指派给 ${name}`);
+                await showTaskDetail(taskId);
+                loadTasks();
+            } catch (error) {
+                showToast('指派失败：' + error.message);
+            }
+        }
+
+        // 用户本人手动提交任务成果
+        async function submitTaskManually(taskId) {
+            const notes = (document.getElementById('task-submit-notes')?.value || '').trim();
+            const text = (document.getElementById('task-submit-text')?.value || '').trim();
+            const code = (document.getElementById('task-submit-code')?.value || '').trim();
+            const image = (document.getElementById('task-submit-image')?.value || '').trim();
+            if (!text && !code && !image && !notes) {
+                showToast('请至少填写成果文本、代码、图片或执行说明中的一项');
+                return;
+            }
+            try {
+                const response = await fetch(`${API_BASE}/tasks/${taskId}/submit`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        submitter_id: 'user',
+                        execution_notes: notes,
+                        deliverable_text: text,
+                        deliverable_code: code,
+                        deliverable_image_url: image || null
+                    })
+                });
+                const result = await response.json();
+                if (!result.success) throw new Error(result.detail || '提交失败');
+                showToast('成果已提交，等待审核');
+                await showTaskDetail(taskId);
+                loadTasks();
+            } catch (error) {
+                showToast('提交失败：' + error.message);
             }
         }
 
@@ -4456,11 +4551,14 @@
 
         async function showCompanyDetail(companyId) {
             try {
+                await ensureCharactersCached();
                 const response = await fetch(`${API_BASE}/companies/${encodeURIComponent(companyId)}`);
                 const result = await response.json();
                 if (!result.success) throw new Error(result.detail || '获取公司详情失败');
                 const comp = result.data;
                 const members = comp.members || [];
+                const memberIds = comp.member_ids || [];
+                const candidates = (cachedCharacters || []).filter(c => !memberIds.includes(c.id));
 
                 showCustomModal({
                     title: comp.name,
@@ -4481,11 +4579,47 @@
                                 : '<div style="color: #999; padding: 8px 0;">暂无成员</div>'
                             }
                         </div>
+                        <div class="info-card" style="margin-top: 12px;">
+                            <div class="info-card-title">招募成员</div>
+                            ${candidates.length > 0 ? `
+                                <select id="company-recruit-select" style="width:100%; margin-top:8px; padding:9px; border:1px solid #e5e5e5; border-radius:8px; font-size:14px; box-sizing:border-box;">
+                                    <option value="">-- 选择角色 --</option>
+                                    ${candidates.map(c => `<option value="${escapeHtml(c.id)}">${escapeHtml(c.name)} · ${escapeHtml(c.occupation || '无职业')}</option>`).join('')}
+                                </select>
+                                <button class="btn btn-primary" style="width:100%; margin-top:10px;" onclick="recruitMemberToCompany('${escapeHtml(comp.id)}')">招募加入公司</button>
+                            ` : '<div class="item-subtitle" style="margin-top:6px;">暂无可招募角色</div>'}
+                        </div>
                     `,
                     onClose: () => {}
                 });
             } catch (error) {
                 showToast('获取公司详情失败：' + error.message);
+            }
+        }
+
+        // 招募角色加入公司
+        async function recruitMemberToCompany(companyId) {
+            const select = document.getElementById('company-recruit-select');
+            const charId = select ? select.value : '';
+            if (!charId) {
+                showToast('请先选择要招募的角色');
+                return;
+            }
+            try {
+                const response = await fetch(`${API_BASE}/companies/${encodeURIComponent(companyId)}/recruit`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ character_id: charId })
+                });
+                const result = await response.json();
+                if (!result.success) throw new Error(result.detail || '招募失败');
+                const hit = (cachedCharacters || []).find(c => c.id === charId);
+                showToast(`已招募 ${hit ? hit.name : charId} 加入公司`);
+                // 角色归属已变更，清空缓存保证下次读取最新数据
+                cachedCharacters = [];
+                await showCompanyDetail(companyId);
+            } catch (error) {
+                showToast('招募失败：' + error.message);
             }
         }
 

@@ -171,6 +171,12 @@ async def ai_manage_companies():
 
 @router.post("/api/companies/{company_id}/members")
 async def add_company_member(company_id: str, request: AddCompanyMemberRequest):
+    """[Deprecated] 与 `POST /api/companies/{company_id}/recruit` 语义重复。
+
+    差异仅在于：本接口对"已是成员"的请求静默返回成功（幂等），
+    而 `/recruit` 会返回 400 明确提示冲突。
+    保留本接口仅为兼容既有调用方，新调用请使用 `/recruit`。
+    """
     companies = get_companies()
     characters = get_characters()
     member = next((c for c in characters if c.id == request.character_id), None)
