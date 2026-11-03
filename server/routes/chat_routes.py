@@ -46,7 +46,10 @@ async def _background_ai_reply(conversation_id: str, req_data: Dict[str, Any]):
 
     user_text = request.content or ""
     if request.message_type == "sticker":
-        reply_prompt = f"用户发了一个表情：{user_text}"
+        reply_prompt = (
+            f"对方刚才发来一个表情「{user_text}」。你顺着这个情绪回一句，"
+            "像微信聊天一样自然，不要提到「表情」两个字，也不要复述这段说明。"
+        )
     elif request.message_type == "voice":
         reply_prompt = getattr(request, "voice_text", None) or user_text or "用户发来一条语音"
     else:
@@ -105,6 +108,13 @@ async def _background_ai_reply(conversation_id: str, req_data: Dict[str, Any]):
     save_messages(messages)
     save_characters(characters)
     _add_log(character.name, "对话", f"回复：\"{reply_content[:30]}...\"")
+
+    # V4.0：和用户聊天也累积亲密度（影响朋友圈可见范围）
+    try:
+        from services.memory_service import apply_relationship_interaction
+        apply_relationship_interaction("user", character.id, "chat")
+    except Exception:
+        pass
 
 
 def _add_log(character_name: str, action_type: str, description: str):
@@ -212,7 +222,10 @@ async def send_message(request: SendMessageRequest, background_tasks: Background
     messages.append(user_message)
     save_messages(messages)
 
-    background_tasks.add_task(_background_ai_reply, request.conversation_id, request.model_dump())
+    # 贴纸消息的 content 已被换成中文名，后台回复要用这个名字而不是 id
+    payload = request.model_dump()
+    payload["content"] = user_text
+    background_tasks.add_task(_background_ai_reply, request.conversation_id, payload)
 
     return {
         "success": True,

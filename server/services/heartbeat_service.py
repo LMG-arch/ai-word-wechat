@@ -286,6 +286,15 @@ async def append_private_group_exchange(group, topic: Optional[str] = None):
         )
     save_messages(messages)
 
+    # V4.0 包B1：群里聊过天也算亲近（否则关系网永远不动）
+    try:
+        from services.memory_service import apply_relationship_interaction
+        for i in range(len(members[:2])):
+            for j in range(i + 1, len(members[:2])):
+                apply_relationship_interaction(members[i].id, members[j].id, "chat")
+    except Exception:
+        pass
+
 
 async def heartbeat_task():
     """后台心跳任务（无限循环）"""

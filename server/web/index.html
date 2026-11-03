@@ -621,6 +621,12 @@
             line-height: 1;
         }
         .sticker-item:hover { background: #ececec; }
+        /* 表情消息不要气泡背景，像微信一样只有图 */
+        .message-bubble.sticker {
+            background: transparent !important;
+            box-shadow: none !important;
+            padding: 0 !important;
+        }
         /* V4.0 包B1/B4：家庭标记与关系图图例 */
         .family-badge {
             font-size: 13px;
@@ -2697,11 +2703,16 @@
 
         function toggleChatMenu() {
             const m = document.getElementById('chat-menu');
+            // 与表情面板互斥，避免两个浮层叠在一起
+            const sp = document.getElementById('sticker-panel');
+            if (sp) sp.style.display = 'none';
             if (m) m.classList.toggle('show');
         }
 
         function toggleGroupMenu() {
             const m = document.getElementById('group-chat-menu');
+            const sp = document.getElementById('group-sticker-panel');
+            if (sp) sp.style.display = 'none';
             if (m) m.classList.toggle('show');
         }
 
@@ -3470,11 +3481,30 @@
                     </div>
                 ` : '<div class="empty-state"><div class="empty-state-text">暂无历史记录</div></div>';
 
-                const rel = currentCharacter.relationship_stage || 'stranger';
+                // V4.0 包B1/B2：家庭档案与职业档案（失败则退回本地字段推导）
+                let familyData = null;
+                let careerData = null;
+                try {
+                    const fRes = await fetch(`${API_BASE}/characters/${characterId}/family`);
+                    const fJson = await fRes.json();
+                    if (fJson.success) familyData = fJson.data;
+                } catch (e) { /* 忽略 */ }
+                try {
+                    const cRes = await fetch(`${API_BASE}/characters/${characterId}/career`);
+                    const cJson = await cRes.json();
+                    if (cJson.success) careerData = cJson.data;
+                } catch (e) { /* 忽略 */ }
+
+                const rel = familyData ? familyData.stage : (currentCharacter.relationship_stage || 'stranger');
                 const relLabelMap = { stranger: '陌生', friend: '朋友', close: '密友', lover: '情侣', spouse: '夫妻' };
-                const partnerName = currentCharacter.partner_id ? (charMap.get(currentCharacter.partner_id) || {}).name : null;
-                const spouseName = currentCharacter.spouse_id ? (charMap.get(currentCharacter.spouse_id) || {}).name : null;
-                const childList = (currentCharacter.children_ids || []).map(id => charMap.get(id)).filter(Boolean);
+                const partnerName = familyData
+                    ? (familyData.spouse && familyData.spouse.name) || (familyData.partner && familyData.partner.name) || null
+                    : (currentCharacter.spouse_id || currentCharacter.partner_id
+                        ? (charMap.get(currentCharacter.spouse_id || currentCharacter.partner_id) || {}).name : null);
+                const spouseName = familyData && familyData.spouse ? familyData.spouse.name : null;
+                const childList = familyData
+                    ? (familyData.children || [])
+                    : (currentCharacter.children_ids || []).map(id => charMap.get(id)).filter(Boolean);
                 const hasFamily = partnerName || spouseName || childList.length || rel !== 'stranger';
                 const familyHtml = `
                     <div class="info-card">
@@ -3492,6 +3522,13 @@
                         ${childList.length ? `<div class="item-subtitle" style="margin-top:8px;">👶 孩子：${childList.map(c => `${escapeHtml(c.name)}（${c.age}岁）`).join('、')}</div>` : ''}
                         ${parentNames.length ? `<div class="item-subtitle" style="margin-top:4px;">👨‍👩‍👦 父母：${parentNames.map(escapeHtml).join('、')}</div>` : ''}
                         ${!hasFamily ? '<div class="item-subtitle" style="margin-top:6px;">还没有建立起亲密关系，多互动几次试试</div>' : ''}
+                        <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;align-items:center;">
+                            <select id="family-partner-select" style="flex:1;min-width:110px;padding:6px;border:1px solid #ddd;border-radius:4px;font-size:13px;">
+                                ${allChars.filter(x => x.id !== currentCharacter.id && x.is_alive !== false).map(x => `<option value="${escapeHtml(x.id)}">${escapeHtml(x.name)}</option>`).join('')}
+                            </select>
+                            <button type="button" class="btn btn-secondary" style="font-size:12px;padding:5px 10px;" onclick="familyAction('marry')">结婚</button>
+                            <button type="button" class="btn btn-secondary" style="font-size:12px;padding:5px 10px;" onclick="familyAction('child')">生孩子</button>
+                        </div>
                     </div>
                 `;
 
@@ -3518,7 +3555,7 @@
                             </div>
                             <div class="info-item">
                                 <div class="info-label">职业</div>
-                                <div class="info-value">${escapeHtml(currentCharacter.occupation || '未知')}${careerBadge(currentCharacter)}</div>
+                                <div class="info-value">${escapeHtml(currentCharacter.occupation || '未知')}${careerData ? `<span class="career-badge">P${careerData.level} ${escapeHtml(careerData.title)}</span>` : careerBadge(currentCharacter)}</div>
                             </div>
                             <div class="info-item">
                                 <div class="info-label">性格</div>
@@ -4059,7 +4096,7 @@
                 container.innerHTML = result.data.map(msg => `
                     <div class="message-row ${msg.is_from_user ? 'user' : 'ai'}">
                         ${!msg.is_from_user ? '<div class="message-avatar">' + (window.chatDetailCharInitial || '?') + '</div>' : ''}
-                        <div class="message-bubble">${renderMessageBubble(msg)}</div>
+                        <div class="message-bubble${msg.message_type === 'sticker' ? ' sticker' : ''}">${renderMessageBubble(msg)}</div>
                     </div>
                 `).join('');
 
@@ -4078,7 +4115,8 @@
             if (loading) loading.remove();
             const row = document.createElement('div');
             row.className = 'message-row user';
-            row.innerHTML = `<div class="message-bubble">${renderMessageBubble(msg)}</div>`;
+            const isSticker = msg && msg.message_type === 'sticker';
+            row.innerHTML = `<div class="message-bubble${isSticker ? ' sticker' : ''}">${renderMessageBubble(msg)}</div>`;
             container.appendChild(row);
             container.scrollTop = container.scrollHeight;
         }
@@ -4274,6 +4312,8 @@
                 panel.style.display = 'none';
                 return;
             }
+            // 打开表情面板时收起「+」菜单
+            document.querySelectorAll('.chat-menu.show').forEach(el => el.classList.remove('show'));
             const render = () => {
                 if (!window.STICKERS.length) {
                     panel.innerHTML = '<div style="padding:10px;font-size:12px;color:#999;">表情包加载中…</div>';
@@ -6554,6 +6594,34 @@
         }
 
         // ==================== 关系网络页面 ====================
+        // V4.0 包B1：角色详情页的结婚 / 生子操作
+        async function familyAction(kind) {
+            if (!currentCharacter) return;
+            const sel = document.getElementById('family-partner-select');
+            const otherId = sel ? sel.value : '';
+            if (!otherId) {
+                showToast('请先选择一个角色');
+                return;
+            }
+            const url = kind === 'marry'
+                ? `${API_BASE}/characters/${currentCharacter.id}/marry`
+                : `${API_BASE}/characters/${currentCharacter.id}/child`;
+            try {
+                const resp = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ other_id: otherId }),
+                });
+                const result = await resp.json();
+                if (!result.success) throw new Error(result.detail || '操作失败');
+                showToast(kind === 'marry' ? '结婚成功，已发朋友圈官宣' : `孩子出生了：${result.data.child.name}`);
+                await showCharacterDetail(currentCharacter.id);
+                await loadChatList();
+            } catch (e) {
+                showToast('操作失败：' + e.message);
+            }
+        }
+
         async function showRelationshipsPage() {
             document.getElementById('header-title').textContent = '关系网络';
             document.getElementById('tab-mine').classList.remove('active');
