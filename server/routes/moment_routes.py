@@ -115,9 +115,13 @@ async def create_user_moment(body: UserCreateMomentRequest, background_tasks: Ba
     if visibility not in ("public", "friends", "private"):
         visibility = "friends"
 
+    # 用真实用户昵称署名，避免所有动态都显示「用户」
+    profile = getattr(get_settings(), "user_profile", None)
+    user_nickname = ((getattr(profile, "nickname", "") or "").strip() or "用户")
+
     moments = get_moments()
     post = MomentPost(
-        author_id="user", author_name="用户", content=content,
+        author_id="user", author_name=user_nickname, content=content,
         image_url=image_url, image_prompt_file=prompt_file,
         trigger_type="user", mood="active", visible_min_intimacy=0,
         visibility=visibility,
@@ -127,7 +131,7 @@ async def create_user_moment(body: UserCreateMomentRequest, background_tasks: Ba
     )
     moments.append(post)
     save_moments(moments)
-    _add_log("用户", "moment_post", f"发布朋友圈：{content[:20]}")
+    _add_log(user_nickname, "moment_post", f"发布朋友圈：{content[:20]}")
 
     if mentioned_ids:
         background_tasks.add_task(_mentioned_characters_respond, post.id, mentioned_ids)
@@ -168,8 +172,9 @@ def _mentioned_characters_respond(moment_id: str, mentioned_ids: List[str]):
 async def like_moment(moment_id: str, author_id: str):
     """点赞朋友圈"""
     characters = get_characters()
+    # 真实用户（author_id == "user"）也可以点赞，和角色走同一套可见性判断
     liker = next((c for c in characters if c.id == author_id), None)
-    if not liker:
+    if not liker and author_id != "user":
         raise HTTPException(status_code=404, detail="Character not found")
 
     moments = get_moments()
@@ -192,9 +197,18 @@ async def like_moment(moment_id: str, author_id: str):
 async def comment_moment(moment_id: str, request: MomentCommentRequest):
     """评论朋友圈（支持自动生成评论）"""
     characters = get_characters()
+    is_user = request.author_id == "user"
     commenter = next((c for c in characters if c.id == request.author_id), None)
-    if not commenter:
+    if not commenter and not is_user:
         raise HTTPException(status_code=404, detail="Character not found")
+    user_nickname = "用户"
+    if is_user:
+        try:
+            profile = getattr(get_settings(), "user_profile", None)
+            if profile is not None and getattr(profile, "nickname", None):
+                user_nickname = profile.nickname
+        except Exception:
+            pass
 
     moments = get_moments()
     for i, post in enumerate(moments):
@@ -207,18 +221,19 @@ async def comment_moment(moment_id: str, request: MomentCommentRequest):
         if request.reply_to_comment_id:
             parent_comment = get_comment_by_id(post.comments, request.reply_to_comment_id)
             if not parent_comment:
-                raise HTTPException(status_code=404, detail="Parent comment not found")
+                raise HTTPException(status_code=404, detail="要回复的评论不存在")
             if has_reply_for_comment(post.comments, parent_comment.id):
-                raise HTTPException(status_code=400, detail="Each comment can only be replied once")
+                raise HTTPException(status_code=400, detail="这条评论已经回复过了")
         else:
-            if any(
+            # 角色只能评论一次避免刷屏；真实用户可以像微信一样连续评论多条
+            if not is_user and any(
                 c.author_id == request.author_id and c.parent_comment_id is None
                 for c in post.comments
             ):
-                raise HTTPException(status_code=400, detail="Character already commented this moment")
+                raise HTTPException(status_code=400, detail="该角色已经评论过这条动态了")
 
         content = (request.content or "").strip()
-        if request.auto_generate or not content:
+        if (request.auto_generate or not content) and not is_user:
             moment_author = next((c for c in characters if c.id == post.author_id), None)
             if not moment_author:
                 raise HTTPException(status_code=404, detail="Moment author not found")
@@ -226,17 +241,22 @@ async def comment_moment(moment_id: str, request: MomentCommentRequest):
                 commenter=commenter, moment_author=moment_author,
                 moment_content=post.content, parent_comment=parent_comment
             )
+        if not content:
+            raise HTTPException(status_code=400, detail="评论内容不能为空")
         if parent_comment and f"@{parent_comment.author_name}" not in content:
             content = f"@{parent_comment.author_name} {content}"
         from models import MomentComment
         comment = MomentComment(
-            moment_id=post.id, author_id=commenter.id, author_name=commenter.name,
+            moment_id=post.id,
+            author_id=commenter.id if commenter else "user",
+            author_name=commenter.name if commenter else user_nickname,
             content=content,
             parent_comment_id=parent_comment.id if parent_comment else None,
             reply_to_author_id=parent_comment.author_id if parent_comment else None,
         )
         post.comments.append(comment)
-        apply_relationship_interaction(commenter.id, post.author_id, "comment")
+        if commenter:
+            apply_relationship_interaction(commenter.id, post.author_id, "comment")
         if parent_comment:
             apply_relationship_interaction(commenter.id, parent_comment.author_id, "comment")
         moments[i] = post

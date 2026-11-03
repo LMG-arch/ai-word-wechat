@@ -375,6 +375,8 @@ class Settings(BaseModel):
     enable_heartbeat: bool = True
     heartbeat_interval_seconds: int = 60
     heartbeat_last_run_time: int = 0
+    # 年龄增长任务上次执行时间（每天一次），缺字段会写入失败
+    last_age_growth_time: int = 0
     enable_task_engine: bool = True
     last_world_update_time: int = Field(default_factory=lambda: int(time.time() * 1000))
     world_elapsed_ms: int = 0

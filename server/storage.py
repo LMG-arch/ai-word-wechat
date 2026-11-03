@@ -654,3 +654,37 @@ def mark_character_deceased(character: Character, cause: str, now_ms: Optional[i
     return True
 
 
+
+
+def prune_missing_avatars() -> int:
+    """清理指向已不存在文件的头像路径。
+
+    头像文件不随仓库分发（或用户手动删除了 uploads/avatars），残留的
+    `/avatars/xxx.png` 会让前端每次都拿到 404。启动时自愈一次，前端回退到文字头像。
+    """
+    from config import AVATARS_DIR
+
+    def _exists(url: str) -> bool:
+        if not url or not url.startswith("/avatars/"):
+            return True
+        return os.path.exists(os.path.join(AVATARS_DIR, os.path.basename(url)))
+
+    fixed = 0
+    chars = get_characters()
+    for c in chars:
+        if not _exists(getattr(c, "avatar_url", None)):
+            c.avatar_url = None
+            fixed += 1
+    if fixed:
+        save_characters(chars)
+
+    try:
+        settings = get_settings()
+        profile = getattr(settings, "user_profile", None)
+        if profile is not None and not _exists(getattr(profile, "avatar_url", None)):
+            profile.avatar_url = None
+            save_settings(settings)
+            fixed += 1
+    except Exception:
+        pass
+    return fixed

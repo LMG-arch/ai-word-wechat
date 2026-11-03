@@ -39,8 +39,8 @@ async def process_age_growth() -> None:
         if char.is_alive:
             char.age += 1
             new_stage = get_age_stage_from_age(char.age)
-            if char.age_stage != new_stage:
-                char.age_stage = new_stage
+            # Character 没有 age_stage 字段，阶段由年龄实时推导，不能直接读写属性
+            if char.get_age_stage() != new_stage:
                 add_log(char.name, "age_growth", f"进入{new_stage}阶段，年龄: {char.age}")
     save_characters(characters)
     settings.last_age_growth_time = now_ms

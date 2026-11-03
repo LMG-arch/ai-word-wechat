@@ -257,6 +257,7 @@ async def generate_ai_reply(
     memory_context: str = "",
     task_context: str = "",
     world_time: str = "",
+    display_input: str = "",
 ) -> str:
     """
     生成 AI 角色回复（主函数）
@@ -268,11 +269,13 @@ async def generate_ai_reply(
     from models import Company
 
     # 1. 使用「API 配置」中已启用的 LLM（按 priority；角色可绑定 llm_model_id），无配置时才走模板兜底
+    # 兜底回复只用于「人话」输入；指令型 prompt（如表情/语音的场景说明）不能直接回显
+    fallback_input = display_input or user_input
     configs = get_api_configs()
     llm_config = pick_enabled_llm_config(configs, character.llm_model_id)
     
     if not llm_config:
-        return get_fallback_reply(character, user_input)
+        return get_fallback_reply(character, fallback_input)
     
     model_name = llm_config.selected_model or "gpt-3.5-turbo"
     
@@ -353,7 +356,7 @@ Example: "好的，我现在就过去。[EXEC:MoveTo(餐厅)]"
                     except Exception:
                         err_body = ""
                     _add_log("系统", "对话LLM错误", f"HTTP {response.status} {err_body}")
-                    return get_fallback_reply(character, user_input)
+                    return get_fallback_reply(character, fallback_input)
 
                 res_json = await response.json()
                 record_llm_usage(res_json, llm_config, "ai_reply", character.id)
@@ -366,7 +369,7 @@ Example: "好的，我现在就过去。[EXEC:MoveTo(餐厅)]"
                 else:
                     reply = str(raw_content).strip()
                 if not reply:
-                    reply = get_fallback_reply(character, user_input)
+                    reply = get_fallback_reply(character, fallback_input)
 
                 # 5. 处理 Exec 协议指令
                 instructions = ExecProtocol.parse_instructions(reply)
@@ -460,16 +463,34 @@ Example: "好的，我现在就过去。[EXEC:MoveTo(餐厅)]"
                 return reply
     except Exception as e:
         _add_log("系统", "对话异常", str(e))
-        return get_fallback_reply(character, user_input)
+        return get_fallback_reply(character, fallback_input)
+
+
+def _slim_fallback_input(text: str) -> str:
+    """把输入压成一句能自然嵌入模板的短语。
+
+    LLM 不可用时兜底模板会拼接用户输入，若输入本身是场景指令（例如表情消息的
+    「对方刚才发来一个表情……」），直接拼接会把提示词回显给用户。
+    """
+    t = (text or "").strip()
+    if not t:
+        return "这事"
+    # 指令型输入：含提示词口吻或过长，一律降级为泛化短语
+    if len(t) > 40 or any(k in t for k in ("你顺着", "不要提到", "这段说明", "回复风格", "请用简体中文")):
+        return "这事"
+    # 去掉会让模板出现「吗？ ，」这类叠加标点的结尾符号
+    t = t.rstrip("，。！？、,.!?~～ ")
+    return t or "这事"
 
 
 def get_fallback_reply(character: Character, user_input: str) -> str:
     """获取备用回复（当 LLM 不可用时）"""
+    user_input = _slim_fallback_input(user_input)
     replies = [
         f"嗯，{user_input}，这个问题挺有意思的。",
         f"作为{character.occupation}，我觉得{user_input}值得思考。",
         f"哈哈，{user_input}，让我想起了之前的经历。",
-        f"{user_input}吗？我需要好好想想。",
+        f"{user_input}……我得好好想想。",
         f"从{character.personality}的角度来看，{user_input}确实有道理。",
     ]
     

@@ -132,6 +132,15 @@
             margin-bottom: 4px;
         }
 
+        /* 人生经历 / 角色日志是多行内容，不能沿用单行省略样式 */
+        #life-experience-content,
+        #character-logs-content {
+            white-space: normal;
+            overflow: visible;
+            text-overflow: clip;
+            line-height: 1.7;
+        }
+
         .item-subtitle {
             font-size: 13px;
             color: var(--text-secondary);
@@ -156,6 +165,12 @@
         }
 
         /* 详情页样式 */
+        /* 二级页面：隐藏全局标题栏与底部导航，避免出现双层标题 */
+        body.subpage-open .header,
+        body.subpage-open .bottom-nav {
+            display: none;
+        }
+
         .detail-page {
             display: none;
             flex-direction: column;
@@ -226,6 +241,71 @@
             text-transform: uppercase;
         }
 
+        /* 朋友圈发布器：默认收起，首屏优先展示动态 */
+        .moment-composer {
+            background: #fff;
+            border-bottom: 1px solid #e5e5e5;
+        }
+        .composer-trigger {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 16px;
+            cursor: pointer;
+        }
+        .composer-fake-input {
+            flex: 1;
+            background: #f5f5f5;
+            border-radius: 16px;
+            padding: 9px 14px;
+            color: #999;
+            font-size: 14px;
+        }
+        .composer-caret {
+            color: #bbb;
+            font-size: 12px;
+            transition: transform 0.2s ease;
+        }
+        .moment-composer:not(.collapsed) .composer-caret {
+            transform: rotate(180deg);
+        }
+        .moment-composer.collapsed .composer-body {
+            display: none;
+        }
+        .composer-body {
+            padding: 0 16px 12px;
+        }
+
+        /* 发现页分段切换（朋友圈 / 地图） */
+        /* 群聊区避开右下角悬浮按钮，避免文字/箭头被压住 */
+        #group-list-container {
+            padding-right: 68px;
+        }
+
+        .discover-segment-bar {
+            display: flex;
+            gap: 8px;
+            padding: 8px 12px;
+            background: var(--card-bg);
+            border-bottom: 1px solid var(--divider);
+        }
+        .discover-seg {
+            flex: 1;
+            padding: 8px 0;
+            border: none;
+            border-radius: 16px;
+            background: #f2f2f2;
+            color: var(--text-secondary);
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .discover-seg.active {
+            background: var(--wechat-green);
+            color: #fff;
+        }
+
         /* 任务分类标签 */
         .task-category-tabs {
             display: flex;
@@ -254,15 +334,19 @@
             background: #f0f0f0;
         }
         .task-tab.active {
-            background: var(--primary);
+            background: var(--wechat-green);
             color: #fff;
         }
         .task-tab-count {
             font-size: 12px;
+            line-height: 1;
             background: rgba(0,0,0,0.08);
-            padding: 1px 6px;
+            padding: 2px 6px;
             border-radius: 10px;
             min-width: 18px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
             text-align: center;
         }
         .task-tab.active .task-tab-count {
@@ -538,11 +622,27 @@
             border-radius: 4px;
             overflow: hidden;
             background: #f2f2f2;
+            /* 微信朋友圈是缩略图，不再整屏大图 */
+            max-width: 62%;
+            max-height: 240px;
+        }
+        .moment-img-wrap.img-broken {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 120px;
+            width: 62%;
+            background: linear-gradient(135deg, #e8f5e9, #c8e6c9);
+            color: #5f7f63;
+            font-size: 12px;
+        }
+        .moment-img-wrap.img-broken::after {
+            content: attr(data-tip);
         }
         .moment-img-wrap img {
             display: block;
             width: 100%;
-            max-height: 360px;
+            max-height: 240px;
             object-fit: cover;
         }
         /* V4.0 包A5：语音条 / 表情贴纸 */
@@ -738,7 +838,24 @@
             display: flex;
             flex-wrap: wrap;
             align-items: center;
-            gap: 8px;
+            gap: 4px;
+            justify-content: flex-start;
+        }
+        /* 赞 / 评论走文字按钮，避免两个大灰块压住动态 */
+        .moment-actions-bar .btn:first-of-type {
+            margin-left: auto;
+        }
+        .moment-actions-bar .btn {
+            background: transparent;
+            border: none;
+            color: #576b95;
+            font-size: 13px;
+            padding: 4px 10px;
+            min-height: auto;
+            box-shadow: none;
+        }
+        .moment-actions-bar .btn:active {
+            background: #f0f0f0;
         }
         .moment-comments-box {
             margin-top: 8px;
@@ -777,6 +894,37 @@
             cursor: pointer;
             padding: 4px 8px;
             margin-right: 8px;
+            flex-shrink: 0;
+            white-space: nowrap;
+        }
+        /* 城市标语过长时省略，避免把「返回」挤成竖排 */
+        .map-page-header > div > span {
+            display: inline-block;
+            max-width: 200px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .map-zoom-inner {
+            width: 100%;
+            height: 100%;
+        }
+        #discover-map-svg {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+        /* 地图页需要撑满剩余高度，否则绝对定位的 viewport 会按内容高度塌陷 */
+        #discover-panel-map {
+            position: relative;
+            overflow: hidden;
+        }
+        #discover-map-root {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
         }
         .discover-map-viewport {
             position: absolute;
@@ -1380,8 +1528,13 @@
                 font-size: 13px;
             }
             .task-category-tabs {
-                flex-wrap: wrap;
-                gap: 4px;
+                flex-wrap: nowrap;
+                gap: 6px;
+                padding: 10px 12px;
+                scrollbar-width: none;
+            }
+            .task-category-tabs::-webkit-scrollbar {
+                display: none;
             }
             .task-tab {
                 font-size: 12px;
@@ -1593,7 +1746,7 @@
                     </div>
                 </div>
             </div>
-            <div id="discover-panel-map" class="list-container">
+            <div id="discover-panel-map" class="list-container" style="display:none;">
                 <div id="discover-map-root"></div>
             </div>
         </div>
@@ -1772,7 +1925,7 @@
             <input type="text" class="chat-input" id="private-group-input" placeholder="在群里说点什么…（@名字 可点名）" onkeypress="if(event.key==='Enter') sendPrivateGroupMessage()">
             <button class="send-btn" onclick="sendPrivateGroupMessage()">发送</button>
             <div class="chat-menu" id="group-chat-menu">
-                <button onclick="toggleGroupStickerPanel(); toggleGroupMenu();">😀 表情</button>
+                <button onclick="toggleGroupMenu(); toggleGroupStickerPanel();">😀 表情</button>
                 <button onclick="showRedPacketModal(); toggleGroupMenu();">🧧 红包</button>
                 <button onclick="showTransferModal(); toggleGroupMenu();">💸 转账</button>
             </div>
@@ -1798,7 +1951,7 @@
             <div class="chat-menu" id="chat-menu">
                 <button onclick="document.getElementById('chat-image-input').click(); toggleChatMenu();">🖼 图片</button>
                 <button onclick="sendVoiceMessage(); toggleChatMenu();">🎤 语音</button>
-                <button onclick="toggleStickerPanel(); toggleChatMenu();">😀 表情</button>
+                <button onclick="toggleChatMenu(); toggleStickerPanel();">😀 表情</button>
                 <button onclick="showRedPacketModal(); toggleChatMenu();">🧧 红包</button>
                 <button onclick="showTransferModal(); toggleChatMenu();">💸 转账</button>
             </div>
@@ -1813,6 +1966,23 @@
             <div class="detail-name" id="task-detail-title">任务详情</div>
         </div>
         <div class="detail-body" id="task-detail-body"></div>
+    </div>
+
+    <!-- 通用输入弹窗（评论等场景） -->
+    <div class="modal-overlay" id="input-modal">
+        <div class="modal" style="max-width: 360px;">
+            <div class="modal-header">
+                <span class="modal-title" id="input-modal-title">输入</span>
+                <button class="modal-close" onclick="closeInputModal(null)">×</button>
+            </div>
+            <div class="modal-body">
+                <textarea id="input-modal-text" rows="3" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:14px;resize:vertical;"></textarea>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeInputModal(null)">取消</button>
+                <button class="btn btn-primary" onclick="closeInputModal(document.getElementById('input-modal-text').value)">确定</button>
+            </div>
+        </div>
     </div>
 
     <!-- 添加角色模态框 -->
@@ -2019,7 +2189,7 @@
                 </div>
                 <div id="ai-preview" style="display: none; margin-top: 16px; padding: 16px; background: var(--bg-secondary); border-radius: 12px;">
                     <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
-                        <div id="ai-preview-avatar" style="width: 60px; height: 60px; border-radius: 50%; background: var(--primary); color: white; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: bold;"></div>
+                        <div id="ai-preview-avatar" style="width: 60px; height: 60px; border-radius: 50%; background: var(--wechat-green); color: white; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: bold;"></div>
                         <div>
                             <div id="ai-preview-name" style="font-weight: 600; font-size: 18px;"></div>
                             <div id="ai-preview-info" style="color: var(--text-secondary); font-size: 14px;"></div>
@@ -2272,6 +2442,7 @@
 
         // ==================== LLM 用量页面 ====================
         async function showLlmUsagePage() {
+            document.body.classList.add('subpage-open');
             document.getElementById('header-title').textContent = '📊 模型用量';
             document.getElementById('tab-mine').classList.remove('active');
             const container = document.getElementById('tab-mine');
@@ -3714,44 +3885,53 @@
                     return;
                 }
                 const d = result.data;
+                // 后端字段可能缺省（老数据 / 尚未产生），统一兜底，避免 undefined.length 崩溃
+                const asArray = (v) => Array.isArray(v) ? v : [];
+                const skills = asArray(d.experience_skills);
+                const recentTasks = asArray(d.recent_tasks).length ? asArray(d.recent_tasks) : asArray(d.task_history);
+                const reflections = asArray(d.recent_reflections);
+                const relCount = (d.relationship_count != null) ? d.relationship_count : asArray(d.relationships).length;
+                const totalTasks = (d.total_tasks_completed != null) ? d.total_tasks_completed : (d.total_tasks || 0);
+                const typeCount = asArray(d.task_types_completed).length;
                 let html = '';
 
-                // 任务统计
-                html += `<div style="margin-bottom:8px;">
-                    <strong>任务统计：</strong>共 ${d.total_tasks} 个任务 · 完成 ${d.completed_tasks} · 失败 ${d.failed_tasks}
+                // 概览
+                html += `<div style="margin-bottom:8px;line-height:1.8;">
+                    <strong>累计完成任务：</strong>${totalTasks} 个 · 覆盖 ${typeCount} 类任务 · 社交关系 ${relCount} 人
                 </div>`;
 
                 // 经验技能
-                if (d.experience_skills.length > 0) {
+                if (skills.length > 0) {
                     html += `<div style="margin:8px 0;"><strong>经验技能：</strong></div>`;
-                    d.experience_skills.forEach(exp => {
+                    skills.forEach(exp => {
+                        const lessons = asArray(exp.lessons);
+                        const rate = Math.round((Number(exp.success_rate) || 0) * (Number(exp.success_rate) <= 1 ? 100 : 1));
                         html += `<div style="margin:4px 0;padding:6px;background:#f8f9fa;border-radius:4px;font-size:12px;">
-                            <strong>${exp.task_type}</strong>：完成 ${exp.count} 次，成功率 ${exp.success_rate}%
-                            ${exp.lessons.length ? '<br>经验：' + exp.lessons.map(l => escapeHtml(l)).join('；') : ''}
-                        </div>`;
-                    });
-                }
-
-                // 关系网络
-                if (d.relationships.length > 0) {
-                    html += `<div style="margin:8px 0;"><strong>社交关系：</strong></div>`;
-                    d.relationships.forEach(rel => {
-                        html += `<div style="margin:2px 0;font-size:12px;">
-                            ${escapeHtml(rel.name)} · 亲密度 ${rel.intimacy} · ${rel.status}
+                            <strong>${escapeHtml(exp.task_type || '任务')}</strong>：完成 ${exp.count || 0} 次，成功率 ${rate}%
+                            ${lessons.length ? '<br>经验：' + lessons.map(l => escapeHtml(l)).join('；') : ''}
                         </div>`;
                     });
                 }
 
                 // 最近任务
-                if (d.task_history.length > 0) {
+                if (recentTasks.length > 0) {
                     html += `<div style="margin:8px 0;"><strong>最近任务：</strong></div>`;
-                    d.task_history.slice(0, 5).forEach(t => {
+                    recentTasks.slice(0, 5).forEach(t => {
                         const statusMap = { completed: '✅', failed: '❌', in_progress: '⏳', open: '📋', pending_review: '🔍' };
                         const icon = statusMap[t.status] || '📋';
+                        const reflectionsOfTask = asArray(t.reflection_summary);
                         html += `<div style="margin:2px 0;font-size:12px;">
-                            ${icon} ${escapeHtml(t.title)} · ${t.reward}元
-                            ${t.reflection_summary.length ? '<br>反思：' + t.reflection_summary.map(r => escapeHtml(r)).join('；') : ''}
+                            ${icon} ${escapeHtml(t.title || '未命名任务')}
+                            ${reflectionsOfTask.length ? '<br>反思：' + reflectionsOfTask.map(r => escapeHtml(r)).join('；') : ''}
                         </div>`;
+                    });
+                }
+
+                // 最近反思
+                if (reflections.length > 0) {
+                    html += `<div style="margin:8px 0;"><strong>最近反思：</strong></div>`;
+                    reflections.slice(0, 5).forEach(r => {
+                        html += `<div style="margin:2px 0;font-size:12px;color:#555;">· ${escapeHtml(r.content || '')}</div>`;
                     });
                 }
 
@@ -4260,8 +4440,11 @@
 
         async function sendVoiceMessage() {
             if (!currentConversation) return;
-            const text = prompt('按下说话（这里模拟语音转文字，最长 30 秒）');
-            if (!text || !text.trim()) return;
+            const text = await showInputModal({
+                title: '按住说话（模拟语音转文字，最长 30 秒）',
+                placeholder: '说完点确定，会自动换算语音时长…'
+            });
+            if (text === null || !String(text).trim()) return;
             try {
                 const resp = await fetch(`${API_BASE}/messages/send`, {
                     method: 'POST',
@@ -4638,8 +4821,19 @@
 
         async function reviewTask(taskId, approved) {
             try {
-                const notes = prompt(approved ? '请输入通过意见（可选）' : '请输入驳回原因（建议填写）', approved ? '审核通过，质量达标' : '请加强细节表现与验收对齐') || '';
-                const score = Number(prompt('请输入评分(0-100)', approved ? '88' : '65') || (approved ? 88 : 65));
+                const notesInput = await showInputModal({
+                    title: approved ? '通过意见（可选）' : '驳回原因（建议填写）',
+                    value: approved ? '审核通过，质量达标' : '请加强细节表现与验收对齐'
+                });
+                if (notesInput === null) return;
+                const notes = String(notesInput).trim();
+                const scoreInput = await showInputModal({
+                    title: '评分（0-100）',
+                    value: approved ? '88' : '65',
+                    placeholder: '0-100 之间的整数'
+                });
+                if (scoreInput === null) return;
+                const score = Number(String(scoreInput).trim());
                 const response = await fetch(`${API_BASE}/tasks/${taskId}/review`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -4861,8 +5055,13 @@
 
                 const momentsHtml = `
                     <div class="moments-feed">
-                        <div style="background:#fff; padding:12px 16px; border-bottom:1px solid #e5e5e5;">
-                            <div style="font-size:15px;font-weight:600;margin-bottom:8px;color:#111;">发朋友圈</div>
+                        <div class="moment-composer collapsed" id="moment-composer">
+                            <div class="composer-trigger" onclick="toggleMomentComposer()">
+                                <div class="composer-fake-input">分享此刻的想法…</div>
+                                <span class="composer-caret">▾</span>
+                            </div>
+                            <div class="composer-body">
+
                             <div class="form-group" style="margin-bottom:8px;">
                                 <textarea id="user-moment-content" rows="3" placeholder="写点什么…（将自动配一张图，也可下方填写自定义配图链接）"></textarea>
                             </div>
@@ -4889,6 +5088,8 @@
                                 支持 <b>#话题#</b> 与 <b>@好友名字</b>，被@的角色会到评论区回应
                             </div>
                             <button class="btn btn-primary" onclick="postUserMoment()">发表</button>
+                        
+                            </div>
                         </div>
                         ${topicBarHtml}
                         ${locBarHtml}
@@ -4923,7 +5124,7 @@
                                         <div class="moment-name">${escapeHtml(post.author_name || '未知')}</div>
                                         <div class="moment-text">${escapeHtml(post.content || '')}</div>
                                         <div class="moment-img-wrap">
-                                            <img src="${escapeHtml(imgUrl)}" alt="" loading="lazy" onerror="this.src='https://picsum.photos/seed/fallback/800/600'">
+                                            <img src="${escapeHtml(imgUrl)}" alt="" loading="lazy" onerror="this.onerror=null;this.style.display='none';this.parentElement.classList.add('img-broken');this.parentElement.setAttribute('data-tip','配图暂不可用')"">
                                         </div>
                                         ${post.image_prompt_file ? `<div style="margin-top:6px;"><button type="button" class="btn btn-secondary" style="font-size:12px;padding:4px 12px;border-radius:4px;" onclick='openImagePromptModal(${JSON.stringify(post.image_prompt_file)})'>🎨 绘画提示词</button></div>` : ''}
                                         ${(post.topics || []).length || post.location ? `<div class="moment-tags">${(post.topics || []).map(t => `<span class="moment-tag">#${escapeHtml(t)}#</span>`).join('')}${post.location ? `<span class="moment-tag loc">📍 ${escapeHtml(post.location)}</span>` : ''}</div>` : ''}
@@ -4971,6 +5172,21 @@
             }
         }
 
+        function toggleMomentComposer() {
+            const box = document.getElementById('moment-composer');
+            if (!box) return;
+            box.classList.toggle('collapsed');
+            if (!box.classList.contains('collapsed')) {
+                const ta = document.getElementById('user-moment-content');
+                if (ta) setTimeout(() => ta.focus(), 50);
+            }
+        }
+
+        function collapseMomentComposer() {
+            const box = document.getElementById('moment-composer');
+            if (box) box.classList.add('collapsed');
+        }
+
         function setDiscoverSubtab(seg) {
             document.querySelectorAll('.discover-seg').forEach(b => b.classList.toggle('active', b.dataset.seg === seg));
             const m = document.getElementById('discover-panel-moments');
@@ -4996,7 +5212,7 @@
             const landmarks = meta.landmarks || [];
             const water = meta.water;
             const svg = [];
-            svg.push('<svg id="discover-map-svg" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">');
+            svg.push('<svg id="discover-map-svg" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">');
             svg.push('<defs><filter id="mapShadowDiscover"><feDropShadow dx="0" dy="0.15" stdDeviation="0.12" flood-opacity="0.2"/></filter></defs>');
             svg.push('<rect x="0" y="0" width="100" height="100" fill="#dfe8df"/>');
             svg.push('<ellipse cx="44" cy="74" rx="16" ry="9" fill="#b8d9b0" opacity="0.55"/>');
@@ -5495,6 +5711,7 @@
                 if (imgPromptEl) imgPromptEl.value = '';
                 const genCb = document.getElementById('user-moment-generate-image');
                 if (genCb) genCb.checked = false;
+                collapseMomentComposer();
                 loadMemorials();
             } catch (error) {
                 showToast('发布失败：' + error.message);
@@ -5778,6 +5995,11 @@
                 if (!result.success) throw new Error(result.detail || '保存失败');
                 window.cachedUserProfile = result.data.user_profile || { nickname, signature, experience, avatar_url };
                 window._pendingUserAvatarUrl = null;
+                // 没有自定义头像时，预览图跟着昵称首字走
+                const prev = document.getElementById('user-profile-avatar-preview');
+                if (prev && !(window.cachedUserProfile && window.cachedUserProfile.avatar_url)) {
+                    prev.textContent = nickname.slice(0, 1);
+                }
                 showToast('我的资料已保存');
             } catch (e) {
                 showToast('保存失败：' + (e.message || e));
@@ -5981,6 +6203,7 @@
 
         // ==================== API 配置管理 ====================
         async function showApiConfigPage() {
+            document.body.classList.add('subpage-open');
             document.getElementById('header-title').textContent = 'AI 模型配置';
             document.getElementById('tab-mine').classList.remove('active');
 
@@ -5995,81 +6218,20 @@
                     <div class="loading"><div class="spinner"></div></div>
                 </div>
             `;
+            container.classList.add('active');
 
             loadApiConfigs();
         }
 
         function backToMine() {
+            document.body.classList.remove('subpage-open');
             document.getElementById('header-title').textContent = '我';
-            document.getElementById('tab-mine').innerHTML = `
-                <div class="list-container">
-                    <div style="padding: 16px;">
-                        <div class="info-card">
-                            <div class="info-card-title">系统与数据</div>
-                            <div class="list-item" onclick="showEconomyPage()">
-                                <div class="item-content">
-                                    <div class="item-title">💰 经济概览</div>
-                                    <div class="item-subtitle">查看角色资金分布与债务</div>
-                                </div>
-                                <span>→</span>
-                            </div>
-                            <div class="list-item" onclick="showRelationshipsPage()">
-                                <div class="item-content">
-                                    <div class="item-title">🤝 关系网络</div>
-                                    <div class="item-subtitle">角色间亲密度关系图</div>
-                                </div>
-                                <span>→</span>
-                            </div>
-                            <div class="list-item" onclick="showApiConfigPage()">
-                                <div class="item-content">
-                                    <div class="item-title">AI 模型配置</div>
-                                    <div class="item-subtitle">配置 AI 服务商</div>
-                                </div>
-                                <span>→</span>
-                            </div>
-                            <div class="list-item" onclick="showLlmUsagePage()">
-                                <div class="item-content">
-                                    <div class="item-title">📊 LLM 用量</div>
-                                    <div class="item-subtitle">查看模型调用统计与 Token 使用</div>
-                                </div>
-                                <span>→</span>
-                            </div>
-                            <div class="form-group" style="margin-top: 12px; margin-bottom: 0;">
-                                <label>界面语言</label>
-                                <select id="ui-language" onchange="updateUiLanguage(this.value)" style="width: 100%;">
-                                    <option value="zh-CN">简体中文（推荐）</option>
-                                    <option value="en-US">English</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="info-card">
-                            <div class="info-card-title">时间设置</div>
-                            <div class="form-group" style="margin-bottom: 0;">
-                                <label>时间倍速</label>
-                                <select id="time-speed" onchange="updateTimeSpeed(this.value)" style="width: 100%;">
-                                    <option value="1">1x (实时)</option>
-                                    <option value="5">5x</option>
-                                    <option value="10">10x</option>
-                                    <option value="30" selected>30x (1 天=1 月)</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="info-card">
-                            <div class="info-card-title">系统信息</div>
-                            <div class="info-grid">
-                                <div class="info-item">
-                                    <div class="info-label">角色数量</div>
-                                    <div class="info-value" id="stat-characters">0</div>
-                                </div>
-                                <div class="info-item">
-                                    <div class="info-label">消息数量</div>
-                                    <div class="info-value" id="stat-messages">0</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `;
+            const mine = document.getElementById('tab-mine');
+            if (window.__MINE_HTML && mine.innerHTML !== window.__MINE_HTML) {
+                mine.innerHTML = window.__MINE_HTML;
+            }
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            mine.classList.add('active');
             loadStats();
             loadSettings();
         }
@@ -6459,6 +6621,7 @@
 
         // ==================== 经济概览页面 ====================
         async function showEconomyPage() {
+            document.body.classList.add('subpage-open');
             document.getElementById('header-title').textContent = '经济概览';
             document.getElementById('tab-mine').classList.remove('active');
 
@@ -6623,6 +6786,7 @@
         }
 
         async function showRelationshipsPage() {
+            document.body.classList.add('subpage-open');
             document.getElementById('header-title').textContent = '关系网络';
             document.getElementById('tab-mine').classList.remove('active');
 
@@ -6859,6 +7023,27 @@
             await performLikeComment('user', nick);
         }
 
+        let _inputModalResolve = null;
+        function showInputModal(opts = {}) {
+            const overlay = document.getElementById('input-modal');
+            if (!overlay) return Promise.resolve(null);
+            document.getElementById('input-modal-title').textContent = opts.title || '输入';
+            const ta = document.getElementById('input-modal-text');
+            ta.value = opts.value || '';
+            ta.placeholder = opts.placeholder || '';
+            overlay.classList.add('show');
+            setTimeout(() => ta.focus(), 50);
+            return new Promise(resolve => { _inputModalResolve = resolve; });
+        }
+
+        function closeInputModal(value) {
+            const overlay = document.getElementById('input-modal');
+            if (overlay) overlay.classList.remove('show');
+            const fn = _inputModalResolve;
+            _inputModalResolve = null;
+            if (fn) fn(value);
+        }
+
         async function performLikeComment(characterId, characterName) {
             closeLikeCommentSelect();
             if (lcCurrentAction === 'like') {
@@ -6877,10 +7062,20 @@
                 }
             } else if (lcCurrentAction === 'comment') {
                 try {
+                    let content = '';
+                    let autoGenerate = true;
+                    if (characterId === 'user') {
+                        // 真实用户评论要自己写，不能由 AI 代写
+                        content = await showInputModal({ title: `以「${characterName}」的身份评论`, placeholder: '说点什么…' });
+                        if (content === null) return;
+                        content = String(content).trim();
+                        if (!content) { showToast('评论内容不能为空'); return; }
+                        autoGenerate = false;
+                    }
                     const response = await fetch(`${API_BASE}/moments/${lcCurrentMomentId}/comment`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ author_id: characterId, auto_generate: true })
+                        body: JSON.stringify({ author_id: characterId, content, auto_generate: autoGenerate })
                     });
                     const text = await response.text();
                     let result;
@@ -6898,6 +7093,8 @@
 
         // ==================== 初始化 ====================
         document.addEventListener('DOMContentLoaded', () => {
+            // 缓存「我」页骨架：从二级页返回时原样恢复，避免重建版式与静态页不一致
+            window.__MINE_HTML = document.getElementById('tab-mine').innerHTML;
             loadCharacters();
             loadLogs();
             loadStickers();

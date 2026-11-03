@@ -123,6 +123,14 @@ async def startup_event():
     from services.memory_service import init_memory_db
 
     sync_legacy_asset_directories()
+    # 清理指向已删除文件的头像，避免前端每次加载都 404
+    try:
+        from storage import prune_missing_avatars
+        fixed = prune_missing_avatars()
+        if fixed:
+            print(f"[启动] 清理失效头像路径 {fixed} 条")
+    except Exception as e:
+        print(f"[启动] 清理失效头像失败: {e}")
     # 初始化记忆数据库（memories / relationships 表），否则记忆与关系子系统在运行时不可用
     try:
         init_memory_db()
@@ -171,7 +179,8 @@ async def startup_event():
                 continue
             try:
                 summary = await run_heartbeat_tick(limit_characters=40)
-                add_log("system", "heartbeat", f"tick={summary.get('ticked')} alive={summary.get('characters')}")
+                # 心跳是每分钟一次的例行巡检，只写标准输出，避免刷屏把真实事件挤出日志面板
+                print(f"[heartbeat] tick={summary.get('ticked')} alive={summary.get('characters')}")
                 settings.heartbeat_last_run_time = now_ms
                 save_settings(settings)
             except Exception as e:

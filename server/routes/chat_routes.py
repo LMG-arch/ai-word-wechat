@@ -56,7 +56,13 @@ async def _background_ai_reply(conversation_id: str, req_data: Dict[str, Any]):
         reply_prompt = user_text if user_text else (
             "用户发送了图片消息" if request.message_type == "image" else "用户发送了语音消息"
         )
-    reply_content = await generate_ai_reply(character, reply_prompt, conversation_id)
+    # 兜底回复（LLM 不可用时）只能拼接「人话」，表情等场景传自然语言文本，避免回显提示词
+    display_input = "（对方发来一个表情）" if request.message_type == "sticker" else (
+        getattr(request, "voice_text", None) or user_text
+    )
+    reply_content = await generate_ai_reply(
+        character, reply_prompt, conversation_id, display_input=display_input
+    )
     if not reply_content:
         reply_content = "……"
 
