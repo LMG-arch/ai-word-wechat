@@ -483,27 +483,64 @@ def _slim_fallback_input(text: str) -> str:
     return t or "这事"
 
 
+# 场景描述（表情 / 图片 / 语音）走专用短句，套进「xxx 确实有道理」只会更假
+SCENE_REPLIES = {
+    "（对方发来一张图片）": [
+        "让我看看……你这是拍到哪儿了？",
+        "这张有点意思，什么场合拍的？",
+        "嗯，画面感挺强的。",
+    ],
+    "（对方发来一个表情）": [
+        "哈哈，这个表情有点东西。",
+        "懂了，你这是在逗我。",
+        "哎，别光发表情呀。",
+    ],
+    "（对方发来一条语音）": [
+        "听到了，你接着说。",
+        "嗯，我在听。",
+    ],
+}
+
+
 def get_fallback_reply(character: Character, user_input: str) -> str:
-    """获取备用回复（当 LLM 不可用时）"""
-    user_input = _slim_fallback_input(user_input)
-    replies = [
-        f"嗯，{user_input}，这个问题挺有意思的。",
-        f"作为{character.occupation}，我觉得{user_input}值得思考。",
-        f"哈哈，{user_input}，让我想起了之前的经历。",
-        f"{user_input}……我得好好想想。",
-        f"从{character.personality}的角度来看，{user_input}确实有道理。",
-    ]
-    
-    if "开朗" in character.personality:
-        prefix = "哈哈！"
-    elif "内向" in character.personality:
-        prefix = "嗯..."
-    elif "幽默" in character.personality:
-        prefix = "有意思！"
+    """获取备用回复（当 LLM 不可用时）。
+
+    模板只负责「不尴尬」：不引用 personality 长串（"从内敛, 善思, 温润的角度来看"），
+    也不把场景描述拼进陈述句。
+    """
+    raw = (user_input or "").strip()
+    if raw in SCENE_REPLIES:
+        return random.choice(SCENE_REPLIES[raw])
+
+    text = _slim_fallback_input(raw)
+    personality = getattr(character, "personality", "") or ""
+
+    # 语气跟性格走，但不硬拼 prefix（「嗯…哈哈」这种自相矛盾的话很出戏）
+    if "开朗" in personality or "外向" in personality:
+        replies = [
+            f"哈哈，{text}！这话我爱听。",
+            f"{text}啊，那当然啦。",
+            f"说到{text}，我可有话说了。",
+        ]
+    elif "内向" in personality or "内敛" in personality or "安静" in personality:
+        replies = [
+            f"嗯，{text}……让我想想。",
+            f"{text}。我大概是这么觉得的。",
+            f"说到{text}，我可能想得比较多。",
+        ]
+    elif "幽默" in personality or "毒舌" in personality:
+        replies = [
+            f"{text}？这问题问得有点意思。",
+            f"哈，{text}，你可真会挑话题。",
+        ]
     else:
-        prefix = ""
-    
-    return prefix + random.choice(replies)
+        replies = [
+            f"嗯，{text}，这个话题挺有意思的。",
+            f"{text}啊……让我想想。",
+            f"说到{text}，我还真有点想法。",
+        ]
+
+    return random.choice(replies)
 
 
 # =====================================================================

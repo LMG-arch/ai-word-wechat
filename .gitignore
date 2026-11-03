@@ -149,3 +149,6 @@ lint/tmp/
 
 # Android Profiling
 *.hprof
+
+# 历史数据体检备份（本地留档，不进仓库）
+server/data/backups/

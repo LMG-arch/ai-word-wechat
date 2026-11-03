@@ -131,6 +131,15 @@ async def startup_event():
             print(f"[启动] 清理失效头像路径 {fixed} 条")
     except Exception as e:
         print(f"[启动] 清理失效头像失败: {e}")
+
+    # 历史数据体检：年龄/职业矛盾、头衔推导失败、家庭关系单向、悬空点赞等
+    try:
+        from services.data_repair import run_data_repair, format_report
+        report = run_data_repair()
+        if not report.get("skipped"):
+            print(format_report(report))
+    except Exception as e:
+        print(f"[启动] 历史数据体检失败: {e}")
     # 初始化记忆数据库（memories / relationships 表），否则记忆与关系子系统在运行时不可用
     try:
         init_memory_db()

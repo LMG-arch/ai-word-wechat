@@ -174,7 +174,9 @@ def normalize_world_map_payload(obj: Any) -> Optional[Dict[str, Any]]:
         bind = str(bind_raw).strip() if bind_raw else ""
         name = str(lm.get("name") or bind or "地标")[:36]
         x, y = _clamp_map_xy(lm.get("x", 50), lm.get("y", 50))
-        typ = str(lm.get("type") or "mixed")[:24]
+        typ = str(lm.get("type") or "").strip()[:24]
+        if not typ or typ == "mixed":
+            typ = "mixed"
         item: Dict[str, Any] = {"name": name, "x": round(x, 2), "y": round(y, 2), "type": typ}
         if bind:
             item["bind"] = bind

@@ -140,6 +140,12 @@ async def create_character(request: CreateCharacterRequest):
         character.last_avatar_change_time = now_ms
         character.avatar_change_history = [now_ms]
     notes = ensure_character_defaults(character, settings)
+    # 职业/等级/头衔在创建时就对齐，别把「54 岁学生」「设计助理」这类问题留到启动体检
+    try:
+        from services.data_repair import normalize_new_character
+        notes.extend(normalize_new_character(character))
+    except Exception:
+        pass
     characters.append(character)
     save_characters(characters)
     _add_log(character.name, "create", f"character created: {character.get_age_display()} / {character.occupation}")

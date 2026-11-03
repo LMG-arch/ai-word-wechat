@@ -193,6 +193,39 @@ async def like_moment(moment_id: str, author_id: str):
     raise HTTPException(status_code=404, detail="Moment not found")
 
 
+@router.delete("/api/moments/{moment_id}/like")
+async def unlike_moment(moment_id: str, author_id: str = "user"):
+    """取消点赞。之前只有点赞没有取消，点错了改不回来。"""
+    moments = get_moments()
+    for i, post in enumerate(moments):
+        if post.id != moment_id:
+            continue
+        if author_id in (post.liked_by or []):
+            post.liked_by = [x for x in post.liked_by if x != author_id]
+            moments[i] = post
+            save_moments(moments)
+        return {"success": True, "data": post.model_dump()}
+    raise HTTPException(status_code=404, detail="动态不存在")
+
+
+@router.delete("/api/moments/{moment_id}")
+async def delete_moment(moment_id: str):
+    """删除自己发的朋友圈。角色的动态不允许在这里删（那是它们的“人生”）。"""
+    moments = get_moments()
+    idx = next((i for i, m in enumerate(moments) if m.id == moment_id), None)
+    if idx is None:
+        raise HTTPException(status_code=404, detail="动态不存在")
+    if moments[idx].author_id != "user":
+        raise HTTPException(status_code=403, detail="只能删除自己发布的朋友圈")
+    removed = moments.pop(idx)
+    save_moments(moments)
+    try:
+        _add_log("用户", "moment_delete", f"删除朋友圈：{(removed.content or '')[:20]}")
+    except Exception:
+        pass
+    return {"success": True, "data": {"id": moment_id}}
+
+
 @router.post("/api/moments/{moment_id}/comment")
 async def comment_moment(moment_id: str, request: MomentCommentRequest):
     """评论朋友圈（支持自动生成评论）"""

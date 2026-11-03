@@ -49,6 +49,9 @@ STAGE_THRESHOLDS = {
 # 求偶/结婚的最低年龄
 MIN_MARRIAGE_AGE = 18
 MIN_CHILD_AGE = 20
+# 生育上限：原来只有下限没有上限，71 岁也能生
+MAX_CHILD_AGE = 60
+MAX_CHILDREN = 5
 
 
 def stage_label(stage: str) -> str:
@@ -138,10 +141,49 @@ def advance_pair(a, b, intimacy: float) -> Dict[str, object]:
     return {"advanced": True, "from": from_stage, "to": to_stage, "event": event}
 
 
+def _married_to_someone_else(person, other) -> bool:
+    """person 是否已有配偶，且配偶不是 other。"""
+    spouse = getattr(person, "spouse_id", None)
+    return bool(spouse) and spouse != getattr(other, "id", None)
+
+
+def detach_previous_partners(characters, a, b) -> List[str]:
+    """结婚前解除双方与「第三者」的恋爱绑定，避免关系网出现三角。
+
+    历史数据里存在 a.partner_id=c、c.partner_id=a，之后 a 和 b 结婚，
+    c 就永远挂着一个已婚的伴侣。
+    """
+    by_id = {c.id: c for c in characters}
+    notes: List[str] = []
+    keep = {getattr(a, "id", None), getattr(b, "id", None)}
+
+    for person in (a, b):
+        old_id = getattr(person, "partner_id", None)
+        if not old_id or old_id in keep:
+            continue
+        ex = by_id.get(old_id)
+        person.partner_id = None
+        notes.append(f"解除 {person.name} 与 {old_id} 的旧伴侣关系")
+        if ex is not None and getattr(ex, "partner_id", None) == getattr(person, "id", None):
+            ex.partner_id = None
+            if (getattr(ex, "relationship_stage", "") or "").lower() == "lover":
+                ex.relationship_stage = "close"
+            notes.append(f"{ex.name} 恢复为密友")
+    return notes
+
+
 def can_marry(a, b) -> Tuple[bool, str]:
-    """结婚前置校验，返回 (是否可行, 原因)。"""
-    if (getattr(a, "relationship_stage", "") or "").lower() == "spouse":
-        return False, "已经结婚了"
+    """结婚前置校验，返回 (是否可行, 原因)。
+
+    必须双向校验：只看 a 的话，可以把已婚的 b 抢走，
+    于是 b 指向 a、b 的原配偶还指向 b，关系网出现三角。
+    """
+    if _married_to_someone_else(a, b):
+        return False, f"{getattr(a, 'name', '对方')} 已经结婚了"
+    if _married_to_someone_else(b, a):
+        return False, f"{getattr(b, 'name', '对方')} 已经结婚了"
+    if (getattr(a, "relationship_stage", "") or "").lower() == "spouse" and not getattr(a, "spouse_id", None):
+        return False, f"{getattr(a, 'name', '对方')} 已经结婚了"
     if getattr(a, "age", 0) < MIN_MARRIAGE_AGE or getattr(b, "age", 0) < MIN_MARRIAGE_AGE:
         return False, f"未满 {MIN_MARRIAGE_AGE} 岁不能结婚"
     if not getattr(a, "is_alive", True) or not getattr(b, "is_alive", True):
@@ -159,7 +201,9 @@ def can_have_child(a, b) -> Tuple[bool, str]:
         return False, "两人不是夫妻"
     if getattr(a, "age", 0) < MIN_CHILD_AGE or getattr(b, "age", 0) < MIN_CHILD_AGE:
         return False, f"未满 {MIN_CHILD_AGE} 岁不考虑孩子"
-    if len(getattr(a, "children_ids", []) or []) >= 5:
+    if getattr(a, "age", 0) > MAX_CHILD_AGE or getattr(b, "age", 0) > MAX_CHILD_AGE:
+        return False, f"超过 {MAX_CHILD_AGE} 岁就不再考虑生育了"
+    if len(getattr(a, "children_ids", []) or []) >= MAX_CHILDREN or len(getattr(b, "children_ids", []) or []) >= MAX_CHILDREN:
         return False, "孩子已经够多了"
     return True, ""
 

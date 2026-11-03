@@ -52,14 +52,21 @@ async def _background_ai_reply(conversation_id: str, req_data: Dict[str, Any]):
         )
     elif request.message_type == "voice":
         reply_prompt = getattr(request, "voice_text", None) or user_text or "用户发来一条语音"
-    else:
-        reply_prompt = user_text if user_text else (
-            "用户发送了图片消息" if request.message_type == "image" else "用户发送了语音消息"
+    elif request.message_type == "image":
+        reply_prompt = (
+            "对方发来一张图片。你看不清具体画面，就自然回应一句——猜猜是什么、"
+            "或者让对方说说拍的是什么。不要出现「图片消息」这个词，也不要复述这段说明。"
         )
-    # 兜底回复（LLM 不可用时）只能拼接「人话」，表情等场景传自然语言文本，避免回显提示词
-    display_input = "（对方发来一个表情）" if request.message_type == "sticker" else (
-        getattr(request, "voice_text", None) or user_text
-    )
+    else:
+        reply_prompt = user_text if user_text else "用户发来一条消息"
+
+    # 兜底回复（LLM 不可用时）只能拼接「人话」，指令型场景统一换成自然描述，避免回显提示词
+    if request.message_type == "sticker":
+        display_input = "（对方发来一个表情）"
+    elif request.message_type == "image":
+        display_input = "（对方发来一张图片）"
+    else:
+        display_input = getattr(request, "voice_text", None) or user_text
     reply_content = await generate_ai_reply(
         character, reply_prompt, conversation_id, display_input=display_input
     )

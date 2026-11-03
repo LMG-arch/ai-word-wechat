@@ -12,7 +12,7 @@ from storage import get_characters, save_characters, get_moments, save_moments, 
 from services.memory_service import get_relationship_intimacy, schedule_store_memory, MemoryType
 from services.family_service import (
     advance_pair, can_marry, can_have_child, create_child, bind_child,
-    family_view, stage_label, stage_icon, STAGE_ORDER,
+    family_view, stage_label, stage_icon, detach_previous_partners, STAGE_ORDER,
 )
 
 router = APIRouter()
@@ -121,6 +121,7 @@ async def marry(character_id: str, request: PairRequest):
     if not ok:
         raise HTTPException(status_code=400, detail=reason)
 
+    detach_previous_partners(chars, a, b)
     a.relationship_stage = "spouse"
     b.relationship_stage = "spouse"
     a.spouse_id = b.id

@@ -141,6 +141,31 @@
             line-height: 1.7;
         }
 
+        .schedule-event {
+            display: flex;
+            gap: 8px;
+            align-items: baseline;
+            font-size: 12px;
+            color: #555;
+            padding: 3px 0;
+            border-top: 1px dashed #eee;
+        }
+        .schedule-time {
+            color: #999;
+            flex: 0 0 84px;
+            font-variant-numeric: tabular-nums;
+        }
+        .schedule-activity { flex: 1; color: #333; }
+        .schedule-location { color: #999; flex: 0 0 auto; }
+
+        .family-state-tag {
+            font-size: 12px;
+            color: #888;
+            background: #f2f2f2;
+            border-radius: 10px;
+            padding: 5px 12px;
+        }
+
         .item-subtitle {
             font-size: 13px;
             color: var(--text-secondary);
@@ -856,6 +881,10 @@
             min-height: auto;
             box-shadow: none;
         }
+        .moment-actions-bar .moment-delete-btn {
+            color: #e64340;
+        }
+
         .moment-actions-bar .btn:active {
             background: #f0f0f0;
         }
@@ -1970,6 +1999,23 @@
         <div class="detail-body" id="task-detail-body"></div>
     </div>
 
+    <!-- 通用确认弹窗（删除等不可撤销操作） -->
+    <div class="modal-overlay" id="confirm-modal">
+        <div class="modal" style="max-width: 340px;">
+            <div class="modal-header">
+                <span class="modal-title" id="confirm-modal-title">确认</span>
+                <button class="modal-close" onclick="closeConfirmModal(false)">×</button>
+            </div>
+            <div class="modal-body" style="padding: 16px;">
+                <div id="confirm-modal-message" style="font-size: 14px; line-height: 1.7; color: #333; white-space: normal;"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeConfirmModal(false)">取消</button>
+                <button class="btn btn-primary" id="confirm-modal-ok" onclick="closeConfirmModal(true)">确定</button>
+            </div>
+        </div>
+    </div>
+
     <!-- 通用输入弹窗（评论等场景） -->
     <div class="modal-overlay" id="input-modal">
         <div class="modal" style="max-width: 360px;">
@@ -2770,7 +2816,7 @@
                 }
                 page.classList.add('active');
             } catch (error) {
-                alert('打开群聊失败：' + error.message);
+                showToast('打开群聊失败：' + error.message);
             }
         }
 
@@ -2792,13 +2838,13 @@
                     body: JSON.stringify({ content })
                 });
                 const result = await resp.json();
-                if (!result.success) { alert(result.detail || '发送失败'); return; }
+                if (!result.success) { showToast(result.detail || '发送失败'); return; }
                 const gid = currentPrivateGroup.id;
                 await openPrivateGroup(gid);
                 setTimeout(() => { if (currentPrivateGroup && currentPrivateGroup.id === gid) openPrivateGroup(gid); }, 1800);
                 setTimeout(() => { if (currentPrivateGroup && currentPrivateGroup.id === gid) openPrivateGroup(gid); }, 4500);
             } catch (e) {
-                alert('发送失败：' + e.message);
+                showToast('发送失败：' + e.message);
             }
         }
 
@@ -3301,7 +3347,7 @@
             const momentFreq = document.getElementById('char-moment-frequency')?.value || 'normal';
 
             if (!name || !occupation) {
-                alert('请输入昵称和职业');
+                showToast('请输入昵称和职业');
                 return;
             }
 
@@ -3371,7 +3417,7 @@
                     showToast('角色创建成功');
                 }
             } catch (error) {
-                alert('创建失败：' + error.message);
+                showToast('创建失败：' + error.message);
             }
         }
 
@@ -3394,7 +3440,7 @@
             const avatarStyle = document.getElementById('ai-avatar-style').value;
 
             if (!prompt) {
-                alert('请输入角色描述');
+                showToast('请输入角色描述');
                 return;
             }
 
@@ -3679,6 +3725,13 @@
                     ? (familyData.children || [])
                     : (currentCharacter.children_ids || []).map(id => charMap.get(id)).filter(Boolean);
                 const hasFamily = partnerName || spouseName || childList.length || rel !== 'stranger';
+                // 已婚的人不该再出现「结婚」按钮；候选里也排除别人的配偶
+                const mySpouseId = currentCharacter.spouse_id || (familyData && familyData.spouse ? familyData.spouse.id : null);
+                const isMarried = rel === 'spouse' && !!mySpouseId;
+                const familyCandidates = allChars.filter(x =>
+                    x.id !== currentCharacter.id && x.is_alive !== false &&
+                    (!x.spouse_id || x.spouse_id === currentCharacter.id)
+                );
                 const familyHtml = `
                     <div class="info-card">
                         <div class="info-card-title">💞 家庭与关系</div>
@@ -3697,10 +3750,16 @@
                         ${!hasFamily ? '<div class="item-subtitle" style="margin-top:6px;">还没有建立起亲密关系，多互动几次试试</div>' : ''}
                         <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;align-items:center;">
                             <select id="family-partner-select" style="flex:1;min-width:110px;padding:6px;border:1px solid #ddd;border-radius:4px;font-size:13px;">
-                                ${allChars.filter(x => x.id !== currentCharacter.id && x.is_alive !== false).map(x => `<option value="${escapeHtml(x.id)}">${escapeHtml(x.name)}</option>`).join('')}
+                                ${familyCandidates.length
+                                    ? familyCandidates.map(x => `<option value="${escapeHtml(x.id)}">${escapeHtml(x.name)}（${x.age}岁）</option>`).join('')
+                                    : '<option value="">没有可选对象</option>'}
                             </select>
-                            <button type="button" class="btn btn-secondary" style="font-size:12px;padding:5px 10px;" onclick="familyAction('marry')">结婚</button>
-                            <button type="button" class="btn btn-secondary" style="font-size:12px;padding:5px 10px;" onclick="familyAction('child')">生孩子</button>
+                            ${isMarried
+                                ? '<span class="family-state-tag">已婚</span>'
+                                : '<button type="button" class="btn btn-secondary" style="font-size:12px;padding:5px 10px;" onclick="familyAction(&quot;marry&quot;)">结婚</button>'}
+                            ${isMarried
+                                ? '<button type="button" class="btn btn-secondary" style="font-size:12px;padding:5px 10px;" onclick="familyAction(&quot;child&quot;)">生孩子</button>'
+                                : ''}
                         </div>
                     </div>
                 `;
@@ -3781,9 +3840,16 @@
                     <div class="info-card">
                         <div class="info-card-title">今日日程</div>
                         <div class="item-subtitle">${escapeHtml(schedule?.summary || '暂无日程')}</div>
+                        ${(schedule && Array.isArray(schedule.events) && schedule.events.length)
+                            ? schedule.events.map(ev => `<div class="schedule-event">
+                                    <span class="schedule-time">${escapeHtml(ev.start_time || '')}–${escapeHtml(ev.end_time || '')}</span>
+                                    <span class="schedule-activity">${escapeHtml(ev.activity || '')}</span>
+                                    <span class="schedule-location">${escapeHtml(ev.location || '')}</span>
+                                </div>`).join('')
+                            : ''}
                     </div>
                     <div class="info-card">
-                        <div class="info-card-title">最近反思（3条）</div>
+                        <div class="info-card-title">最近反思${reflections.length ? `（${reflections.length}条）` : ''}</div>
                         ${reflections.length ? reflections.map(item => `<div class="item-subtitle">${escapeHtml(item.content || '')}</div>`).join('') : '<div class="item-subtitle">暂无反思</div>'}
                     </div>
                     <div class="info-card">
@@ -3843,7 +3909,7 @@
                 // 加载角色日志
                 loadCharacterLogs(characterId);
             } catch (error) {
-                alert('加载失败：' + error.message);
+                showToast('加载失败：' + error.message);
             }
         }
 
@@ -4084,7 +4150,7 @@
                 loadMemorials();
                 loadStats();
             } catch (error) {
-                alert('回溯失败：' + error.message);
+                showToast('回溯失败：' + error.message);
             }
         }
 
@@ -4109,7 +4175,7 @@
         async function deleteCurrentCharacter() {
             if (!currentCharacter) return;
 
-            if (!confirm(`确定要删除角色"${currentCharacter.name}"吗？`)) return;
+            if (!await showConfirmModal({ title: '删除角色', message: `确定要删除「${currentCharacter.name}」吗？该角色的聊天记录和朋友圈不会一起删除。`, confirmText: '删除', danger: true })) return;
 
             try {
                 const response = await fetch(`${API_BASE}/characters/${currentCharacter.id}`, {
@@ -4124,7 +4190,7 @@
                     showToast('角色已删除');
                 }
             } catch (error) {
-                alert('删除失败：' + error.message);
+                showToast('删除失败：' + error.message);
             }
         }
 
@@ -4237,7 +4303,7 @@
                 await loadMessages(characterId);
                 await markConversationRead(characterId);
             } catch (error) {
-                alert('加载失败：' + error.message);
+                showToast('加载失败：' + error.message);
             }
         }
 
@@ -4350,7 +4416,7 @@
                     waitForAiReplyAfterSend(currentConversation, result.data.user_message.timestamp);
                 }
             } catch (error) {
-                alert('发送失败：' + error.message);
+                showToast('发送失败：' + error.message);
             }
         }
 
@@ -4364,7 +4430,10 @@
             }
             if (msg.message_type === 'image' && msg.image_url) {
                 const imgSrc = getAvatarUrl(msg.image_url);
-                return `<div>${escapeHtml(msg.content || '[图片消息]')}</div><img src="${escapeHtml(imgSrc)}" style="margin-top:6px; width: 180px; max-width: 100%; border-radius: 8px;">`;
+                // 「[图片消息]」只是后端存的占位文本，不必再显示一遍
+                const caption = (msg.content && msg.content !== '[图片消息]')
+                    ? `<div style="margin-bottom:6px;">${escapeHtml(msg.content)}</div>` : '';
+                return `${caption}<img src="${escapeHtml(imgSrc)}" style="width: 180px; max-width: 100%; border-radius: 8px; display:block;">`;
             }
             if (msg.message_type === 'voice') {
                 if (msg.voice_url) {
@@ -4582,7 +4651,7 @@
                     throw new Error(result.detail || '发送失败');
                 }
             } catch (error) {
-                alert('发送失败：' + error.message);
+                showToast('发送失败：' + error.message);
             }
         }
 
@@ -4759,7 +4828,7 @@
                                 ${statusBadge}
                             </div>
                             <div class="item-subtitle" style="white-space:normal;">${escapeHtml(task.description || '暂无描述')}</div>
-                            <div class="item-time">类型：${escapeHtml(task.task_type)} · 奖励：${task.reward}</div>
+                            <div class="item-time">类型：${escapeHtml(taskTypeText(task.task_type))} · 奖励：${task.reward}</div>
                             <div class="item-subtitle" style="margin-top:6px;">执行：${escapeHtml(resolveAssigneeName(task, characterMap, companyMap))} ${companyName ? '· 公司：' + escapeHtml(companyName) : ''}</div>
                             <div class="item-subtitle" style="margin-top:6px;">执行说明：${escapeHtml(task.execution_notes || '暂无')}</div>
                             ${deliverableHtml}
@@ -4859,6 +4928,16 @@
             }
         }
 
+        const TASK_STATUS_TEXT = {
+            open: '待接取', in_progress: '进行中', pending_review: '审核中',
+            completed: '已完成', failed: '已失败'
+        };
+        const TASK_TYPE_TEXT = {
+            text: '文本', image: '图片', code: '代码', research: '调研', design: '设计'
+        };
+        const taskStatusText = (s) => TASK_STATUS_TEXT[s] || s || '未知';
+        const taskTypeText = (t) => TASK_TYPE_TEXT[t] || t || '文本';
+
         async function showTaskDetail(taskId) {
             try {
                 await ensureCharactersCached();
@@ -4870,7 +4949,7 @@
                 document.getElementById('task-detail-body').innerHTML = `
                     <div class="info-card">
                         <div class="info-card-title">任务信息</div>
-                        <div class="item-subtitle">状态：${escapeHtml(task.status)} · 类型：${escapeHtml(task.task_type)} · 奖励：${task.reward}</div>
+                        <div class="item-subtitle">状态：${escapeHtml(taskStatusText(task.status))} · 类型：${escapeHtml(taskTypeText(task.task_type))} · 奖励：${task.reward}</div>
                         <div class="item-subtitle" style="margin-top:6px;">描述：${escapeHtml(task.description || '暂无')}</div>
                         <div class="item-subtitle" style="margin-top:6px;">执行角色：${escapeHtml(resolveAssigneeName(task, null, null))}</div>
                         ${task.execution_notes ? `<div class="item-subtitle" style="margin-top:6px;">执行说明：${escapeHtml(task.execution_notes)}</div>` : ''}
@@ -4916,7 +4995,7 @@
                     </div>
                     <div class="info-card">
                         <div class="info-card-title">审核记录</div>
-                        ${(task.review_history || []).length ? (task.review_history || []).map(item => `<div class="item-subtitle">第${item.round}轮 · ${item.approved ? '通过' : '驳回'} · ${escapeHtml(item.notes || '')}</div>`).join('') : '<div class="item-subtitle">暂无审核记录</div>'}
+                        ${(task.review_history || []).length ? (task.review_history || []).map(item => `<div class="item-subtitle">第${item.round}轮 · ${item.approved ? '通过' : '驳回'}${item.score != null ? ` · ${item.score} 分` : ''} · ${escapeHtml(item.notes || '')}</div>`).join('') : '<div class="item-subtitle">暂无审核记录</div>'}
                     </div>
                     ${task.status === 'in_progress' || task.status === 'failed' ? `
                         <div style="padding:16px;">
@@ -5135,8 +5214,9 @@
                                         ${commentsBlock}
                                         <div class="moment-actions-bar">
                                             <span style="color:#888;font-size:13px;">👍 ${post.liked_by?.length || 0}　💬 ${post.comments?.length || 0}</span>
-                                            <button type="button" class="btn btn-secondary" onclick="showLikeCommentSelect('${post.id}', 'like')">赞</button>
+                                            <button type="button" class="btn btn-secondary" onclick="toggleUserLike('${post.id}', ${((post.liked_by || []).includes('user')) ? 'true' : 'false'})">${((post.liked_by || []).includes('user')) ? '取消赞' : '赞'}</button>
                                             <button type="button" class="btn btn-secondary" onclick="showLikeCommentSelect('${post.id}', 'comment')">评论</button>
+                                            ${post.author_id === 'user' ? `<button type="button" class="btn btn-secondary moment-delete-btn" onclick="deleteMoment('${post.id}')">删除</button>` : ''}
                                         </div>
                                     </div>
                                 </div>
@@ -5469,6 +5549,13 @@
             }
         }
 
+        const LANDMARK_TYPE_TEXT = {
+            public: '公共空间', park: '公园绿地', commercial: '商业区',
+            education: '文教区', medical: '医疗区', company: '产业园区',
+            scenic: '景观区', residential: '住宅区', mixed: '综合功能区'
+        };
+        const landmarkTypeText = (t) => LANDMARK_TYPE_TEXT[t] || t || '综合功能区';
+
         async function showLandmarkDetail(landmarkName) {
             try {
                 const response = await fetch(`${API_BASE}/map/landmarks/${encodeURIComponent(landmarkName)}/detail`);
@@ -5484,7 +5571,7 @@
                         <div class="info-card" style="margin-bottom: 12px;">
                             <div class="info-card-title">地标信息</div>
                             <div class="info-value">坐标：(${Number(lm.x).toFixed(1)}, ${Number(lm.y).toFixed(1)})</div>
-                            <div class="info-value">类型：${lm.type || '未知'}</div>
+                            <div class="info-value">类型：${landmarkTypeText(lm.type)}</div>
                             ${lm.bind ? `<div class="info-value">绑定：${lm.bind}</div>` : ''}
                         </div>
                         <div class="info-card">
@@ -5810,7 +5897,7 @@
                 `;
                 document.getElementById('memorial-detail-page').classList.add('active');
             } catch (error) {
-                alert('加载墓碑失败：' + error.message);
+                showToast('加载墓碑失败：' + error.message);
             }
         }
 
@@ -5941,7 +6028,7 @@
                     loadStats();
                 }
             } catch (error) {
-                alert('保存设置失败：' + error.message);
+                showToast('保存设置失败：' + error.message);
             }
         }
 
@@ -6375,12 +6462,12 @@
             const selectedModel = document.getElementById('api-config-selected-model').value;
 
             if (!apiUrl || !apiKey) {
-                alert('请填写 API 地址和密钥');
+                showToast('请填写 API 地址和密钥');
                 return;
             }
 
             if (!selectedModel) {
-                alert('请先选择一个模型进行测试');
+                showToast('请先选择一个模型进行测试');
                 return;
             }
 
@@ -6404,7 +6491,7 @@
                 const result = await response.json();
 
                 if (result.success) {
-                    alert(`✅ ${result.message}\n\nHTTP 状态：${result.data?.http_status || 'N/A'}\n响应时间：${result.data?.response_time || 'N/A'}`);
+                    showToast(`✅ ${result.message}（HTTP ${result.data?.http_status || 'N/A'} · ${result.data?.response_time || 'N/A'}）`);
                 } else {
                     let errorMsg = `❌ ${result.error}`;
                     if (result.details) {
@@ -6424,10 +6511,10 @@
                             errorMsg += `\n\n详情:\n${JSON.stringify(result.details, null, 2).substring(0, 500)}`;
                         }
                     }
-                    alert(errorMsg);
+                    showToast(errorMsg);
                 }
             } catch (error) {
-                alert(`❌ 测试失败：${error.message}`);
+                showToast(`❌ 测试失败：${error.message}`);
             } finally {
                 btn.textContent = originalText;
                 btn.disabled = false;
@@ -6441,7 +6528,7 @@
             const apiKey = document.getElementById('api-config-key').value.trim();
 
             if (!apiUrl || !apiKey) {
-                alert('请填写 API 地址和密钥');
+                showToast('请填写 API 地址和密钥');
                 return;
             }
 
@@ -6474,12 +6561,12 @@
                         console.log(result.note);
                     }
 
-                    alert(`✅ 已获取 ${result.total} 个模型，点击选择添加到列表`);
+                    showToast(`✅ 已获取 ${result.total} 个模型，点击选择添加到列表`);
                 } else {
-                    alert(`❌ 获取失败：${result.error || '未知错误'}`);
+                    showToast(`❌ 获取失败：${result.error || '未知错误'}`);
                 }
             } catch (error) {
-                alert(`❌ 获取失败：${error.message}`);
+                showToast(`❌ 获取失败：${error.message}`);
             } finally {
                 btn.textContent = originalText;
                 btn.disabled = false;
@@ -6487,7 +6574,7 @@
         }
 
         // 自动更新 API 地址
-        function updateApiUrl() {
+        async function updateApiUrl() {
             const provider = document.getElementById('api-config-provider').value;
             const apiType = document.getElementById('api-config-type').value;
             const urlInput = document.getElementById('api-config-url');
@@ -6498,7 +6585,7 @@
                 urlInput.value = defaultUrl;
             } else {
                 // 询问用户是否要更新
-                if (confirm(`是否要根据当前服务商和模型类型自动填充 API 地址？\n\n建议地址：${defaultUrl}`)) {
+                if (await showConfirmModal({ title: '自动填充地址', message: `是否根据当前服务商和模型类型自动填充 API 地址？建议地址：${defaultUrl}`, confirmText: '填充' })) {
                     urlInput.value = defaultUrl;
                 }
             }
@@ -6509,7 +6596,7 @@
             const selectedModel = document.getElementById('api-config-selected-model').value;
             
             if (!selectedModel) {
-                alert('请从模型列表中选择一个当前使用的模型');
+                showToast('请从模型列表中选择一个当前使用的模型');
                 return;
             }
             
@@ -6526,7 +6613,7 @@
             };
 
             if (!data.name || !data.api_url || !data.api_key || currentModels.length === 0) {
-                alert('请填写必填项并添加至少一个模型');
+                showToast('请填写必填项并添加至少一个模型');
                 return;
             }
 
@@ -6548,7 +6635,7 @@
                     showToast(id ? '配置已更新' : '配置已创建');
                 }
             } catch (error) {
-                alert('保存失败：' + error.message);
+                showToast('保存失败：' + error.message);
             }
         }
 
@@ -6582,7 +6669,7 @@
                     document.getElementById('api-config-modal').classList.add('show');
                 }
             } catch (error) {
-                alert('加载失败：' + error.message);
+                showToast('加载失败：' + error.message);
             }
         }
 
@@ -6599,12 +6686,12 @@
                     showToast(result.data.is_enabled ? '已启用配置' : '已禁用配置');
                 }
             } catch (error) {
-                alert('操作失败：' + error.message);
+                showToast('操作失败：' + error.message);
             }
         }
 
         async function deleteApiConfig(configId) {
-            if (!confirm('确定要删除此 API 配置吗？此操作不可撤销。')) return;
+            if (!await showConfirmModal({ title: '删除配置', message: '确定要删除此 API 配置吗？此操作不可撤销。', confirmText: '删除', danger: true })) return;
             try {
                 const response = await fetch(`${API_BASE}/api-configs/${configId}`, {
                     method: 'DELETE'
@@ -6614,10 +6701,10 @@
                     loadApiConfigs();
                     showToast('配置已删除');
                 } else {
-                    alert('删除失败：' + (result.error || '未知错误'));
+                    showToast('删除失败：' + (result.error || '未知错误'));
                 }
             } catch (error) {
-                alert('删除失败：' + error.message);
+                showToast('删除失败：' + error.message);
             }
         }
 
@@ -7009,6 +7096,40 @@
             if (m) m.classList.remove('show');
         }
 
+        async function toggleUserLike(momentId, liked) {
+            try {
+                // 分成两个分支写，别让「取消赞」变成隐式 GET
+                const resp = liked
+                    ? await fetch(`${API_BASE}/moments/${momentId}/like?author_id=user`, { method: 'DELETE' })
+                    : await fetch(`${API_BASE}/moments/${momentId}/like?author_id=user`, { method: 'POST' });
+                const result = await resp.json();
+                if (!result.success) throw new Error(result.detail || '操作失败');
+                showToast(liked ? '已取消点赞' : '已点赞');
+                loadMemorials();
+            } catch (e) {
+                showToast('操作失败：' + e.message);
+            }
+        }
+
+        async function deleteMoment(momentId) {
+            const ok = await showConfirmModal({
+                title: '删除这条朋友圈？',
+                message: '删除后无法恢复，评论和点赞也会一起消失。',
+                confirmText: '删除',
+                danger: true
+            });
+            if (!ok) return;
+            try {
+                const resp = await fetch(`${API_BASE}/moments/${momentId}`, { method: 'DELETE' });
+                const result = await resp.json();
+                if (!result.success) throw new Error(result.detail || '删除失败');
+                showToast('已删除');
+                loadMemorials();
+            } catch (e) {
+                showToast('删除失败：' + e.message);
+            }
+        }
+
         async function showLikeCommentSelect(momentId, action) {
             lcCurrentMomentId = momentId;
             lcCurrentAction = action;
@@ -7023,6 +7144,27 @@
             } catch (e) { /* ignore */ }
             const nick = (window.cachedUserProfile && window.cachedUserProfile.nickname) || '用户';
             await performLikeComment('user', nick);
+        }
+
+        let _confirmModalResolve = null;
+        function showConfirmModal(opts = {}) {
+            const overlay = document.getElementById('confirm-modal');
+            if (!overlay) return Promise.resolve(false);
+            document.getElementById('confirm-modal-title').textContent = opts.title || '确认';
+            document.getElementById('confirm-modal-message').textContent = opts.message || '';
+            const ok = document.getElementById('confirm-modal-ok');
+            ok.textContent = opts.confirmText || '确定';
+            ok.style.background = opts.danger ? '#e64340' : '';
+            overlay.classList.add('show');
+            return new Promise(resolve => { _confirmModalResolve = resolve; });
+        }
+
+        function closeConfirmModal(value) {
+            const overlay = document.getElementById('confirm-modal');
+            if (overlay) overlay.classList.remove('show');
+            const fn = _confirmModalResolve;
+            _confirmModalResolve = null;
+            if (fn) fn(!!value);
         }
 
         let _inputModalResolve = null;

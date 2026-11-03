@@ -100,7 +100,10 @@ def normalize_world_map_payload(obj: Any) -> Optional[Dict[str, Any]]:
         bind = str(bind_raw).strip() if bind_raw else ""
         name = str(lm.get("name") or bind or "地标")[:36]
         x, y = _clamp_map_xy(lm.get("x", 50), lm.get("y", 50))
-        typ = str(lm.get("type") or "mixed")[:24]
+        typ = str(lm.get("type") or "").strip()[:24]
+        if not typ or typ == "mixed":
+            # LLM 输出常把 type 写成 mixed 或干脆不写，按用途兜底推断
+            typ = "mixed"
         item: Dict[str, Any] = {"name": name, "x": round(x, 2), "y": round(y, 2), "type": typ}
         if bind:
             item["bind"] = bind
@@ -269,6 +272,66 @@ def detect_encounters(window_minutes: int = 5) -> Dict[str, Any]:
     }
 
 
+SCHEDULE_PATTERNS: Dict[str, List[tuple]] = {
+    "程序员": [(9, 12, "办公室", "写代码"), (12, 14, "餐厅", "午餐休息"),
+              (14, 18, "办公室", "继续编码"), (18, 20, "社交场所", "放松时间")],
+    "教师": [(8, 12, "学校", "上课"), (12, 14, "餐厅", "午餐"),
+            (14, 17, "学校", "备课/批改作业"), (17, 19, "家中", "休息")],
+    "医生": [(8, 12, "医院", "门诊"), (12, 13, "餐厅", "午餐"),
+            (13, 18, "医院", "查房与手术"), (18, 20, "家中", "休息")],
+    "警察": [(8, 12, "警局", "值班"), (12, 13, "餐厅", "午餐"),
+            (13, 18, "街区", "巡逻"), (18, 20, "社交场所", "下班放松")],
+    "学生": [(8, 12, "学校", "上课"), (12, 14, "餐厅", "午餐与休息"),
+            (14, 17, "学校", "自习"), (17, 20, "社交场所", "和同学玩")],
+    "销售": [(9, 12, "公司", "拜访客户"), (12, 14, "餐厅", "午餐"),
+            (14, 18, "公司", "跟进订单"), (18, 21, "餐厅", "应酬")],
+    "设计师": [(10, 13, "工作室", "画稿"), (13, 14, "餐厅", "午餐"),
+              (14, 18, "工作室", "改稿与对接客户"), (19, 21, "社交场所", "找灵感")],
+    "记者": [(9, 12, "街区", "跑采访"), (12, 13, "餐厅", "午餐"),
+            (13, 18, "办公室", "写稿"), (19, 21, "社交场所", "约线人")],
+    "律师": [(9, 12, "办公室", "阅卷"), (12, 13, "餐厅", "午餐"),
+            (13, 18, "法院", "开庭/会见当事人"), (18, 20, "办公室", "整理材料")],
+    "会计": [(9, 12, "办公室", "对账"), (12, 13, "餐厅", "午餐"),
+            (13, 18, "办公室", "做报表"), (18, 19, "家中", "下班")],
+    "厨师": [(10, 14, "餐厅", "备菜"), (14, 16, "餐厅", "午市收尾"),
+            (16, 21, "餐厅", "晚市掌勺"), (21, 23, "家中", "休息")],
+    "服务员": [(10, 14, "餐厅", "午市服务"), (14, 17, "餐厅", "整理与备场"),
+              (17, 22, "餐厅", "晚市服务"), (22, 23, "家中", "休息")],
+    "司机": [(7, 10, "街区", "早高峰"), (10, 12, "街区", "接单"),
+            (13, 18, "街区", "跑单"), (18, 21, "街区", "晚高峰")],
+    "幼儿": [(8, 11, "家中", "玩耍"), (11, 14, "家中", "午睡"),
+            (14, 17, "社交场所", "户外活动"), (17, 20, "家中", "吃饭洗澡")],
+    "自由职业": [(10, 12, "家中", "处理私活"), (12, 13, "餐厅", "午餐"),
+               (13, 17, "工作室", "专注创作"), (17, 20, "社交场所", "散步/见朋友")],
+    "无业": [(9, 11, "家中", "看招聘信息"), (11, 13, "家中", "做家务"),
+            (14, 17, "社交场所", "打零工"), (18, 20, "家中", "休息")],
+}
+
+
+def schedule_events_for(character) -> List[Any]:
+    """按职业给出一天的日程事件（纯函数，不做持久化）。"""
+    from models import ScheduleEvent
+    from services.career_service import ladder_key
+
+    occupation = (character.occupation or "").strip()
+    key = ladder_key(occupation) or occupation
+    patterns = SCHEDULE_PATTERNS.get(key, [
+        (9, 12, "办公室", "工作"),
+        (12, 14, "餐厅", "午餐"),
+        (14, 18, "办公室", "工作"),
+        (18, 20, "社交场所", "休闲"),
+    ])
+    return [
+        ScheduleEvent(
+            start_time=f"{start_h:02d}:00",
+            end_time=f"{end_h:02d}:00",
+            location=location,
+            activity=activity,
+        )
+        for start_h, end_h, location, activity in patterns
+    ]
+
+
 def generate_schedule_for_character(character, day_index: int) -> Any:
     """为角色生成当日日程（规则模板）。
 
@@ -279,61 +342,8 @@ def generate_schedule_for_character(character, day_index: int) -> Any:
     from storage import get_schedules, save_schedules
     from models import CharacterSchedule, ScheduleEvent
 
-    schedule_patterns = {
-        "程序员": [
-            (9, 12, "办公室", "写代码"),
-            (12, 14, "餐厅", "午餐休息"),
-            (14, 18, "办公室", "继续编码"),
-            (18, 20, "社交场所", "放松时间"),
-        ],
-        "教师": [
-            (8, 12, "学校", "上课"),
-            (12, 14, "餐厅", "午餐"),
-            (14, 17, "学校", "备课/批改作业"),
-            (17, 19, "家中", "休息"),
-        ],
-        "医生": [
-            (8, 12, "医院", "门诊"),
-            (12, 13, "餐厅", "午餐"),
-            (13, 18, "医院", "查房与手术"),
-            (18, 20, "家中", "休息"),
-        ],
-        "警察": [
-            (8, 12, "警局", "值班"),
-            (12, 13, "餐厅", "午餐"),
-            (13, 18, "街区", "巡逻"),
-            (18, 20, "社交场所", "下班放松"),
-        ],
-        "学生": [
-            (8, 12, "学校", "上课"),
-            (12, 14, "餐厅", "午餐与休息"),
-            (14, 17, "学校", "自习"),
-            (17, 20, "社交场所", "和同学玩"),
-        ],
-        "销售": [
-            (9, 12, "公司", "拜访客户"),
-            (12, 14, "餐厅", "午餐"),
-            (14, 18, "公司", "跟进订单"),
-            (18, 21, "餐厅", "应酬"),
-        ],
-    }
-
     occupation = (character.occupation or "").strip()
-    patterns = schedule_patterns.get(occupation, [
-        (9, 12, "办公室", "工作"),
-        (12, 14, "餐厅", "午餐"),
-        (14, 18, "办公室", "工作"),
-        (18, 20, "社交场所", "休闲"),
-    ])
-
-    events = []
-    for start_h, end_h, location, activity in patterns:
-        events.append(ScheduleEvent(
-            start_time=f"{start_h:02d}:00",
-            end_time=f"{end_h:02d}:00",
-            location=location,
-            activity=activity,
-        ))
+    events = schedule_events_for(character)
 
     schedule = CharacterSchedule(
         character_id=character.id,
