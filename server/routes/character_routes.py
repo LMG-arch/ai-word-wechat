@@ -128,6 +128,8 @@ async def create_character(request: CreateCharacterRequest):
     now_ms = int(time.time() * 1000)
     min_lifespan = min(settings.min_lifespan, settings.max_lifespan)
     max_lifespan = max(settings.min_lifespan, settings.max_lifespan)
+    if request.age > max_lifespan:
+        raise HTTPException(status_code=400, detail=f"年龄超出世界寿命上限（{max_lifespan} 岁）")
     character = Character(
         name=request.name, age=request.age, gender=request.gender,
         occupation=request.occupation, personality=request.personality,
@@ -166,6 +168,27 @@ async def delete_character(character_id: str):
     if not char_to_delete:
         raise HTTPException(status_code=404, detail="角色不存在")
     characters.remove(char_to_delete)
+
+    # 断引用：否则配偶栏留着已删除角色的 id，家庭档案会显示「夫妻」但没有对象，
+    # 孩子列表里也会一直挂着一个查不到的人。
+    for other in characters:
+        if other.id == char_to_delete.id:
+            continue
+        changed = False
+        for attr in ("spouse_id", "partner_id"):
+            if getattr(other, attr, None) == char_to_delete.id:
+                setattr(other, attr, None)
+                changed = True
+        kids = [cid for cid in (other.children_ids or []) if cid != char_to_delete.id]
+        if kids != (other.children_ids or []):
+            other.children_ids = kids
+            changed = True
+        parents = [pid for pid in (other.parent_ids or []) if pid != char_to_delete.id]
+        if parents != (other.parent_ids or []):
+            other.parent_ids = parents
+            changed = True
+        if changed and other.relationship_stage == "spouse" and not other.spouse_id:
+            other.relationship_stage = "lover" if other.partner_id else "friend"
     save_characters(characters)
     _add_log(char_to_delete.name, "删除", f"角色\"{char_to_delete.name}\"被删除")
     return {"success": True}
@@ -175,8 +198,11 @@ async def delete_character(character_id: str):
 async def update_character(character_id: str, request: CreateCharacterRequest):
     characters = get_characters()
     settings = get_settings()
+    max_lifespan = max(settings.min_lifespan, settings.max_lifespan)
     for index, char in enumerate(characters):
         if char.id == character_id:
+            if request.age > max_lifespan:
+                raise HTTPException(status_code=400, detail=f"年龄超出世界寿命上限（{max_lifespan} 岁）")
             avatar_changed = request.avatar_url and request.avatar_url != char.avatar_url
             char.name = request.name
             char.age = request.age
@@ -240,11 +266,11 @@ async def maybe_refresh_avatar(character_id: str, request: MaybeRefreshAvatarReq
         now_ms = int(time.time() * 1000)
         if not request.forced and not can_refresh_avatar(char, now_ms):
             return {"success": False, "message": "头像刷新频率已达每周上限"}
-        success, message = await refresh_character_avatar_for_stage(char, forced=True)
+        # forced 必须透传：之前硬编码 True，等于让「每周上限」这道闸门形同虚设
+        success, message = await refresh_character_avatar_for_stage(char, forced=request.forced)
         if success:
             char.updated_at = now_ms
             trim_avatar_change_history(char, now_ms)
-            char.avatar_change_history.append(now_ms)
             characters[index] = char
             save_characters(characters)
             reason = request.reason or "心情变化/重大事件"
@@ -417,7 +443,9 @@ async def generate_character_moment(character_id: str, request: GenerateMomentRe
     content = await generate_moment_content(character, request)
     image_url = None
     if request.with_image:
-        plan = await generate_moment_image_plan(character, request, content or "")
+        # 参数顺序必须是 (character, 正文, 情绪)：之前把 request 当成正文传进去，
+        # generate_moment_image_plan 里做 content[:500] 直接 'GenerateMomentRequest' object is not subscriptable
+        plan = await generate_moment_image_plan(character, content or "", request.mood)
         kind = plan.get("image_kind") or "scene"
         avatar_prompt = plan.get("image_prompt") or ""
         if kind not in ("selfie", "scene", "portrait"):

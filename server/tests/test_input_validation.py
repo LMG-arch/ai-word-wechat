@@ -36,9 +36,15 @@ class TestCreateCharacterRequest:
         with pytest.raises(ValidationError):
             CreateCharacterRequest(name="测试", age=age, occupation="教师")
 
-    @pytest.mark.parametrize("age", [0, 1, 150, 200])
+    @pytest.mark.parametrize("age", [0, 1, 100, 120])
     def test_age_boundaries_accepted(self, age):
+        # V4.3：硬边界收紧到 120（世界寿命上限默认 100，接口层再卡一次）
         assert CreateCharacterRequest(name="测试", age=age, occupation="教师").age == age
+
+    @pytest.mark.parametrize("age", [121, 150, 200])
+    def test_age_beyond_world_lifespan_rejected(self, age):
+        with pytest.raises(ValidationError):
+            CreateCharacterRequest(name="测试", age=age, occupation="教师")
 
     def test_blank_occupation_rejected(self):
         with pytest.raises(ValidationError):

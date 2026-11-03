@@ -17,7 +17,11 @@ from storage import (
     get_companies, save_companies,
     get_logs, save_logs, get_settings,
 )
-from services.task_service import apply_reflection_after_task, apply_auto_take_task_at_index
+from services.task_service import (
+    apply_reflection_after_task,
+    apply_auto_take_task_at_index,
+    ensure_task_action,
+)
 from services.ai_service import (
     openai_choice_text,
     llm_choose_image_size,
@@ -150,7 +154,7 @@ async def _generate_task_image(task: TaskItem, assignee: Optional[Character]) ->
             if success and image_url_or_error:
                 record_image_usage(image_config, "task_image_generation", task.assignee_id, success=True)
                 _add_log("系统", "任务图像", f"为任务《{task.title}》生成图片成功，尺寸: {image_size}")
-                save_image_prompt_md(prompt, f"任务图像：{task.title}", image_url_or_error, task.title)
+                save_image_prompt_md(prompt, f"任务图像：{task.title}", image_url_or_error)
                 return image_url_or_error
             else:
                 record_image_usage(image_config, "task_image_generation", task.assignee_id, success=False, error_message=image_url_or_error)
@@ -172,7 +176,7 @@ async def _generate_task_image(task: TaskItem, assignee: Optional[Character]) ->
                         if image_url:
                             record_image_usage(image_config, "task_image_generation", task.assignee_id, success=True)
                             _add_log("系统", "任务图像", f"为任务《{task.title}》生成图片成功，尺寸: {image_size}")
-                            save_image_prompt_md(prompt, f"任务图像：{task.title}", image_url, task.title)
+                            save_image_prompt_md(prompt, f"任务图像：{task.title}", image_url)
                             return image_url
                         else:
                             record_image_usage(image_config, "task_image_generation", task.assignee_id, success=False, error_message="无法解析图像响应")
@@ -337,6 +341,17 @@ async def assign_task(task_id: str, body: AssignTaskRequest):
     for i, task in enumerate(tasks):
         if task.id != task_id:
             continue
+        try:
+            ensure_task_action(task, "assign")
+        except ValueError as exc:
+            raise HTTPException(status_code=409, detail=str(exc))
+        # 不存在的接收人会让任务永远卡在 in_progress，奖励也发不出去
+        if body.assignee_type == TaskAssigneeType.PERSONAL and body.assignee_id:
+            if not any(c.id == body.assignee_id for c in get_characters()):
+                raise HTTPException(status_code=404, detail="接收人不存在")
+        if body.assignee_type == TaskAssigneeType.COMPANY and body.company_id:
+            if not any(c.id == body.company_id for c in get_companies()):
+                raise HTTPException(status_code=404, detail="公司不存在")
         task.assignee_type = body.assignee_type
         task.assignee_id = body.assignee_id
         task.company_id = body.company_id
@@ -362,7 +377,7 @@ async def auto_take_task(task_id: str, body: AutoTakeTaskRequest):
                 tasks, i, body.preferred_character_id, characters, companies
             )
         except ValueError as e:
-            raise HTTPException(status_code=400, detail=str(e))
+            raise HTTPException(status_code=409, detail=str(e))
         save_tasks(tasks)
         msg = (
             f"代表公司接取协作任务：{task.title}"
@@ -380,6 +395,10 @@ async def submit_task(task_id: str, body: SubmitTaskRequest):
     for i, task in enumerate(tasks):
         if task.id != task_id:
             continue
+        try:
+            ensure_task_action(task, "submit")
+        except ValueError as exc:
+            raise HTTPException(status_code=409, detail=str(exc))
         task.submitter_id = body.submitter_id
         task.execution_notes = body.execution_notes.strip()
         task.deliverable_text = body.deliverable_text.strip()
@@ -401,6 +420,10 @@ async def auto_complete_task(task_id: str):
     for i, task in enumerate(tasks):
         if task.id != task_id:
             continue
+        try:
+            ensure_task_action(task, "auto_complete")
+        except ValueError as exc:
+            raise HTTPException(status_code=409, detail=str(exc))
         if not task.assignee_id:
             raise HTTPException(status_code=400, detail="Task has no assignee")
         assignee = next((c for c in characters if c.id == task.assignee_id), None)
@@ -453,6 +476,10 @@ async def review_task(task_id: str, body: ReviewTaskRequest):
     for i, task in enumerate(tasks):
         if task.id != task_id:
             continue
+        try:
+            ensure_task_action(task, "review")
+        except ValueError as exc:
+            raise HTTPException(status_code=409, detail=str(exc))
         task.review_notes = body.review_notes.strip()
         task.review_round += 1
         task.review_history.append({

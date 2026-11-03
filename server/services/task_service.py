@@ -14,6 +14,52 @@ from config import DATA_DIR
 from models import TaskType
 
 
+# =====================================================================
+#  任务状态机守卫
+#  没有守卫时：completed 任务可以反复 review，每审核通过一次就再发一次
+#  奖励 + 经验；submit / auto-complete / assign 也能把已完成任务打回去重刷。
+#  这里集中声明「每个动作允许从哪些状态进入」，形成单向状态机。
+# =====================================================================
+TASK_ACTION_ALLOWED_STATUS: Dict[str, set] = {
+    "assign": {"open", "failed", "in_progress"},       # 改派只看是否已收尾
+    "auto_take": {"open", "failed"},
+    "submit": {"open", "in_progress", "failed"},
+    "auto_complete": {"open", "in_progress", "failed"},
+    "review": {"pending_review"},                       # 必须先提交，且只能审一次
+}
+
+TASK_ACTION_LABEL = {
+    "assign": "分配",
+    "auto_take": "接取",
+    "submit": "提交",
+    "auto_complete": "自动完成",
+    "review": "审核",
+}
+
+
+def _status_value(status) -> str:
+    return getattr(status, "value", str(status))
+
+
+def ensure_task_action(task, action: str) -> None:
+    """校验任务状态是否允许执行该动作；不允许时抛 ValueError（中文可读）。"""
+    allowed = TASK_ACTION_ALLOWED_STATUS.get(action)
+    if allowed is None:
+        return
+    current = _status_value(task.status)
+    if current in allowed:
+        return
+
+    label = TASK_ACTION_LABEL.get(action, action)
+    if current == "completed":
+        raise ValueError(f"任务已完成，不能重复{label}（避免重复发放奖励）")
+    if current == "pending_review":
+        if action in ("auto_take", "assign"):
+            raise ValueError(f"任务已提交，等待审核，不能{label}")
+        raise ValueError(f"任务正在审核中，不能重复{label}")
+    raise ValueError(f"当前状态（{current}）不允许{label}")
+
+
 def _get_task_keywords(task_type) -> List[str]:
     """获取任务类型关键词（兼容 TaskType 枚举与字符串）"""
     if isinstance(task_type, TaskType):
@@ -76,6 +122,7 @@ def apply_auto_take_task_at_index(
     from models import TaskAssigneeType, TaskStatus
 
     task = tasks[index]
+    ensure_task_action(task, "auto_take")
     if task.assignee_type == TaskAssigneeType.COMPANY and task.company_id:
         company = next((c for c in companies if c.id == task.company_id), None)
         if not company:

@@ -126,6 +126,10 @@ def _patch_task_storage(monkeypatch, bucket):
 def test_assign_task_moves_to_in_progress(monkeypatch):
     bucket = [_make_task()]
     _patch_task_storage(monkeypatch, bucket)
+    import routes.task_routes as task_routes
+    monkeypatch.setattr(task_routes, "get_characters",
+                        lambda: [Character(id="c1", name="测试", age=28, gender="男",
+                                           occupation="程序员", personality="稳重")])
 
     client = TestClient(main.app)
     resp = client.post(

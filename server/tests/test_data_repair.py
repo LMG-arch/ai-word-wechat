@@ -7,7 +7,7 @@
 """
 import storage
 
-from models import Character, MomentPost
+from models import Character, ChatMessage, MomentPost, RedPacket, TaskItem
 from services.career_service import (
     MAX_STUDENT_AGE,
     ladder_for,
@@ -19,7 +19,9 @@ from services.career_service import (
 from services.data_repair import (
     _fix_career_level,
     _fix_occupation,
+    _fix_tasks,
     _rebuild_family_from_moments,
+    count_orphans,
     run_data_repair,
 )
 
@@ -226,3 +228,55 @@ def test_fix_schedules_realigns_events_and_drops_orphan(isolated_client):
     only = saved[0]
     assert "（程序员）" in only.summary
     assert [e.activity for e in only.events][0] == "写代码"
+
+
+def test_fix_tasks_releases_orphan_assignee(isolated_client):
+    """接收人已被删除的任务会永久卡在 in_progress，启动体检要把它退回待接取。"""
+    from models import Character, TaskItem
+    from services.data_repair import _fix_tasks
+    import storage
+
+    alive = Character(name="在职者", age=30, gender="女", occupation="教师", personality="温和")
+    storage.save_characters([alive])
+    storage.save_tasks([
+        TaskItem(title="悬空任务", description="x", reward=100, assignee_id="___gone___",
+                 status="in_progress", assignee_type="personal"),
+        TaskItem(title="正常任务", description="x", reward=100, assignee_id=alive.id,
+                 status="in_progress", assignee_type="personal"),
+        TaskItem(title="已完成任务", description="x", reward=100, assignee_id="___gone___",
+                 status="completed", assignee_type="personal"),
+    ])
+
+    notes = _fix_tasks([alive])
+    tasks = storage.get_tasks()
+    by_title = {t.title: t for t in tasks}
+
+    assert by_title["悬空任务"].assignee_id is None
+    assert by_title["悬空任务"].status == "open"
+    assert by_title["正常任务"].assignee_id == alive.id
+    # 已结算的历史不回退，只报告
+    assert by_title["已完成任务"].status == "completed"
+    assert any("悬空任务" in n for n in notes)
+
+
+def test_count_orphans_reports_without_deleting(isolated_client):
+    from models import Character, ChatMessage, RedPacket
+    from services.data_repair import count_orphans
+    import storage
+
+    alive = Character(name="甲", age=30, gender="男", occupation="教师", personality="温和")
+    storage.save_characters([alive])
+    storage.save_messages([
+        ChatMessage(conversation_id=alive.id, sender_id="user", content="正常"),
+        ChatMessage(conversation_id="___gone___", sender_id="user", content="孤儿"),
+    ])
+    storage.save_red_packets([
+        RedPacket(conversation_id="___gone___", sender_id="user", sender_name="我", total_amount=10, count=2),
+    ])
+
+    stats = count_orphans([alive])
+    assert stats["messages"] == 1
+    assert stats["red_packets"] == 1
+    # 只统计，不删除
+    assert len(storage.get_messages()) == 2
+    assert len(storage.get_red_packets()) == 1

@@ -295,14 +295,27 @@ def bind_child(characters: List, child) -> None:
 # --------------------------------------------------------------------------
 
 def family_view(character, by_id: Dict[str, object]) -> Dict[str, object]:
-    """给前端用的家庭信息。"""
+    """给前端用的家庭信息。
+
+    存储里的 relationship_stage 可能与实际引用脱节（对端角色被删、历史脏数据），
+    这里按「人是否还在」做一次降级，避免出现「夫妻但配偶为空」这种自相矛盾的档案。
+    """
     partner = by_id.get(getattr(character, "partner_id", None) or "")
     spouse = by_id.get(getattr(character, "spouse_id", None) or "")
     children = [by_id[cid] for cid in (getattr(character, "children_ids", []) or []) if cid in by_id]
+
+    raw_stage = (getattr(character, "relationship_stage", "stranger") or "stranger")
+    stage = raw_stage
+    if raw_stage == "spouse" and not spouse:
+        stage = "lover" if partner else "friend"
+    elif raw_stage == "lover" and not partner:
+        stage = "friend"
+
     return {
-        "stage": (getattr(character, "relationship_stage", "stranger") or "stranger"),
-        "stage_label": stage_label(getattr(character, "relationship_stage", "")),
-        "stage_icon": stage_icon(getattr(character, "relationship_stage", "")),
+        "stage": stage,
+        "stage_label": stage_label(stage),
+        "stage_icon": stage_icon(stage),
+        "stage_stored": raw_stage,
         "partner": {"id": partner.id, "name": partner.name} if partner else None,
         "spouse": {"id": spouse.id, "name": spouse.name} if spouse else None,
         "children": [

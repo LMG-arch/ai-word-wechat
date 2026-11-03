@@ -1,4 +1,4 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from typing import Optional
 import time
 
@@ -51,6 +51,9 @@ async def get_relationship_snapshot(from_id: str, to_id: str):
 
 @router.post("/api/relationships/interact")
 async def relationship_interact(request: RelationshipInteractRequest):
+    known = {c.id for c in get_characters()}
+    if request.from_id not in known or request.to_id not in known:
+        raise HTTPException(status_code=404, detail="角色不存在")
     new_intimacy = apply_relationship_interaction(request.from_id, request.to_id, request.action)
     sync_private_groups()
     return {"success": True, "data": {"intimacy": new_intimacy}}

@@ -72,6 +72,8 @@ async def recall_memories_api(request: RecallMemoriesRequest):
 @router.post("/api/memories")
 async def create_memory(request: CreateMemoryRequest):
     """手动创建记忆"""
+    if not any(c.id == request.character_id for c in get_characters()):
+        raise HTTPException(status_code=404, detail="角色不存在")
     try:
         mem_type = MemoryType(request.memory_type)
     except ValueError:

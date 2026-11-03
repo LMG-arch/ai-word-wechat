@@ -422,20 +422,31 @@ def maybe_get_accidental_death_cause(character: Character) -> Optional[str]:
 # =====================================================================
 
 async def refresh_character_avatar_for_stage(character: Character, forced: bool = False):
-    """刷新角色头像"""
+    """刷新角色头像。
+
+    返回 (success, message)：调用方按二元组解包，之前三个分支都隐式返回 None，
+    导致「刷新头像」接口 100% 抛 TypeError 变成 500。
+    """
     from services.ai_service import generate_avatar
-    
+
     now_ms = int(time.time() * 1000)
     if not forced and not can_refresh_avatar(character, now_ms):
-        return
-    
-    new_avatar = await generate_avatar(character)
-    if new_avatar:
-        character.avatar_url = new_avatar
-        character.last_avatar_change_time = now_ms
-        if not character.avatar_change_history:
-            character.avatar_change_history = []
-        character.avatar_change_history.append(now_ms)
+        return False, "头像刷新频率已达每周上限"
+
+    try:
+        new_avatar = await generate_avatar(character)
+    except Exception as exc:  # 网络/鉴权异常不应把接口打成 500
+        return False, f"头像生成失败：{exc}"
+
+    if not new_avatar:
+        return False, "头像生成失败，请检查图像模型配置"
+
+    character.avatar_url = new_avatar
+    character.last_avatar_change_time = now_ms
+    if not character.avatar_change_history:
+        character.avatar_change_history = []
+    character.avatar_change_history.append(now_ms)
+    return True, "头像已更新"
 
 
 async def generate_new_signature(character: Character, memory_context: str = "") -> Optional[str]:

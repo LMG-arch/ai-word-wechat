@@ -1968,8 +1968,8 @@
     <div id="chat-detail-page" class="detail-page">
         <div class="detail-header">
             <button class="back-btn" onclick="closeChatDetail()">←</button>
-            <div class="detail-avatar" id="chat-detail-avatar">?</div>
-            <div class="detail-name" id="chat-detail-name">角色名</div>
+            <div class="detail-avatar" id="chat-detail-avatar" onclick="openCharacterFromChat()" style="cursor:pointer;">?</div>
+            <div class="detail-name" id="chat-detail-name" onclick="openCharacterFromChat()" style="cursor:pointer;">角色名</div>
         </div>
         <div class="chat-messages" id="chat-messages-container">
             <!-- 动态生成 -->
@@ -2669,6 +2669,105 @@
                 container.style.maxHeight = '0';
                 icon.textContent = '▶';
             }
+        }
+
+        // ==================== 统一导航栈（安卓返回键 / 浏览器返回） ====================
+        // 问题：页面原来完全没用 history，进入任何详情页 / 子页后按系统返回键，
+        // 会直接退出整个 webview，而不是退回上一层。
+        // 方案：用 MutationObserver 把「层的开合」同步进 history，不改动任何 show/close 函数。
+        //   · 打开一层 → pushState
+        //   · 代码关闭 → 顺手把刚压入的那条记录 back 掉（popstate 标记忽略）
+        //   · 用户按返回 → popstate 关掉栈顶一层
+        const NAV_LAYER_CLOSERS = {
+            'character-detail-page': () => closeCharacterDetail(),
+            'chat-detail-page': () => closeChatDetail(),
+            'task-detail-page': () => closeTaskDetail(),
+            'memorial-detail-page': () => closeMemorialDetail(),
+            'private-group-page': () => closePrivateGroupPage(),
+            '__subpage__': () => backToMine(),
+            '__modal__': () => NavStack.closeTopModal()
+        };
+
+        const NavStack = {
+            stack: [],
+            fromPop: false,
+            _modalIds: [],
+
+            push(id) {
+                if (this.stack[this.stack.length - 1] === id) return;
+                if (id === '__modal__' && this.stack.includes(id)) return;
+                this.stack.push(id);
+                if (!this.fromPop) {
+                    try { history.pushState({ nav: id }, ''); } catch (e) { /* 隐私模式忽略 */ }
+                }
+            },
+
+            remove(id) {
+                const idx = this.stack.lastIndexOf(id);
+                if (idx === -1) return;
+                this.stack.splice(idx, 1);
+                if (this.fromPop) return;
+                // 代码主动关闭：把打开时压入的记录一并回退，避免留下「幽灵」历史
+                if (history.state && history.state.nav === id) {
+                    this.fromPop = true;
+                    try { history.back(); } catch (e) { this.fromPop = false; }
+                }
+            },
+
+            back() {
+                if (this.stack.length) history.back();
+            },
+
+            closeTop() {
+                const id = this.stack[this.stack.length - 1];
+                if (!id) return false;
+                if (id === '__modal__') return this.closeTopModal();
+                const fn = NAV_LAYER_CLOSERS[id];
+                if (fn) fn();
+                return true;
+            },
+
+            closeTopModal() {
+                const open = [...document.querySelectorAll('.modal-overlay.show')].pop();
+                if (!open) return false;
+                const btn = open.querySelector('.modal-close');
+                if (btn) { btn.click(); return true; }
+                open.classList.remove('show');
+                return true;
+            }
+        };
+
+        window.addEventListener('popstate', () => {
+            if (NavStack.fromPop) { NavStack.fromPop = false; return; }
+            NavStack.closeTop();
+        });
+
+        function initNavStackObservers() {
+            document.querySelectorAll('.detail-page').forEach(el => {
+                new MutationObserver(() => {
+                    if (el.classList.contains('active')) NavStack.push(el.id);
+                    else NavStack.remove(el.id);
+                }).observe(el, { attributes: true, attributeFilter: ['class'] });
+            });
+
+            document.querySelectorAll('.modal-overlay').forEach(el => {
+                new MutationObserver(() => {
+                    if (el.classList.contains('show')) {
+                        NavStack._modalIds.push(el.id);
+                        NavStack.push('__modal__');
+                    } else {
+                        NavStack._modalIds.pop();
+                        NavStack.remove('__modal__');
+                    }
+                }).observe(el, { attributes: true, attributeFilter: ['class'] });
+            });
+
+            new MutationObserver(() => {
+                const open = document.body.classList.contains('subpage-open');
+                const has = NavStack.stack.includes('__subpage__');
+                if (open && !has) NavStack.push('__subpage__');
+                else if (!open && has) NavStack.remove('__subpage__');
+            }).observe(document.body, { attributes: true, attributeFilter: ['class'] });
         }
 
         // ==================== 导航切换 ====================
@@ -4320,6 +4419,12 @@
             } catch (error) {
                 console.error('标记已读失败：', error);
             }
+        }
+
+        // 聊天页点头像/名字进资料页：之前这里没有入口，只能退回列表再点一次
+        function openCharacterFromChat() {
+            if (!currentConversation) return;
+            showCharacterDetail(currentConversation);
         }
 
         function closeChatDetail() {
@@ -7239,6 +7344,8 @@
         document.addEventListener('DOMContentLoaded', () => {
             // 缓存「我」页骨架：从二级页返回时原样恢复，避免重建版式与静态页不一致
             window.__MINE_HTML = document.getElementById('tab-mine').innerHTML;
+            // 让系统返回键能在层与层之间回退，而不是直接退出页面
+            initNavStackObservers();
             loadCharacters();
             loadLogs();
             loadStickers();

@@ -43,6 +43,14 @@ async def distribute_bonus(request: DistributeBonusRequest):
         total = sum(max(0.0, float(v)) for v in request.bonuses.values())
         if total > company.funds:
             raise HTTPException(status_code=400, detail="Company funds not enough")
+        # 只允许发给本公司成员：否则可以把公司资金转到任意角色账上（变相洗钱）
+        member_ids = set(company.member_ids or [])
+        if company.legal_person_id:
+            member_ids.add(company.legal_person_id)
+        outsiders = [cid for cid, amount in request.bonuses.items()
+                     if float(amount or 0) > 0 and cid not in member_ids]
+        if outsiders:
+            raise HTTPException(status_code=400, detail="存在非本公司成员的收款人，已拒绝发放")
         company.funds -= total
         company.updated_at = int(time.time() * 1000)
         companies[cidx] = company

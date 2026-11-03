@@ -49,7 +49,7 @@ from services.career_service import (
 )
 
 # 修复逻辑版本：改动规则时 +1，老库会重新体检一次
-REPAIR_VERSION = 5
+REPAIR_VERSION = 6
 
 # 需要备份的数据文件（宁多勿少，备份很便宜）
 BACKUP_FILES = (
@@ -347,6 +347,64 @@ def _fix_moments(characters: List[Any]) -> List[str]:
     return notes
 
 
+def _fix_tasks(characters: List[Any]) -> List[str]:
+    """任务里指向已删除角色的接收人 / 协作人。
+
+    这类任务会永久卡在 in_progress：审核时找不到人，奖励发不出去，
+    用户看到的是「进行中」但永远推不动。这里把悬空的人摘掉、退回待接取。
+    已完成的任务只清协作者，不回退状态（那是已经结算过的历史）。
+    """
+    from storage import get_tasks, save_tasks
+    from models import TaskStatus
+
+    valid = {c.id for c in characters}
+    tasks = get_tasks()
+    notes: List[str] = []
+    dirty = False
+
+    for t in tasks:
+        status = getattr(getattr(t, "status", None), "value", str(getattr(t, "status", "")))
+        assignee = getattr(t, "assignee_id", None)
+        if assignee and assignee not in valid and status not in ("completed",):
+            t.assignee_id = None
+            t.submitter_id = None
+            t.status = TaskStatus.OPEN
+            dirty = True
+            notes.append(f"任务「{t.title[:14]}」：接收人已不存在，退回待接取")
+
+        collaborators = list(getattr(t, "collaborator_ids", []) or [])
+        kept = [cid for cid in collaborators if cid in valid]
+        if kept != collaborators:
+            t.collaborator_ids = kept
+            dirty = True
+            notes.append(f"任务「{t.title[:14]}」：移除 {len(collaborators) - len(kept)} 个不存在的协作者")
+
+    if dirty:
+        save_tasks(tasks)
+    return notes
+
+
+def count_orphans(characters: List[Any]) -> Dict[str, int]:
+    """只统计不删除：聊天记录和红包属于历史，删了就真没了。
+
+    这些数字会出现在启动报告里，让「数据里有多少指向空处的引用」可见。
+    """
+    from storage import get_messages, get_red_packets
+
+    valid = {c.id for c in characters}
+    orphan_messages = sum(
+        1 for m in get_messages()
+        if str(getattr(m, "conversation_id", "")) not in valid
+        and not str(getattr(m, "conversation_id", "")).startswith("group:")
+    )
+    orphan_packets = sum(
+        1 for p in get_red_packets()
+        if str(getattr(p, "conversation_id", "")) not in valid
+        and not str(getattr(p, "conversation_id", "")).startswith("group:")
+    )
+    return {"messages": orphan_messages, "red_packets": orphan_packets}
+
+
 # ---------------------------------------------------------------- 主入口
 
 def normalize_new_character(character) -> List[str]:
@@ -386,6 +444,8 @@ def run_data_repair(force: bool = False) -> Dict[str, Any]:
         "relationship": [],
         "moments": [],
         "schedules": [],
+        "tasks": [],
+        "orphans": {},
         "settings": [],
         "duplicate_names": [],
         "ok": True,
@@ -426,6 +486,8 @@ def run_data_repair(force: bool = False) -> Dict[str, Any]:
 
     report["moments"] = _fix_moments(characters)
     report["schedules"] = _fix_schedules(characters)
+    report["tasks"] = _fix_tasks(characters)
+    report["orphans"] = count_orphans(characters)
 
     # 重名只报告，不自动改：名字是角色人设的一部分，改名会误导用户
     seen: Dict[str, List[str]] = {}
@@ -453,6 +515,7 @@ def run_data_repair(force: bool = False) -> Dict[str, Any]:
         + len(report["relationship"])
         + len(report["moments"])
         + len(report["schedules"])
+        + len(report["tasks"])
     )
     report["fixed_count"] = total
 
@@ -478,6 +541,7 @@ def format_report(report: Dict[str, Any]) -> str:
         ("relationship", "家庭关系不一致"),
         ("moments", "动态悬空引用"),
         ("schedules", "日程摘要与职业不一致"),
+        ("tasks", "任务里的悬空接收人"),
         ("settings", "设置项缺失"),
         ("duplicate_names", "重名提醒"),
     ):
@@ -489,6 +553,13 @@ def format_report(report: Dict[str, Any]) -> str:
             lines.append(f"    - {item}")
         if len(items) > 12:
             lines.append(f"    - …… 另有 {len(items) - 12} 条")
+
+    orphans = report.get("orphans") or {}
+    if orphans.get("messages") or orphans.get("red_packets"):
+        lines.append(
+            f"  · 历史遗留引用（不删除，仅提示）：{orphans.get('messages', 0)} 条消息、"
+            f"{orphans.get('red_packets', 0)} 个红包指向已删除的会话"
+        )
     return "\n".join(lines)
 
 

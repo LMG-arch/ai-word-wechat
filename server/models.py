@@ -230,6 +230,7 @@ class TaskItem(BaseModel):
     title: str
     description: str
     task_type: TaskType = TaskType.TEXT
+    # 存量数据不受约束，边界只在 CreateTaskRequest 上卡（否则老数据反序列化直接崩）
     reward: float = 100.0
     creator: str = "user"
     status: TaskStatus = TaskStatus.OPEN
@@ -456,7 +457,9 @@ class ImageUsageStats(BaseModel):
 
 class CreateCharacterRequest(BaseModel):
     name: str = Field(min_length=1, max_length=30)
-    age: int = Field(default=25, ge=0, le=200)
+    # 世界寿命上限默认 100，这里留 120 的硬边界挡掉明显非法值；
+    # 具体上限仍以 settings.max_lifespan 为准（见 character_routes 的创建/编辑校验）
+    age: int = Field(default=25, ge=0, le=120)
     gender: str = Field(default="男", max_length=10)
     occupation: str = Field(min_length=1, max_length=50)
     personality: str = Field(default="", max_length=500)
@@ -519,17 +522,17 @@ class GenerateMomentRequest(BaseModel):
 
 
 class MomentCommentRequest(BaseModel):
-    author_id: str
-    content: Optional[str] = None
+    author_id: str = Field(min_length=1, max_length=100)
+    content: Optional[str] = Field(default=None, max_length=1000)
     auto_generate: bool = False
     reply_to_comment_id: Optional[str] = None
 
 
 class UserCreateMomentRequest(BaseModel):
-    content: str
-    image_url: Optional[str] = None
+    content: str = Field(default="", max_length=3000)
+    image_url: Optional[str] = Field(default=None, max_length=2000)
     generate_image: bool = False
-    image_prompt: Optional[str] = None
+    image_prompt: Optional[str] = Field(default=None, max_length=600)
     # V4.0 包A4
     visibility: str = "friends"          # public / friends / private
     location: Optional[str] = None
@@ -537,10 +540,11 @@ class UserCreateMomentRequest(BaseModel):
 
 
 class CreateTaskRequest(BaseModel):
-    title: str
-    description: str = ""
+    title: str = Field(min_length=1, max_length=100)
+    description: str = Field(default="", max_length=2000)
     task_type: TaskType = TaskType.TEXT
-    reward: float = 100.0
+    # 奖励必须有上下界：负数会在审核通过时反向扣钱，天文数字会直接把经济打穿
+    reward: float = Field(default=100.0, ge=0, le=100000)
     assignee_type: TaskAssigneeType = TaskAssigneeType.PERSONAL
     assignee_id: Optional[str] = None
     company_id: Optional[str] = None
@@ -553,23 +557,23 @@ class AssignTaskRequest(BaseModel):
 
 
 class SubmitTaskRequest(BaseModel):
-    submitter_id: str
-    execution_notes: str = ""
-    deliverable_text: str = ""
-    deliverable_image_url: Optional[str] = None
-    deliverable_code: str = ""
+    submitter_id: str = Field(min_length=1, max_length=100)
+    execution_notes: str = Field(default="", max_length=2000)
+    deliverable_text: str = Field(default="", max_length=20000)
+    deliverable_image_url: Optional[str] = Field(default=None, max_length=2000)
+    deliverable_code: str = Field(default="", max_length=100000)
 
 
 class ReviewTaskRequest(BaseModel):
     approved: bool
-    review_notes: str = ""
-    score: float = 50.0
+    review_notes: str = Field(default="", max_length=2000)
+    score: float = Field(default=50.0, ge=0, le=100)
     checklist: Optional[Dict[str, Any]] = None
 
 
 class CreateCompanyRequest(BaseModel):
-    name: str
-    legal_person_id: str
+    name: str = Field(min_length=1, max_length=40)
+    legal_person_id: str = Field(min_length=1, max_length=100)
     member_ids: List[str] = Field(default_factory=list)
 
 
@@ -578,9 +582,9 @@ class AddCompanyMemberRequest(BaseModel):
 
 
 class DistributeBonusRequest(BaseModel):
-    company_id: str
+    company_id: str = Field(min_length=1, max_length=100)
     bonuses: Dict[str, float] = Field(default_factory=dict)
-    reason: str = "任务奖金分配"
+    reason: str = Field(default="任务奖金分配", max_length=100)
 
 
 class AutoTakeTaskRequest(BaseModel):
@@ -631,10 +635,10 @@ class RecallMemoriesRequest(BaseModel):
 
 
 class CreateMemoryRequest(BaseModel):
-    character_id: str
-    content: str
-    memory_type: str = "event"
-    importance: float = 0.5
+    character_id: str = Field(min_length=1, max_length=100)
+    content: str = Field(min_length=1, max_length=2000)
+    memory_type: str = Field(default="event", max_length=20)
+    importance: float = Field(default=0.5, ge=0.0, le=1.0)
     related_entities: Optional[List[str]] = None
 
 
