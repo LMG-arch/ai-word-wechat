@@ -80,6 +80,8 @@ from routes.economy_routes import router as economy_router
 from routes.map_routes import router as map_router
 from routes.schedule_routes import router as schedule_router
 from routes.relationship_routes import router as relationship_router
+from routes.family_routes import router as family_router
+from routes.career_routes import router as career_router
 from routes.memory_routes import router as memory_router
 from routes.settings_routes import router as settings_router
 from routes.stats_routes import router as stats_router
@@ -98,6 +100,8 @@ app.include_router(economy_router)
 app.include_router(map_router)
 app.include_router(schedule_router)
 app.include_router(relationship_router)
+app.include_router(family_router)
+app.include_router(career_router)
 app.include_router(memory_router)
 app.include_router(settings_router)
 app.include_router(stats_router)

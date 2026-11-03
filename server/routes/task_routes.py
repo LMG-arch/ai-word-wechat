@@ -474,6 +474,16 @@ async def review_task(task_id: str, body: ReviewTaskRequest):
                         char.updated_at = int(time.time() * 1000)
                         characters[idx] = char
                         _add_log(char.name, "task_reward", f"任务奖励 +{task.reward:.0f}")
+                        # V4.0 包B2：任务通过累计经验，达到阈值自动晋升
+                        try:
+                            from services.career_service import add_experience, announce_promotion
+                            promo = add_experience(char, amount=60)
+                            if promo.get("promoted"):
+                                announce_promotion(char, promo)
+                                _add_log(char.name, "promotion",
+                                         f"晋升：{promo['from_title']} → {promo['to_title']}")
+                        except Exception:
+                            pass
                         break
                 save_characters(characters)
             if task.assignee_type == TaskAssigneeType.COMPANY and task.company_id:

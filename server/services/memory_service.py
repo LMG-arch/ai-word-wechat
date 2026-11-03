@@ -430,6 +430,15 @@ def apply_relationship_interaction(from_id: str, to_id: str, action: str) -> flo
         coefficient = 1.0
     new_intimacy = max(0.0, min(100.0, current + delta * coefficient))
     set_pair_relationship(from_id, to_id, new_intimacy, {"last_action": action})
+
+    # V4.0 包B1：亲密度跨过阶段阈值时，自动推进恋爱/结婚（采样降低写盘频率）
+    try:
+        if delta > 0 and random.random() < 0.25:
+            from services.family_service import maybe_auto_advance
+            maybe_auto_advance(from_id, to_id, new_intimacy)
+    except Exception:
+        pass
+
     return new_intimacy
 
 

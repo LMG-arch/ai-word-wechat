@@ -114,6 +114,8 @@ class Character(BaseModel):
     # V4.0 包B2：职业等级（1 最低）
     career_level: int = 1
     career_title: str = ""
+    career_exp: int = 0
+    tasks_completed: int = 0
 
     def get_age_stage(self) -> str:
         return get_age_stage_from_age(self.age)

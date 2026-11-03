@@ -621,6 +621,32 @@
             line-height: 1;
         }
         .sticker-item:hover { background: #ececec; }
+        /* V4.0 包B1/B4：家庭标记与关系图图例 */
+        .family-badge {
+            font-size: 13px;
+            margin-left: 4px;
+            letter-spacing: -1px;
+        }
+        .career-badge {
+            display: inline-block;
+            margin-left: 6px;
+            padding: 1px 6px;
+            border-radius: 4px;
+            background: #eef4ff;
+            color: #3a5c9a;
+            font-size: 11px;
+            font-weight: 500;
+            vertical-align: middle;
+        }
+        .rel-dot {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 6px;
+            vertical-align: middle;
+        }
+
 
         /* V4.0 包A4：话题 / 打卡 / 筛选 */
         .topic-bar {
@@ -3444,6 +3470,31 @@
                     </div>
                 ` : '<div class="empty-state"><div class="empty-state-text">暂无历史记录</div></div>';
 
+                const rel = currentCharacter.relationship_stage || 'stranger';
+                const relLabelMap = { stranger: '陌生', friend: '朋友', close: '密友', lover: '情侣', spouse: '夫妻' };
+                const partnerName = currentCharacter.partner_id ? (charMap.get(currentCharacter.partner_id) || {}).name : null;
+                const spouseName = currentCharacter.spouse_id ? (charMap.get(currentCharacter.spouse_id) || {}).name : null;
+                const childList = (currentCharacter.children_ids || []).map(id => charMap.get(id)).filter(Boolean);
+                const hasFamily = partnerName || spouseName || childList.length || rel !== 'stranger';
+                const familyHtml = `
+                    <div class="info-card">
+                        <div class="info-card-title">💞 家庭与关系</div>
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <div class="info-label">关系阶段</div>
+                                <div class="info-value">${escapeHtml(relLabelMap[rel] || '陌生')}</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">伴侣</div>
+                                <div class="info-value">${spouseName ? escapeHtml(spouseName) + ' 💍' : (partnerName ? escapeHtml(partnerName) + ' ❤️' : '单身')}</div>
+                            </div>
+                        </div>
+                        ${childList.length ? `<div class="item-subtitle" style="margin-top:8px;">👶 孩子：${childList.map(c => `${escapeHtml(c.name)}（${c.age}岁）`).join('、')}</div>` : ''}
+                        ${parentNames.length ? `<div class="item-subtitle" style="margin-top:4px;">👨‍👩‍👦 父母：${parentNames.map(escapeHtml).join('、')}</div>` : ''}
+                        ${!hasFamily ? '<div class="item-subtitle" style="margin-top:6px;">还没有建立起亲密关系，多互动几次试试</div>' : ''}
+                    </div>
+                `;
+
                 const memorialHtml = !currentCharacter.is_alive ? `
                     <div class="info-card">
                         <div class="info-card-title">墓碑</div>
@@ -3467,7 +3518,7 @@
                             </div>
                             <div class="info-item">
                                 <div class="info-label">职业</div>
-                                <div class="info-value">${escapeHtml(currentCharacter.occupation || '未知')}</div>
+                                <div class="info-value">${escapeHtml(currentCharacter.occupation || '未知')}${careerBadge(currentCharacter)}</div>
                             </div>
                             <div class="info-item">
                                 <div class="info-label">性格</div>
@@ -3529,6 +3580,7 @@
                         <div class="info-card-title">位置历史</div>
                         ${locations.length ? locations.slice(0, 8).map(item => `<div class="item-subtitle">${formatDateTime(item.timestamp)} · ${escapeHtml(item.location_name)} (${Number(item.x).toFixed(0)},${Number(item.y).toFixed(0)})</div>`).join('') : '<div class="item-subtitle">暂无位置记录</div>'}
                     </div>
+                    ${familyHtml}
                     ${memorialHtml}
                     <div class="info-card">
                         <div class="info-card-title">头像管理</div>
@@ -3858,6 +3910,28 @@
         }
 
         // ==================== 聊天功能 ====================
+        // V4.0 包B1：通讯录里的关系标记
+        function familyBadges(char) {
+            if (!char) return '';
+            const bits = [];
+            if (char.spouse_id) bits.push('💍');
+            else if (char.partner_id) bits.push('❤️');
+            else if ((char.relationship_stage || '') === 'close') bits.push('⭐');
+            if ((char.children_ids || []).length) bits.push('👶');
+            return bits.length ? `<span class="family-badge">${bits.join('')}</span>` : '';
+        }
+
+        // V4.0 包B2：职级徽章，如「程序员 · P3 高级程序员」
+        function careerBadge(char) {
+            if (!char) return '';
+            const level = Number(char.career_level || 1);
+            const title = char.career_title || '';
+            if (level <= 1 && !title) return '';
+            const p = ['P1', 'P2', 'P3', 'P4', 'P5'][Math.min(4, Math.max(0, level - 1))];
+            const same = title && title === (char.occupation || '');
+            return `<span class="career-badge">${same || !title ? p : `${p} ${escapeHtml(title)}`}</span>`;
+        }
+
         async function loadChatList() {
             const container = document.getElementById('chat-list');
             container.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
@@ -3910,7 +3984,7 @@
                         <div class="avatar" onclick="event.stopPropagation(); showCharacterDetail('${conv.character.id}')">${avatarHtml(conv.character.avatar_url, conv.character.name[0])}</div>
                         <div class="item-content">
                             <div class="item-title">
-                                ${conv.character.name}
+                                ${conv.character.name}${familyBadges(conv.character)}${careerBadge(conv.character)}
                                 ${conv.unreadCount > 0 ? `<span class="badge">${conv.unreadCount}</span>` : ''}
                             </div>
                             <div class="item-subtitle">${conv.lastMessage ? conv.lastMessage.content : '开始聊天吧'}</div>
@@ -6497,137 +6571,198 @@
             container.classList.add('active');
 
             try {
-                const charsRes = await fetch(`${API_BASE}/characters?include_dead=false`);
-                const charsResult = await charsRes.json();
-                const chars = charsResult.success ? charsResult.data : [];
+                // V4.0 包B4：一次请求拿全量图谱，不再 N² 次查询
+                const res = await fetch(`${API_BASE}/relationships/graph`);
+                const result = await res.json();
+                const graph = result.success ? result.data : { nodes: [], edges: [] };
+                const nodes = graph.nodes || [];
+                const edges = graph.edges || [];
 
-                if (chars.length === 0) {
+                if (nodes.length === 0) {
                     document.getElementById('relationships-content').innerHTML = `
                         <div class="empty-state"><div class="empty-state-text">暂无角色</div></div>`;
                     return;
                 }
 
-                // 批量查询所有角色对之间的关系
-                const pairs = [];
-                for (let i = 0; i < chars.length; i++) {
-                    for (let j = i + 1; j < chars.length; j++) {
-                        pairs.push({ from: chars[i], to: chars[j] });
-                    }
-                }
-
-                const batchSize = 10;
-                const relationships = [];
-                for (let i = 0; i < pairs.length; i += batchSize) {
-                    const batch = pairs.slice(i, i + batchSize);
-                    const results = await Promise.all(
-                        batch.map(async pair => {
-                            try {
-                                const res = await fetch(`${API_BASE}/relationships/${pair.from.id}/${pair.to.id}`);
-                                const data = await res.json();
-                                return data.success ? { ...data.data, from_name: pair.from.name, to_name: pair.to.name } : null;
-                            } catch (e) { return null; }
-                        })
-                    );
-                    relationships.push(...results.filter(Boolean));
-                }
-
-                // 按亲密度排序
-                relationships.sort((a, b) => (b.intimacy || 0) - (a.intimacy || 0));
-
-                // 分类统计
-                const categories = { '密友': [], '好友': [], '熟人': [], '认识': [], '陌生人': [] };
-                relationships.forEach(r => {
-                    const state = r.state || '陌生人';
-                    if (categories[state]) categories[state].push(r);
-                });
-
-                const stateColors = {
-                    '密友': '#ff4757',
-                    '好友': '#ff6348',
-                    '熟人': '#ffa502',
-                    '认识': '#2ed573',
-                    '陌生人': '#7f8c8d'
-                };
-
-                // 角色亲密度汇总（取每个角色最高亲密度）
-                const charMaxIntimacy = {};
-                relationships.forEach(r => {
-                    const fi = charMaxIntimacy[r.from_id] || 0;
-                    const ti = charMaxIntimacy[r.to_id] || 0;
-                    charMaxIntimacy[r.from_id] = Math.max(fi, r.intimacy || 0);
-                    charMaxIntimacy[r.to_id] = Math.max(ti, r.intimacy || 0);
-                });
-
-                // 社交达人排行
-                const socialRanking = chars.map(c => ({
-                    ...c,
-                    max_intimacy: charMaxIntimacy[c.id] || 0
-                })).sort((a, b) => b.max_intimacy - a.max_intimacy).slice(0, 5);
+                const couples = edges.filter(e => e.type === 'spouse' || e.type === 'lover').length;
+                const parentEdges = edges.filter(e => e.type === 'parent').length;
+                const friendEdges = edges.filter(e => e.type === 'friend').length;
+                const singleCount = nodes.filter(n => !n.stage_icon).length;
 
                 document.getElementById('relationships-content').innerHTML = `
-                    <div style="padding: 16px;">
+                    <div style="padding: 12px 16px 24px 16px;">
                         <div class="info-card">
-                            <div class="info-card-title">📊 关系统计</div>
+                            <div class="info-card-title">📊 关系概览</div>
                             <div class="info-grid">
                                 <div class="info-item">
-                                    <div class="info-label">角色数</div>
-                                    <div class="info-value">${chars.length}</div>
+                                    <div class="info-label">角色</div>
+                                    <div class="info-value">${nodes.length}</div>
                                 </div>
                                 <div class="info-item">
-                                    <div class="info-label">关系对数</div>
-                                    <div class="info-value">${relationships.length}</div>
+                                    <div class="info-label">情侣 / 夫妻</div>
+                                    <div class="info-value" style="color:#ff4d6d;">${couples}</div>
+                                </div>
+                                <div class="info-item">
+                                    <div class="info-label">亲子</div>
+                                    <div class="info-value" style="color:#4dabf7;">${parentEdges}</div>
+                                </div>
+                                <div class="info-item">
+                                    <div class="info-label">好友连线</div>
+                                    <div class="info-value">${friendEdges}</div>
                                 </div>
                             </div>
-                            <div style="display:flex;gap:12px;margin-top:12px;flex-wrap:wrap;">
-                                ${Object.entries(categories).map(([state, items]) => `
-                                    <div style="display:flex;align-items:center;gap:4px;">
-                                        <span style="width:10px;height:10px;border-radius:50%;background:${stateColors[state]};display:inline-block;"></span>
-                                        <span style="font-size:12px;color:var(--text-secondary);">${state} ${items.length}</span>
-                                    </div>
-                                `).join('')}
+                            <div class="item-subtitle" style="margin-top:8px;">
+                                还有 ${singleCount} 个角色暂时单身；亲密度到 35 才会画出好友连线。
+                            </div>
+                        </div>
+
+                        <div class="info-card" style="padding:8px;">
+                            <div class="info-card-title" style="padding:8px 8px 0 8px;">🕸 关系图谱</div>
+                            <div class="item-subtitle" style="padding:0 8px 8px 8px;">点节点看角色详情；线条越粗关系越近</div>
+                            <div id="rel-graph-wrap" style="width:100%;overflow:hidden;">
+                                <svg id="rel-graph-svg" style="width:100%;height:auto;display:block;"></svg>
                             </div>
                         </div>
 
                         <div class="info-card">
-                            <div class="info-card-title">🌟 社交达人 TOP 5</div>
-                            ${socialRanking.map((c, i) => `
-                                <div class="list-item" style="padding:8px 0;cursor:default;">
-                                    <div class="avatar" style="width:32px;height:32px;font-size:14px;border-radius:50%;background:${['#FFD700','#C0C0C0','#CD7F32','#667eea','#667eea'][i]};">${i + 1}</div>
-                                    <div class="item-content" style="margin-left:8px;">
-                                        <div class="item-title" style="font-size:14px;">${escapeHtml(c.name)}</div>
-                                        <div class="item-subtitle">${escapeHtml(c.occupation || '未知')}</div>
-                                    </div>
-                                    <div style="font-size:13px;color:var(--wechat-green);font-weight:600;">最高亲密度 ${c.max_intimacy}</div>
-                                </div>
-                            `).join('')}
-                        </div>
-
-                        ${Object.entries(categories).filter(([_, items]) => items.length > 0).map(([state, items]) => `
-                            <div class="info-card">
-                                <div class="info-card-title" style="display:flex;align-items:center;gap:6px;">
-                                    <span style="width:12px;height:12px;border-radius:50%;background:${stateColors[state]};display:inline-block;"></span>
-                                    ${state} (${items.length})
-                                </div>
-                                ${items.map(r => `
-                                    <div class="list-item" style="padding:8px 0;cursor:default;">
-                                        <div class="item-content">
-                                            <div class="item-title" style="font-size:14px;">${escapeHtml(r.from_name)} ↔ ${escapeHtml(r.to_name)}</div>
-                                            <div class="item-subtitle">亲密度: ${r.intimacy}</div>
-                                        </div>
-                                        <div style="width:60px;height:8px;background:#eee;border-radius:4px;overflow:hidden;">
-                                            <div style="height:100%;width:${Math.min(100, r.intimacy)}%;background:${stateColors[state]};border-radius:4px;"></div>
-                                        </div>
-                                    </div>
-                                `).join('')}
+                            <div class="info-card-title">图例</div>
+                            <div style="display:flex;flex-direction:column;gap:6px;margin-top:6px;font-size:13px;color:#555;">
+                                <div><span class="rel-dot" style="background:#ff4d6d;"></span> 夫妻 💍</div>
+                                <div><span class="rel-dot" style="background:#ff8fab;"></span> 情侣 ❤️</div>
+                                <div><span class="rel-dot" style="background:#4dabf7;"></span> 亲子 👶</div>
+                                <div><span class="rel-dot" style="background:#cccccc;"></span> 好友（亲密度 ≥ 35）</div>
                             </div>
-                        `).join('')}
-
-                        ${relationships.length === 0 ? '<div class="info-card"><div class="item-subtitle">暂无关系数据，请等待角色互动后查看</div></div>' : ''}
+                        </div>
                     </div>
                 `;
+
+                renderRelationshipGraph(nodes, edges);
             } catch (error) {
                 document.getElementById('relationships-content').innerHTML = `
                     <div class="empty-state"><div class="empty-state-text">加载失败：${error.message}</div></div>`;
+            }
+        }
+
+        // ==================== V4.0 包B4：SVG 关系图谱 ====================
+
+        const REL_EDGE_STYLE = {
+            spouse: { color: '#ff4d6d', width: 3.2 },
+            lover:  { color: '#ff8fab', width: 2.6 },
+            parent: { color: '#4dabf7', width: 2.0 },
+            friend: { color: '#cfcfcf', width: 1.2 },
+        };
+
+        function renderRelationshipGraph(nodes, edges) {
+            const svg = document.getElementById('rel-graph-svg');
+            if (!svg) return;
+            const W = 640;
+            const H = Math.max(360, Math.min(560, 120 + nodes.length * 26));
+            svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+
+            _forceLayout(nodes, edges, W, H);
+
+            const pos = {};
+            nodes.forEach(n => { pos[n.id] = n; });
+
+            const parts = [];
+            parts.push(`<rect x="0" y="0" width="${W}" height="${H}" fill="#fafbfc" rx="8"></rect>`);
+
+            edges.forEach(e => {
+                const a = pos[e.source];
+                const b = pos[e.target];
+                if (!a || !b) return;
+                const st = REL_EDGE_STYLE[e.type] || REL_EDGE_STYLE.friend;
+                parts.push(`<line x1="${a.x.toFixed(1)}" y1="${a.y.toFixed(1)}" x2="${b.x.toFixed(1)}" y2="${b.y.toFixed(1)}" stroke="${st.color}" stroke-width="${st.width}" stroke-linecap="round" opacity="0.85"></line>`);
+            });
+
+            nodes.forEach(n => {
+                const label = (n.name || '?');
+                const initial = label.slice(0, 1);
+                const r = n.stage === 'spouse' || n.stage === 'lover' ? 20 : 17;
+                const fill = n.stage === 'spouse' ? '#ffd6e0'
+                    : n.stage === 'lover' ? '#ffe3ec'
+                    : n.stage === 'close' ? '#fff4d6'
+                    : '#e8f3ff';
+                const stroke = n.stage === 'spouse' ? '#ff4d6d'
+                    : n.stage === 'lover' ? '#ff8fab'
+                    : '#7aa7d8';
+                parts.push(`<g class="rel-node" style="cursor:pointer" onclick="showCharacterDetail('${escapeHtml(n.id)}')">`);
+                parts.push(`<circle cx="${n.x.toFixed(1)}" cy="${n.y.toFixed(1)}" r="${r}" fill="${fill}" stroke="${stroke}" stroke-width="2"></circle>`);
+                parts.push(`<text x="${n.x.toFixed(1)}" y="${(n.y + 5).toFixed(1)}" text-anchor="middle" font-size="14" fill="#333">${escapeHtml(initial)}</text>`);
+                const icon = n.stage_icon || '';
+                parts.push(`<text x="${n.x.toFixed(1)}" y="${(n.y - r - 6).toFixed(1)}" text-anchor="middle" font-size="12" fill="#ff4d6d">${escapeHtml(icon)}</text>`);
+                parts.push(`<text x="${n.x.toFixed(1)}" y="${(n.y + r + 15).toFixed(1)}" text-anchor="middle" font-size="12" fill="#555">${escapeHtml(label)}</text>`);
+                parts.push(`</g>`);
+            });
+
+            svg.innerHTML = parts.join('');
+        }
+
+        function _forceLayout(nodes, edges, W, H) {
+            const n = nodes.length;
+            const idx = {};
+            nodes.forEach((node, i) => {
+                idx[node.id] = i;
+                const angle = (i / Math.max(1, n)) * Math.PI * 2;
+                node.x = W / 2 + Math.cos(angle) * Math.min(W, H) * 0.32;
+                node.y = H / 2 + Math.sin(angle) * Math.min(W, H) * 0.32;
+                node.vx = 0;
+                node.vy = 0;
+            });
+
+            const links = [];
+            edges.forEach(e => {
+                const s = idx[e.source];
+                const t = idx[e.target];
+                if (s === undefined || t === undefined || s === t) return;
+                links.push({ s, t, weight: Number(e.weight || 50) });
+            });
+
+            const iterations = 260;
+            for (let iter = 0; iter < iterations; iter++) {
+                const cool = 1 - iter / iterations;
+
+                for (let i = 0; i < n; i++) {
+                    for (let j = i + 1; j < n; j++) {
+                        const a = nodes[i];
+                        const b = nodes[j];
+                        let dx = b.x - a.x;
+                        let dy = b.y - a.y;
+                        let d2 = dx * dx + dy * dy;
+                        if (d2 < 1) { dx = (Math.random() - 0.5) * 2; dy = (Math.random() - 0.5) * 2; d2 = dx * dx + dy * dy + 1; }
+                        const d = Math.sqrt(d2);
+                        const rep = 12000 / d2;
+                        const fx = (dx / d) * rep;
+                        const fy = (dy / d) * rep;
+                        a.vx -= fx; a.vy -= fy;
+                        b.vx += fx; b.vy += fy;
+                    }
+                }
+
+                links.forEach(l => {
+                    const a = nodes[l.s];
+                    const b = nodes[l.t];
+                    let dx = b.x - a.x;
+                    let dy = b.y - a.y;
+                    const d = Math.sqrt(dx * dx + dy * dy) || 1;
+                    const target = 160 - Math.min(70, l.weight * 0.55);
+                    const f = (d - target) * 0.022;
+                    const fx = (dx / d) * f;
+                    const fy = (dy / d) * f;
+                    a.vx += fx; a.vy += fy;
+                    b.vx -= fx; b.vy -= fy;
+                });
+
+                nodes.forEach(node => {
+                    node.vx += (W / 2 - node.x) * 0.005;
+                    node.vy += (H / 2 - node.y) * 0.005;
+                    node.x += node.vx * cool * 0.55;
+                    node.y += node.vy * cool * 0.55;
+                    node.vx *= 0.45;
+                    node.vy *= 0.45;
+                    node.x = Math.max(34, Math.min(W - 34, node.x));
+                    node.y = Math.max(34, Math.min(H - 34, node.y));
+                });
             }
         }
 
