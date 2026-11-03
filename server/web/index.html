@@ -545,6 +545,155 @@
             max-height: 360px;
             object-fit: cover;
         }
+        /* V4.0 包A5：语音条 / 表情贴纸 */
+        .voice-bar {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 9px 12px;
+            background: #95ec69;
+            border-radius: 8px;
+            cursor: pointer;
+            user-select: none;
+        }
+        .message.received .voice-bar { background: #fff; }
+        .voice-waves {
+            display: inline-flex;
+            align-items: center;
+            gap: 2px;
+            height: 14px;
+        }
+        .voice-waves i {
+            display: block;
+            width: 2px;
+            height: 6px;
+            background: #2b2b2b;
+            border-radius: 1px;
+            opacity: 0.7;
+        }
+        .voice-waves i:nth-child(2) { height: 11px; }
+        .voice-waves i:nth-child(3) { height: 8px; }
+        .voice-waves i:nth-child(4) { height: 13px; }
+        .voice-dur { font-size: 13px; color: #333; }
+        .voice-transcript {
+            margin-top: 4px;
+            padding: 8px 12px;
+            background: #f7f7f7;
+            border-left: 3px solid #95ec69;
+            border-radius: 4px;
+            font-size: 13px;
+            color: #555;
+            line-height: 1.5;
+            white-space: pre-wrap;
+        }
+        .sticker-bubble {
+            font-size: 46px;
+            line-height: 1;
+            padding: 2px 4px;
+            background: transparent;
+            user-select: none;
+        }
+        .sticker-panel {
+            position: absolute;
+            bottom: 60px;
+            left: 8px;
+            right: 8px;
+            max-height: 190px;
+            overflow-y: auto;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            padding: 8px;
+            background: #fff;
+            border: 1px solid #e5e5e5;
+            border-radius: 8px;
+            box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.08);
+            z-index: 30;
+        }
+        .sticker-item {
+            width: 44px;
+            height: 44px;
+            border: none;
+            background: #f7f7f7;
+            border-radius: 8px;
+            font-size: 24px;
+            cursor: pointer;
+            line-height: 1;
+        }
+        .sticker-item:hover { background: #ececec; }
+
+        /* V4.0 包A4：话题 / 打卡 / 筛选 */
+        .topic-bar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 16px;
+            background: #fff;
+            border-bottom: 1px solid #eee;
+            overflow-x: auto;
+            white-space: nowrap;
+        }
+        .topic-bar-label {
+            font-size: 12px;
+            color: #888;
+            flex: 0 0 auto;
+        }
+        .topic-chip {
+            flex: 0 0 auto;
+            border: 1px solid #dfe6f3;
+            background: #f2f6fd;
+            color: #3a5c9a;
+            border-radius: 14px;
+            padding: 4px 12px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+        .topic-chip.loc {
+            background: #f4f9f2;
+            border-color: #d9ead3;
+            color: #4a7a3a;
+        }
+        .topic-count {
+            opacity: 0.6;
+            margin-left: 2px;
+        }
+        .moment-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 6px;
+        }
+        .moment-tag {
+            font-size: 12px;
+            color: #3a5c9a;
+            background: #f2f6fd;
+            border-radius: 4px;
+            padding: 2px 6px;
+        }
+        .moment-tag.loc {
+            color: #4a7a3a;
+            background: #f4f9f2;
+        }
+        .filter-hint {
+            padding: 8px 16px;
+            background: #fffbe6;
+            border-bottom: 1px solid #ffe58f;
+            font-size: 13px;
+            color: #8a6d3b;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .filter-hint button {
+            border: 1px solid #d4b106;
+            background: #fff;
+            color: #8a6d3b;
+            border-radius: 4px;
+            padding: 2px 10px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+
         .moment-meta {
             margin-top: 8px;
             font-size: 13px;
@@ -1591,9 +1740,11 @@
             <input type="text" class="chat-input" id="private-group-input" placeholder="在群里说点什么…（@名字 可点名）" onkeypress="if(event.key==='Enter') sendPrivateGroupMessage()">
             <button class="send-btn" onclick="sendPrivateGroupMessage()">发送</button>
             <div class="chat-menu" id="group-chat-menu">
+                <button onclick="toggleGroupStickerPanel(); toggleGroupMenu();">😀 表情</button>
                 <button onclick="showRedPacketModal(); toggleGroupMenu();">🧧 红包</button>
                 <button onclick="showTransferModal(); toggleGroupMenu();">💸 转账</button>
             </div>
+            <div class="sticker-panel" id="group-sticker-panel" style="display:none;"></div>
         </div>
     </div>
 
@@ -1615,9 +1766,11 @@
             <div class="chat-menu" id="chat-menu">
                 <button onclick="document.getElementById('chat-image-input').click(); toggleChatMenu();">🖼 图片</button>
                 <button onclick="sendVoiceMessage(); toggleChatMenu();">🎤 语音</button>
+                <button onclick="toggleStickerPanel(); toggleChatMenu();">😀 表情</button>
                 <button onclick="showRedPacketModal(); toggleChatMenu();">🧧 红包</button>
                 <button onclick="showTransferModal(); toggleChatMenu();">💸 转账</button>
             </div>
+            <div class="sticker-panel" id="sticker-panel" style="display:none;"></div>
         </div>
     </div>
 
@@ -2398,7 +2551,9 @@
                             ? `<div class="red-packet-bubble" onclick="openRedPacket('${msg.red_packet_id}')"><div class="rp-emoji">🧧</div><div class="rp-text"><div class="rp-blessing">${escapeHtml(msg.content || '恭喜发财')}</div><div class="rp-hint">点击领取红包</div></div></div>`
                             : (msg.message_type === 'transfer'
                                 ? `<div class="transfer-bubble${msg.transfer_status === 'rejected' ? ' rejected' : ''}"><div class="tf-emoji">💸</div><div><div class="tf-amount">¥${Number(msg.transfer_amount || 0).toFixed(2)}</div><div class="tf-note">${escapeHtml(msg.transfer_note || msg.content || '转账')}</div></div></div>`
-                                : escapeHtml(msg.content));
+                                : (msg.message_type === 'sticker'
+                                    ? `<div class="sticker-bubble">${(window.STICKER_MAP[msg.sticker_id] || {}).emoji || '🙂'}</div>`
+                                    : escapeHtml(msg.content)));
                         return `
                             <div class="message ${isMine ? 'sent' : 'received'}">
                                 <div class="message-content">${contentHtml}</div>
@@ -3917,10 +4072,36 @@
                 const imgSrc = getAvatarUrl(msg.image_url);
                 return `<div>${escapeHtml(msg.content || '[图片消息]')}</div><img src="${escapeHtml(imgSrc)}" style="margin-top:6px; width: 180px; max-width: 100%; border-radius: 8px;">`;
             }
-            if (msg.message_type === 'voice' && msg.voice_url) {
-                return `<div>${escapeHtml(msg.content || '[语音消息]')}</div><audio controls src="${msg.voice_url}" style="margin-top:6px; width: 180px;"></audio>`;
+            if (msg.message_type === 'voice') {
+                if (msg.voice_url) {
+                    return `<div>${escapeHtml(msg.content || '[语音消息]')}</div><audio controls src="${msg.voice_url}" style="margin-top:6px; width: 180px;"></audio>`;
+                }
+                // V4.0 包A5：无音频文件的语音条，宽度随时长增长，点击展开转写
+                const dur = Math.max(1, Math.min(30, Number(msg.voice_duration || 3)));
+                const width = 70 + Math.min(dur, 30) * 4;
+                const text = msg.voice_text || msg.content || '（语音）';
+                const key = `voice-${msg.id}`;
+                return `<div class="voice-bar" style="width:${width}px" data-expanded="0"
+                             onclick="toggleVoiceTranscript(this)">
+                            <span class="voice-waves">${'<i></i>'.repeat(4)}</span>
+                            <span class="voice-dur">${dur}"</span>
+                        </div>
+                        <div class="voice-transcript" style="display:none">${escapeHtml(text)}</div>`;
+            }
+            if (msg.message_type === 'sticker') {
+                const st = (window.STICKER_MAP || {})[msg.sticker_id];
+                const emoji = st ? st.emoji : '🙂';
+                return `<div class="sticker-bubble" title="${escapeHtml(msg.content || '')}">${emoji}</div>`;
             }
             return escapeHtml(msg.content || '');
+        }
+
+        function toggleVoiceTranscript(el) {
+            const t = el.nextElementSibling;
+            if (!t) return;
+            const shown = t.style.display !== 'none';
+            t.style.display = shown ? 'none' : 'block';
+            el.dataset.expanded = shown ? '0' : '1';
         }
 
         async function uploadChatImageFile(file) {
@@ -3967,9 +4148,116 @@
 
         async function sendVoiceMessage() {
             if (!currentConversation) return;
-            const voiceUrl = prompt('请输入语音URL');
-            if (!voiceUrl) return;
-            await sendMediaMessage('voice', voiceUrl);
+            const text = prompt('按下说话（这里模拟语音转文字，最长 30 秒）');
+            if (!text || !text.trim()) return;
+            try {
+                const resp = await fetch(`${API_BASE}/messages/send`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        conversation_id: currentConversation,
+                        content: text.trim(),
+                        message_type: 'voice',
+                    })
+                });
+                const result = await resp.json();
+                if (!result.success) throw new Error(result.detail || '发送失败');
+                if (typeof loadMessages === 'function') await loadMessages(currentConversation);
+                setTimeout(() => { if (currentConversation) loadMessages(currentConversation); }, 4500);
+            } catch (e) {
+                showToast('发送失败：' + e.message);
+            }
+        }
+
+        // ==================== V4.0 包A5：内置表情包 ====================
+        window.STICKERS = [];
+        window.STICKER_MAP = {};
+
+        async function loadStickers() {
+            try {
+                const resp = await fetch(`${API_BASE}/stickers`);
+                const result = await resp.json();
+                if (result.success) {
+                    window.STICKERS = result.data || [];
+                    window.STICKER_MAP = {};
+                    window.STICKERS.forEach(s => { window.STICKER_MAP[s.id] = s; });
+                }
+            } catch (e) { /* 表情包不可用不影响主流程 */ }
+        }
+
+        function toggleStickerPanel() {
+            _toggleStickerPanelFor('sticker-panel', '');
+        }
+
+        function toggleGroupStickerPanel() {
+            _toggleStickerPanelFor('group-sticker-panel', 'group');
+        }
+
+        function _toggleStickerPanelFor(panelId, scope) {
+            const panel = document.getElementById(panelId);
+            if (!panel) return;
+            if (panel.style.display !== 'none' && panel.style.display !== '') {
+                panel.style.display = 'none';
+                return;
+            }
+            const render = () => {
+                if (!window.STICKERS.length) {
+                    panel.innerHTML = '<div style="padding:10px;font-size:12px;color:#999;">表情包加载中…</div>';
+                    return;
+                }
+                panel.innerHTML = window.STICKERS.map(s =>
+                    `<button type="button" class="sticker-item" title="${escapeHtml(s.name)}" onclick="sendSticker('${s.id}'${scope ? `, '${scope}'` : ''})">${s.emoji}</button>`
+                ).join('');
+                panel.style.display = 'flex';
+            };
+            if (!window.STICKERS.length) {
+                loadStickers().then(render);
+            }
+            render();
+        }
+
+        async function sendSticker(stickerId, scope) {
+            const inGroup = scope === 'group';
+            const panel = document.getElementById(inGroup ? 'group-sticker-panel' : 'sticker-panel');
+            if (panel) panel.style.display = 'none';
+
+            if (inGroup) {
+                if (!currentPrivateGroup) return;
+                try {
+                    const resp = await fetch(`${API_BASE}/groups/private/${currentPrivateGroup.id}/send`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ content: stickerId, message_type: 'sticker' })
+                    });
+                    const result = await resp.json();
+                    if (!result.success) throw new Error(result.detail || '发送失败');
+                    await refreshPrivateGroupMessages();
+                } catch (e) {
+                    showToast('发送失败：' + e.message);
+                }
+                return;
+            }
+
+            if (!currentConversation) {
+                showToast('请先打开聊天');
+                return;
+            }
+            try {
+                const resp = await fetch(`${API_BASE}/messages/send`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        conversation_id: currentConversation,
+                        content: stickerId,
+                        message_type: 'sticker',
+                    })
+                });
+                const result = await resp.json();
+                if (!result.success) throw new Error(result.detail || '发送失败');
+                if (typeof loadMessages === 'function') await loadMessages(currentConversation);
+            } catch (e) {
+                showToast('发送失败：' + e.message);
+            }
         }
 
         async function sendMediaMessage(type, mediaUrl) {
@@ -4422,14 +4710,40 @@
                         }
                     }
                 } catch (e) { /* 忽略 */ }
+                const mf = window.momentFilter || {};
+                const mq = [];
+                if (mf.topic) mq.push(`topic=${encodeURIComponent(mf.topic)}`);
+                if (mf.location) mq.push(`location=${encodeURIComponent(mf.location)}`);
+                const momentsBase = `${API_BASE}/moments`;
+                const momentsUrl = mq.length ? `${momentsBase}?${mq.join('&')}` : momentsBase;
                 const [momentsResp, memorialResp] = await Promise.all([
-                    fetch(`${API_BASE}/moments`),
+                    fetch(momentsUrl),
                     fetch(`${API_BASE}/memorials`)
                 ]);
                 const momentsResult = await momentsResp.json();
                 const memorialResult = await memorialResp.json();
                 const moments = momentsResult.success ? (momentsResult.data || []) : [];
                 const memorials = memorialResult.success ? (memorialResult.data || []) : [];
+
+                // V4.0 包A4：从已加载的动态本地聚合话题与打卡地标
+                const topicCount = {};
+                const locCount = {};
+                moments.forEach(m => {
+                    (m.topics || []).forEach(t => { topicCount[t] = (topicCount[t] || 0) + 1; });
+                    if (m.location) locCount[m.location] = (locCount[m.location] || 0) + 1;
+                });
+                const topTopics = Object.entries(topicCount).sort((a, b) => b[1] - a[1]).slice(0, 10);
+                const topLocs = Object.entries(locCount).sort((a, b) => b[1] - a[1]).slice(0, 6);
+                const topicBarHtml = topTopics.length ? `
+                    <div class="topic-bar">
+                        <span class="topic-bar-label">🔥 话题</span>
+                        ${topTopics.map(([t, n]) => `<button type="button" class="topic-chip" onclick="filterMomentsByTopic('${escapeHtml(t)}')">#${escapeHtml(t)}# <span class="topic-count">${n}</span></button>`).join('')}
+                    </div>` : '';
+                const locBarHtml = topLocs.length ? `
+                    <div class="topic-bar">
+                        <span class="topic-bar-label">📍 打卡</span>
+                        ${topLocs.map(([l, n]) => `<button type="button" class="topic-chip loc" onclick="filterMomentsByTopic('', '${escapeHtml(l)}')">${escapeHtml(l)} <span class="topic-count">${n}</span></button>`).join('')}
+                    </div>` : '';
 
                 const momentsHtml = `
                     <div class="moments-feed">
@@ -4449,8 +4763,22 @@
                             <div class="form-group" style="margin-bottom:10px;">
                                 <textarea id="user-moment-image-prompt" rows="2" placeholder="配图说明（可选，不填则用正文作提示）" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;font-size:14px;"></textarea>
                             </div>
+                            <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
+                                <select id="user-moment-visibility" style="flex:1;min-width:120px;padding:8px;border:1px solid #ddd;border-radius:4px;font-size:14px;">
+                                    <option value="public">公开（所有人可见）</option>
+                                    <option value="friends" selected>好友可见</option>
+                                    <option value="private">仅自己可见</option>
+                                </select>
+                                <input type="text" id="user-moment-location" placeholder="📍 所在位置（可选）" style="flex:1;min-width:140px;padding:8px;border:1px solid #ddd;border-radius:4px;font-size:14px;">
+                            </div>
+                            <div style="font-size:12px;color:#999;margin-bottom:8px;">
+                                支持 <b>#话题#</b> 与 <b>@好友名字</b>，被@的角色会到评论区回应
+                            </div>
                             <button class="btn btn-primary" onclick="postUserMoment()">发表</button>
                         </div>
+                        ${topicBarHtml}
+                        ${locBarHtml}
+                        ${(mf.topic || mf.location) ? `<div class="filter-hint">正在筛选：${mf.topic ? `#${escapeHtml(mf.topic)}#` : ''}${mf.location ? `📍${escapeHtml(mf.location)}` : ''} <button type="button" onclick="clearMomentFilter()">清除</button></div>` : ''}
                         ${moments.length > 0 ? moments.map(post => {
                             const authorChar = cachedCharacters.find(c => c.id === post.author_id);
                             let authorAvatarHtml;
@@ -4484,6 +4812,7 @@
                                             <img src="${escapeHtml(imgUrl)}" alt="" loading="lazy" onerror="this.src='https://picsum.photos/seed/fallback/800/600'">
                                         </div>
                                         ${post.image_prompt_file ? `<div style="margin-top:6px;"><button type="button" class="btn btn-secondary" style="font-size:12px;padding:4px 12px;border-radius:4px;" onclick='openImagePromptModal(${JSON.stringify(post.image_prompt_file)})'>🎨 绘画提示词</button></div>` : ''}
+                                        ${(post.topics || []).length || post.location ? `<div class="moment-tags">${(post.topics || []).map(t => `<span class="moment-tag">#${escapeHtml(t)}#</span>`).join('')}${post.location ? `<span class="moment-tag loc">📍 ${escapeHtml(post.location)}</span>` : ''}</div>` : ''}
                                         <div class="moment-meta">${formatTime(post.timestamp)}</div>
                                         ${likersBlock}
                                         ${commentsBlock}
@@ -4998,6 +5327,25 @@
             if (modal) modal.remove();
         }
 
+        // ==================== V4.0 包A4：话题 / 打卡筛选 ====================
+        window.momentFilter = { topic: null, location: null };
+
+        function filterMomentsByTopic(topic, location) {
+            const t = topic || null;
+            const l = location || null;
+            if (window.momentFilter.topic === t && window.momentFilter.location === l) {
+                window.momentFilter = { topic: null, location: null };
+            } else {
+                window.momentFilter = { topic: t, location: l };
+            }
+            loadMemorials();
+        }
+
+        function clearMomentFilter() {
+            window.momentFilter = { topic: null, location: null };
+            loadMemorials();
+        }
+
         async function postUserMoment() {
             try {
                 const content = document.getElementById('user-moment-content')?.value?.trim();
@@ -5008,6 +5356,8 @@
                 const imageUrl = document.getElementById('user-moment-image-url')?.value?.trim();
                 const genImg = document.getElementById('user-moment-generate-image')?.checked;
                 const imgPrompt = document.getElementById('user-moment-image-prompt')?.value?.trim();
+                const visibility = document.getElementById('user-moment-visibility')?.value || 'friends';
+                const locationVal = document.getElementById('user-moment-location')?.value?.trim();
                 const response = await fetch(`${API_BASE}/users/moments`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -5016,6 +5366,8 @@
                         image_url: imageUrl || undefined,
                         generate_image: !!genImg,
                         image_prompt: imgPrompt || undefined,
+                        visibility,
+                        location: locationVal || undefined,
                     })
                 });
                 const result = await response.json();
@@ -6345,6 +6697,7 @@
         document.addEventListener('DOMContentLoaded', () => {
             loadCharacters();
             loadLogs();
+            loadStickers();
             requestAnimationFrame(() => {
                 setTimeout(() => loadChatList(), 0);
             });

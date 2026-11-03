@@ -27,6 +27,9 @@ from services.ai_service import (
 from services.memory_service import sync_private_groups
 from services.heartbeat_service import append_private_group_exchange
 from services.character_service import get_residential_landmarks
+from services.message_style import (
+    should_send_voice, estimate_voice_duration, pick_sticker_for, get_sticker,
+)
 
 router = APIRouter()
 
@@ -42,9 +45,14 @@ async def _background_ai_reply(conversation_id: str, req_data: Dict[str, Any]):
         return
 
     user_text = request.content or ""
-    reply_prompt = user_text if user_text else (
-        "用户发送了图片消息" if request.message_type == "image" else "用户发送了语音消息"
-    )
+    if request.message_type == "sticker":
+        reply_prompt = f"用户发了一个表情：{user_text}"
+    elif request.message_type == "voice":
+        reply_prompt = getattr(request, "voice_text", None) or user_text or "用户发来一条语音"
+    else:
+        reply_prompt = user_text if user_text else (
+            "用户发送了图片消息" if request.message_type == "image" else "用户发送了语音消息"
+        )
     reply_content = await generate_ai_reply(character, reply_prompt, conversation_id)
     if not reply_content:
         reply_content = "……"
@@ -67,8 +75,33 @@ async def _background_ai_reply(conversation_id: str, req_data: Dict[str, Any]):
         message_type="image" if portrait_url else "text",
         image_url=portrait_url,
     )
+
+    # V4.0 包A5：按心情决定这条回复用文字 / 语音条发出
+    if not portrait_url and request.message_type == "text":
+        mood = getattr(character, "mood", "calm") or "calm"
+        if should_send_voice(reply_content, mood):
+            ai_message.message_type = "voice"
+            ai_message.voice_text = reply_content
+            ai_message.voice_duration = estimate_voice_duration(reply_content)
+            ai_message.content = "[语音]"
+
     messages = get_messages()
     messages.append(ai_message)
+
+    # 短促有情绪的回复，追加一条内置表情
+    if not portrait_url:
+        mood = getattr(character, "mood", "calm") or "calm"
+        sticker_id = pick_sticker_for(reply_content, mood)
+        if sticker_id:
+            messages.append(ChatMessage(
+                conversation_id=conversation_id,
+                sender_id=character.id,
+                content=get_sticker(sticker_id)["name"],
+                is_from_user=False,
+                message_type="sticker",
+                sticker_id=sticker_id,
+            ))
+
     save_messages(messages)
     save_characters(characters)
     _add_log(character.name, "对话", f"回复：\"{reply_content[:30]}...\"")
@@ -93,6 +126,13 @@ def _add_log(character_name: str, action_type: str, description: str):
         save_logs(logs)
     except Exception:
         pass
+
+
+@router.get("/api/stickers")
+async def list_stickers():
+    """V4.0 包A5：内置表情包清单（纯本地，不依赖外网）"""
+    from services.message_style import STICKERS
+    return {"success": True, "data": STICKERS}
 
 
 @router.get("/api/messages/{conversation_id}")
@@ -141,7 +181,21 @@ async def send_message(request: SendMessageRequest, background_tasks: Background
     if request.message_type == "image" and not request.image_url:
         raise HTTPException(status_code=400, detail="image_url is required for image message")
     if request.message_type == "voice" and not request.voice_url:
-        raise HTTPException(status_code=400, detail="voice_url is required for voice message")
+        # V4.0 包A5：前端语音条不发真实音频，允许用 voice_text/时长表达
+        if not user_text or user_text.startswith("["):
+            raise HTTPException(status_code=400, detail="voice_url is required for voice message")
+
+    # V4.0 包A5：用户发表情贴纸，content 传的就是 sticker_id
+    sticker_id = None
+    sticker_duration = None
+    if request.message_type == "sticker":
+        sticker = get_sticker(user_text)
+        if not sticker:
+            raise HTTPException(status_code=400, detail="未知的表情")
+        sticker_id = sticker["id"]
+        user_text = sticker["name"]
+    elif request.message_type == "voice" and not request.voice_url:
+        sticker_duration = estimate_voice_duration(user_text)
 
     user_message = ChatMessage(
         conversation_id=request.conversation_id,
@@ -150,6 +204,9 @@ async def send_message(request: SendMessageRequest, background_tasks: Background
         message_type=request.message_type,
         image_url=request.image_url,
         voice_url=request.voice_url,
+        voice_text=user_text if (request.message_type == "voice" and not request.voice_url) else None,
+        voice_duration=sticker_duration,
+        sticker_id=sticker_id,
         is_from_user=True,
     )
     messages.append(user_message)
@@ -290,17 +347,30 @@ async def send_private_group_message(
         raise HTTPException(status_code=404, detail="Private group not found")
 
     conv_id = f"group:{group.id}"
+    # V4.0 包A5：群里也能发表情贴纸
+    content = request.content
+    sticker_id = None
+    if (request.message_type or "text") == "sticker":
+        sticker = get_sticker(content)
+        if not sticker:
+            raise HTTPException(status_code=400, detail="未知的表情")
+        sticker_id = sticker["id"]
+        content = sticker["name"]
+
     user_message = ChatMessage(
         conversation_id=conv_id,
         sender_id="user",
-        content=request.content,
+        content=content,
         is_from_user=True,
+        message_type=request.message_type or "text",
+        sticker_id=sticker_id,
     )
     messages = get_messages()
     messages.append(user_message)
     save_messages(messages)
 
-    background_tasks.add_task(_background_group_reply, group, request.content)
+    if sticker_id is None:
+        background_tasks.add_task(_background_group_reply, group, request.content)
     return {"success": True, "data": {"message": user_message.model_dump(), "pending_reply": True}}
 
 

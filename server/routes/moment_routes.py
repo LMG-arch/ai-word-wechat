@@ -1,5 +1,5 @@
 """AIWeChat moment routes"""
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, BackgroundTasks
 from typing import Optional, List, Dict, Any
 import time
 import os
@@ -17,6 +17,10 @@ from services.moment_service import (
 from services.ai_service import (
     generate_moment_content, generate_moment_image_plan,
     generate_avatar, generate_auto_comment_text,
+)
+from services.moment_extras import (
+    extract_topics, extract_mention_names, resolve_mentioned_ids,
+    topic_leaderboard, location_leaderboard, normalize_topic, mentioned_reply_text,
 )
 from services.memory_service import store_memory, MemoryType, can_view_moment, apply_relationship_interaction, sync_private_groups
 
@@ -44,17 +48,45 @@ def _add_log(character_name: str, action_type: str, description: str):
 
 
 @router.get("/api/moments")
-async def list_moments(viewer_id: Optional[str] = None, limit: int = 50):
-    """朋友圈时间线（按时间倒序，按亲密度过滤可见性）"""
+async def list_moments(
+    viewer_id: Optional[str] = None,
+    limit: int = 50,
+    topic: Optional[str] = None,
+    location: Optional[str] = None,
+):
+    """朋友圈时间线（按时间倒序，按亲密度过滤可见性）
+
+    V4.0 包A4：支持 ?topic=话题 与 ?location=地标 过滤。
+    """
     moments = get_moments()
     moments.sort(key=lambda m: m.timestamp, reverse=True)
     visible = [m for m in moments if can_view_moment(viewer_id, m)]
+    if topic:
+        key = normalize_topic(topic)
+        visible = [m for m in visible if key in (m.topics or [])]
+    if location:
+        key = location.strip()
+        visible = [m for m in visible if (m.location or "") == key]
     return {"success": True, "data": [m.model_dump() for m in visible[:max(1, min(limit, 200))]]}
 
 
+@router.get("/api/moments/topics")
+async def list_moment_topics(viewer_id: Optional[str] = None, limit: int = 20):
+    """V4.0 包A4：话题聚合榜"""
+    moments = [m for m in get_moments() if can_view_moment(viewer_id, m)]
+    return {"success": True, "data": topic_leaderboard(moments, limit=limit)}
+
+
+@router.get("/api/moments/locations")
+async def list_moment_locations(viewer_id: Optional[str] = None, limit: int = 20):
+    """V4.0 包A4：位置签到榜"""
+    moments = [m for m in get_moments() if can_view_moment(viewer_id, m)]
+    return {"success": True, "data": location_leaderboard(moments, limit=limit)}
+
+
 @router.post("/api/users/moments")
-async def create_user_moment(body: UserCreateMomentRequest):
-    """用户发布朋友圈"""
+async def create_user_moment(body: UserCreateMomentRequest, background_tasks: BackgroundTasks):
+    """用户发布朋友圈（V4.0：支持话题 / 位置签到 / @好友 / 可见范围）"""
     content = (body.content or "").strip()
     if not content:
         raise HTTPException(status_code=400, detail="content is required")
@@ -72,16 +104,64 @@ async def create_user_moment(body: UserCreateMomentRequest):
             prompt_file = gen.get("data", {}).get("prompt_file")
     if not image_url:
         image_url = fallback_moment_image_url(f"user:{content[:120]}")
+
+    characters = get_characters()
+    topics = extract_topics(content)
+    names = extract_mention_names(content)
+    mentioned_ids = resolve_mentioned_ids(names, characters, body.mention_names)
+    mentioned_names = [n for n in names if n not in body.mention_names]
+
+    visibility = (body.visibility or "friends").lower()
+    if visibility not in ("public", "friends", "private"):
+        visibility = "friends"
+
     moments = get_moments()
     post = MomentPost(
         author_id="user", author_name="用户", content=content,
         image_url=image_url, image_prompt_file=prompt_file,
         trigger_type="user", mood="active", visible_min_intimacy=0,
+        visibility=visibility,
+        location=(body.location or "").strip() or None,
+        topics=topics,
+        mentioned_ids=mentioned_ids,
     )
     moments.append(post)
     save_moments(moments)
     _add_log("用户", "moment_post", f"发布朋友圈：{content[:20]}")
+
+    if mentioned_ids:
+        background_tasks.add_task(_mentioned_characters_respond, post.id, mentioned_ids)
+
     return {"success": True, "data": post.model_dump()}
+
+
+def _mentioned_characters_respond(moment_id: str, mentioned_ids: List[str]):
+    """被 @ 的角色稍后到评论区出现（模板化，不消耗 token）。"""
+    try:
+        moments = get_moments()
+        post = next((m for m in moments if m.id == moment_id), None)
+        if not post:
+            return
+        characters = {c.id: c for c in get_characters()}
+        from models import MomentComment
+        added = False
+        for cid in mentioned_ids:
+            char = characters.get(cid)
+            if not char:
+                continue
+            if any(c.author_id == cid for c in post.comments):
+                continue
+            post.comments.append(MomentComment(
+                moment_id=post.id, author_id=char.id, author_name=char.name,
+                content=mentioned_reply_text(post.author_name, char.name),
+            ))
+            apply_relationship_interaction(char.id, post.author_id, "comment")
+            added = True
+        if added:
+            save_moments(moments)
+            sync_private_groups()
+    except Exception:
+        pass
 
 
 @router.post("/api/moments/{moment_id}/like")

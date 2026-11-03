@@ -104,6 +104,16 @@ class Character(BaseModel):
     experience_skills: Dict[str, Any] = Field(default_factory=dict)
     llm_model_id: Optional[str] = None
     moment_frequency: str = "normal"
+    # V4.0：当前心境（happy/sad/angry/anxious/excited/calm/tired）
+    mood: str = "calm"
+    # V4.0 包B1：关系阶段与家庭
+    relationship_stage: str = "stranger"   # stranger/friend/close/lover/spouse
+    partner_id: Optional[str] = None
+    spouse_id: Optional[str] = None
+    children_ids: List[str] = Field(default_factory=list)
+    # V4.0 包B2：职业等级（1 最低）
+    career_level: int = 1
+    career_title: str = ""
 
     def get_age_stage(self) -> str:
         return get_age_stage_from_age(self.age)
@@ -129,6 +139,10 @@ class ChatMessage(BaseModel):
     transfer_amount: Optional[float] = None
     transfer_note: Optional[str] = None
     transfer_status: Optional[str] = None  # accepted / rejected / pending
+    # V4.0 包A5：语音条转写与时长、表情贴纸 id
+    voice_duration: Optional[int] = None
+    voice_text: Optional[str] = None
+    sticker_id: Optional[str] = None
     timestamp: int = Field(default_factory=lambda: int(time.time() * 1000))
     is_read: bool = False
     is_from_user: bool = True
@@ -189,6 +203,10 @@ class MomentPost(BaseModel):
     visible_min_intimacy: int = 21
     liked_by: List[str] = Field(default_factory=list)
     comments: List[MomentComment] = Field(default_factory=list)
+    # V4.0 包A4：话题标签、位置签到、被@的角色
+    topics: List[str] = Field(default_factory=list)
+    location: Optional[str] = None
+    mentioned_ids: List[str] = Field(default_factory=list)
 
 
 class ReflectionReport(BaseModel):
@@ -506,6 +524,10 @@ class UserCreateMomentRequest(BaseModel):
     image_url: Optional[str] = None
     generate_image: bool = False
     image_prompt: Optional[str] = None
+    # V4.0 包A4
+    visibility: str = "friends"          # public / friends / private
+    location: Optional[str] = None
+    mention_names: List[str] = Field(default_factory=list)
 
 
 class CreateTaskRequest(BaseModel):
@@ -566,6 +588,7 @@ class SimulatePrivateGroupChatRequest(BaseModel):
 class SendPrivateGroupMessageRequest(BaseModel):
     """用户在私人群聊里发言。content 支持 @角色名 点名。"""
     content: str = Field(min_length=1, max_length=1000)
+    message_type: str = Field(default="text", max_length=20)
 
 
 class SendRedPacketRequest(BaseModel):
