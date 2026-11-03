@@ -264,6 +264,27 @@ async def store_memory(
     return memory
 
 
+# 后台「发后不理」记忆写入任务句柄集合：防止任务被 GC 提前回收
+_BG_MEMORY_TASKS: set = set()
+
+
+def schedule_store_memory(**kwargs) -> None:
+    """在当前事件循环里以「发后不理」方式写记忆，不阻塞调用方（如发朋友圈）。
+
+    - 若当前没有运行中的事件循环（同步上下文），静默跳过，不抛错；
+    - 任务句柄加入全局集合，完成后自动移除，避免 "Task was destroyed but it is pending"。
+    """
+    import asyncio
+
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        return
+    task = loop.create_task(store_memory(**kwargs))
+    _BG_MEMORY_TASKS.add(task)
+    task.add_done_callback(_BG_MEMORY_TASKS.discard)
+
+
 # =====================================================================
 #  关系亲密度
 # =====================================================================

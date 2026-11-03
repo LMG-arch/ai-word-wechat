@@ -100,6 +100,7 @@ LOCATION_HISTORY_FILE = DATA_FILES["location_history"]
 LLM_USAGE_FILE = DATA_FILES["llm_usage"]
 WORLD_MAP_FILE = DATA_FILES["world_map"]
 PRIVATE_GROUPS_FILE = os.path.join(DATA_DIR, "private_groups.json")
+RED_PACKETS_FILE = os.path.join(DATA_DIR, "red_packets.json")
 CHARACTER_HISTORY_FILE = DATA_FILES["character_histories"]
 
 # === 时间常量 ===

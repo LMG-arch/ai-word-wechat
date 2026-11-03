@@ -77,7 +77,7 @@ async def create_memory(request: CreateMemoryRequest):
     except ValueError:
         mem_type = MemoryType.EVENT
     
-    memory = store_memory(
+    memory = await store_memory(
         character_id=request.character_id,
         content=request.content,
         memory_type=mem_type,

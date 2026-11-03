@@ -125,9 +125,42 @@ class ChatMessage(BaseModel):
     message_type: str = "text"
     image_url: Optional[str] = None
     voice_url: Optional[str] = None
+    red_packet_id: Optional[str] = None
+    transfer_amount: Optional[float] = None
+    transfer_note: Optional[str] = None
+    transfer_status: Optional[str] = None  # accepted / rejected / pending
     timestamp: int = Field(default_factory=lambda: int(time.time() * 1000))
     is_read: bool = False
     is_from_user: bool = True
+
+
+class RedPacketClaim(BaseModel):
+    """红包领取记录。"""
+    actor_id: str           # "user" 或 角色 id
+    actor_name: str
+    amount: float
+    claimed_at: int = Field(default_factory=lambda: int(time.time() * 1000))
+
+
+class RedPacket(BaseModel):
+    """红包（拼手气）。"""
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    conversation_id: str
+    sender_id: str
+    sender_name: str
+    blessing: str = "恭喜发财，大吉大利"
+    total_amount: float
+    count: int
+    claims: List[RedPacketClaim] = Field(default_factory=list)
+    created_at: int = Field(default_factory=lambda: int(time.time() * 1000))
+
+    @property
+    def remaining(self) -> float:
+        return round(self.total_amount - sum(c.amount for c in self.claims), 2)
+
+    @property
+    def is_finished(self) -> bool:
+        return len(self.claims) >= self.count
 
 
 class MomentComment(BaseModel):
@@ -528,6 +561,32 @@ class AutoTakeTaskRequest(BaseModel):
 
 class SimulatePrivateGroupChatRequest(BaseModel):
     topic: Optional[str] = None
+
+
+class SendPrivateGroupMessageRequest(BaseModel):
+    """用户在私人群聊里发言。content 支持 @角色名 点名。"""
+    content: str = Field(min_length=1, max_length=1000)
+
+
+class SendRedPacketRequest(BaseModel):
+    """发红包请求。"""
+    conversation_id: str
+    total_amount: float = Field(gt=0, le=100000)
+    count: int = Field(ge=1, le=100)
+    blessing: str = Field(default="恭喜发财，大吉大利", max_length=50)
+
+
+class ClaimRedPacketRequest(BaseModel):
+    """抢红包请求。actor_id 为 "user" 或角色 id（默认用户本人）。"""
+    actor_id: str = "user"
+    actor_name: str = "我"
+
+
+class SendTransferRequest(BaseModel):
+    """用户向角色转账。"""
+    conversation_id: str
+    amount: float = Field(gt=0, le=100000)
+    note: str = Field(default="", max_length=50)
 
 
 class RelationshipInteractRequest(BaseModel):

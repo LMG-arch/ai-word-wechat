@@ -18,7 +18,7 @@ from models import (
     Character, ChatMessage, MomentPost, TaskItem, Company, EconomyLog,
     CharacterSchedule, LocationRecord, LogEntry, Settings, ApiConfig, UserProfile,
     PrivateGroupChat, CharacterHistoryEntry,
-    LlmUsageRecord, ImageUsageRecord
+    LlmUsageRecord, ImageUsageRecord, RedPacket,
 )
 from config import (
     DATA_DIR, AVATARS_DIR,
@@ -26,7 +26,7 @@ from config import (
     SETTINGS_FILE, LOGS_FILE, TASKS_FILE, COMPANIES_FILE,
     ECONOMY_LOGS_FILE, LOCATION_HISTORY_FILE, CHARACTER_HISTORY_FILE,
     API_CONFIGS_FILE, LLM_USAGE_FILE, WORLD_MAP_FILE,
-    PRIVATE_GROUPS_FILE, WORLD_BIND_KEYS,
+    PRIVATE_GROUPS_FILE, RED_PACKETS_FILE, WORLD_BIND_KEYS,
     DEFAULT_WORLD_MAP, AVATAR_REFRESH_INTERVAL_MS, SIGNATURE_REFRESH_INTERVAL_MS
 )
 
@@ -281,6 +281,17 @@ def get_private_groups() -> List[PrivateGroupChat]:
 
 def save_private_groups(groups: List[PrivateGroupChat]):
     save_json(PRIVATE_GROUPS_FILE, [item.model_dump() for item in groups])
+
+
+# ==================== 红包 ====================
+
+def get_red_packets() -> List[RedPacket]:
+    data = load_json(RED_PACKETS_FILE, [])
+    return [RedPacket(**item) for item in data]
+
+
+def save_red_packets(packets: List[RedPacket]):
+    save_json(RED_PACKETS_FILE, [item.model_dump() for item in packets])
 
 
 # ==================== 朋友圈 ====================

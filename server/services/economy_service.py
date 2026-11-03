@@ -24,6 +24,43 @@ def economic_stress_multiplier(character) -> float:
     return 1.0
 
 
+def split_red_packet(total_amount: float, count: int) -> List[float]:
+    """二倍均值法拆分拼手气红包。
+
+    保证：总额精确等于 total_amount（分位精度）、每人 ≥ 0.01 元。
+    """
+    count = max(1, int(count))
+    total_cents = int(round(float(total_amount) * 100))
+    if total_cents <= 0:
+        return [0.0] * count
+    # 金额不足以让每人拿到 1 分时，按实际可分数分发
+    if total_cents < count:
+        count = total_cents
+
+    result: List[int] = []
+    remain = total_cents
+    for i in range(count - 1):
+        remain_people = count - i
+        upper = max(1, min(remain - (remain_people - 1), int(remain / remain_people * 2)))
+        amount = random.randint(1, upper)
+        result.append(amount)
+        remain -= amount
+    result.append(remain)
+    return [c / 100 for c in result]
+
+
+def next_claim_amount(remaining_cents: int, remaining_people: int) -> int:
+    """实时计算「当前这个人」能抢到的冠分（二倍均值法的在线版本）。
+
+    remaining_cents：剩余总金额（分）；remaining_people：还剩几人未抢（含本次）。
+    返回本次应发的分。
+    """
+    if remaining_people <= 1:
+        return max(0, remaining_cents)
+    upper = max(1, min(remaining_cents - (remaining_people - 1), int(remaining_cents / remaining_people * 2)))
+    return random.randint(1, max(1, upper))
+
+
 def run_daily_economy(world_elapsed_ms: int):
     """日常经济结算"""
     from storage import (

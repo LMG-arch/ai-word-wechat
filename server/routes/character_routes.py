@@ -30,12 +30,14 @@ from services.character_service import (
 )
 from services.ai_service import (
     generate_moment_content, generate_moment_image_plan,
-    generate_avatar as ai_generate_avatar,
+    generate_avatar_from_request,
     save_image_prompt_md,
     record_llm_usage, generate_new_signature, generate_auto_comment_text,
     openai_choice_text,
 )
-from services.memory_service import store_memory, get_character_memories, MemoryType, build_memory_context
+from services.memory_service import (
+    schedule_store_memory, get_character_memories, MemoryType, build_memory_context
+)
 from services.moment_service import fallback_moment_image_url
 
 router = APIRouter()
@@ -396,7 +398,7 @@ async def generate_character(request: GenerateCharacterRequest):
 
 @router.post("/api/characters/generate-avatar")
 async def generate_avatar_route(request: GenerateAvatarRequest):
-    result = await ai_generate_avatar(request)
+    result = await generate_avatar_from_request(request)
     return result
 
 
@@ -414,7 +416,7 @@ async def generate_character_moment(character_id: str, request: GenerateMomentRe
         avatar_prompt = plan.get("image_prompt") or ""
         if kind not in ("selfie", "scene", "portrait"):
             kind = "scene"
-        generated = await ai_generate_avatar(GenerateAvatarRequest(avatar_prompt=avatar_prompt, style="realistic", image_kind=kind))
+        generated = await generate_avatar_from_request(GenerateAvatarRequest(avatar_prompt=avatar_prompt, style="realistic", image_kind=kind))
         if generated.get("success"):
             image_url = generated.get("data", {}).get("image_url")
     if request.with_image and not image_url:
@@ -424,7 +426,7 @@ async def generate_character_moment(character_id: str, request: GenerateMomentRe
     moments.append(post)
     save_moments(moments)
     _add_log(character.name, "moment_post", f"发布朋友圈：{content[:20]}")
-    store_memory(character_id=character.id, content=f"我发布了一条朋友圈：{content}", memory_type=MemoryType.EVENT, importance=0.65, related_entities=["朋友圈", request.trigger_type])
+    schedule_store_memory(character_id=character.id, content=f"我发布了一条朋友圈：{content}", memory_type=MemoryType.EVENT, importance=0.65, related_entities=["朋友圈", request.trigger_type])
     return {"success": True, "data": post.model_dump()}
 
 

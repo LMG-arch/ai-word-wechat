@@ -382,6 +382,72 @@
             background: var(--wechat-green-dark);
         }
 
+        /* 红包气泡 */
+        .red-packet-bubble {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 190px;
+            max-width: 240px;
+            padding: 12px 14px;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #fa9d3b, #f56c2d);
+            color: #fff;
+            cursor: pointer;
+            user-select: none;
+        }
+        .red-packet-bubble:active { filter: brightness(0.94); }
+        .red-packet-bubble .rp-emoji { font-size: 30px; line-height: 1; }
+        .red-packet-bubble .rp-blessing { font-size: 14px; font-weight: 600; }
+        .red-packet-bubble .rp-hint { font-size: 12px; opacity: 0.85; margin-top: 3px; }
+        .red-packet-bubble.opened { opacity: 0.55; }
+
+        /* 转账气泡 */
+        .transfer-bubble {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 190px;
+            max-width: 240px;
+            padding: 12px 14px;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #faae3b, #f28b1f);
+            color: #fff;
+        }
+        .transfer-bubble .tf-emoji { font-size: 28px; line-height: 1; }
+        .transfer-bubble .tf-amount { font-size: 16px; font-weight: 700; }
+        .transfer-bubble .tf-note { font-size: 12px; opacity: 0.9; margin-top: 2px; }
+        .transfer-bubble.rejected { background: linear-gradient(135deg, #b9b9b9, #9a9a9a); }
+
+        /* 聊天「+」菜单 */
+        .chat-menu {
+            display: none;
+            position: absolute;
+            bottom: 58px;
+            left: 12px;
+            background: var(--card-bg);
+            border: 1px solid var(--divider);
+            border-radius: 10px;
+            padding: 6px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.16);
+            flex-direction: column;
+            gap: 2px;
+            z-index: 60;
+        }
+        .chat-menu.show { display: flex; }
+        .chat-menu button {
+            background: transparent;
+            border: none;
+            padding: 9px 18px;
+            text-align: left;
+            font-size: 14px;
+            cursor: pointer;
+            border-radius: 6px;
+            white-space: nowrap;
+            color: var(--text-main);
+        }
+        .chat-menu button:hover { background: var(--divider); }
+
         /* 底部导航 */
         .bottom-nav {
             background: var(--card-bg);
@@ -1516,9 +1582,18 @@
             <div class="detail-name" id="private-group-title">私人群聊</div>
         </div>
         <div class="chat-messages" id="private-group-messages"></div>
-        <div class="action-bar" style="flex-wrap:wrap;gap:8px;align-items:center;padding:8px 12px;">
+        <div class="action-bar" style="flex-wrap:wrap;gap:8px;align-items:center;padding:6px 12px;">
             <button type="button" class="btn btn-secondary" onclick="refreshPrivateGroupMessages()">刷新</button>
-            <span style="font-size:12px;color:var(--text-hint);">仅旁观两名角色对话，不可发言或删群；亲密度回落至阈值以下时群会自动解散。</span>
+            <span id="private-group-hint" style="font-size:12px;color:var(--text-hint);">@名字 可单独点名，不写则随机有人接话</span>
+        </div>
+        <div class="chat-input-area" style="position:relative;">
+            <button type="button" class="send-btn" style="background:#666;padding:10px 14px;" onclick="toggleGroupMenu()">+</button>
+            <input type="text" class="chat-input" id="private-group-input" placeholder="在群里说点什么…（@名字 可点名）" onkeypress="if(event.key==='Enter') sendPrivateGroupMessage()">
+            <button class="send-btn" onclick="sendPrivateGroupMessage()">发送</button>
+            <div class="chat-menu" id="group-chat-menu">
+                <button onclick="showRedPacketModal(); toggleGroupMenu();">🧧 红包</button>
+                <button onclick="showTransferModal(); toggleGroupMenu();">💸 转账</button>
+            </div>
         </div>
     </div>
 
@@ -1532,12 +1607,17 @@
         <div class="chat-messages" id="chat-messages-container">
             <!-- 动态生成 -->
         </div>
-        <div class="chat-input-area">
+        <div class="chat-input-area" style="position:relative;">
             <input type="file" id="chat-image-input" accept="image/*" style="display:none" onchange="onChatImageFileSelected(event)">
+            <button type="button" class="send-btn" style="background:#666;padding:10px 14px;" onclick="toggleChatMenu()">+</button>
             <input type="text" class="chat-input" id="chat-input" placeholder="输入消息..." onkeypress="if(event.key==='Enter') sendChatMessage()">
-            <button type="button" class="send-btn" style="background:#999;" onclick="sendImageMessage()">图</button>
-            <button class="send-btn" style="background:#888;" onclick="sendVoiceMessage()">语</button>
             <button class="send-btn" onclick="sendChatMessage()">发送</button>
+            <div class="chat-menu" id="chat-menu">
+                <button onclick="document.getElementById('chat-image-input').click(); toggleChatMenu();">🖼 图片</button>
+                <button onclick="sendVoiceMessage(); toggleChatMenu();">🎤 语音</button>
+                <button onclick="showRedPacketModal(); toggleChatMenu();">🧧 红包</button>
+                <button onclick="showTransferModal(); toggleChatMenu();">💸 转账</button>
+            </div>
         </div>
     </div>
 
@@ -1551,6 +1631,58 @@
     </div>
 
     <!-- 添加角色模态框 -->
+    <!-- 红包弹窗 -->
+    <div class="modal-overlay" id="red-packet-modal">
+        <div class="modal" style="max-width: 360px;">
+            <div class="modal-header">
+                <span class="modal-title">🧧 发红包</span>
+                <button class="modal-close" onclick="closeRedPacketModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div style="margin-bottom:10px;">
+                    <label style="font-size:13px;color:var(--text-hint);">总金额（元）</label>
+                    <input type="number" id="rp-amount" class="chat-input" style="width:100%;margin-top:4px;" min="0.01" step="0.01" value="10">
+                </div>
+                <div style="margin-bottom:10px;">
+                    <label style="font-size:13px;color:var(--text-hint);">红包个数</label>
+                    <input type="number" id="rp-count" class="chat-input" style="width:100%;margin-top:4px;" min="1" step="1" value="3">
+                </div>
+                <div>
+                    <label style="font-size:13px;color:var(--text-hint);">祝福语</label>
+                    <input type="text" id="rp-blessing" class="chat-input" style="width:100%;margin-top:4px;" maxlength="50" value="恭喜发财，大吉大利">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeRedPacketModal()">取消</button>
+                <button class="btn btn-primary" onclick="sendRedPacket()">塞钱进红包</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 转账弹窗 -->
+    <div class="modal-overlay" id="transfer-modal">
+        <div class="modal" style="max-width: 360px;">
+            <div class="modal-header">
+                <span class="modal-title">💸 转账</span>
+                <button class="modal-close" onclick="closeTransferModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div style="margin-bottom:10px;">
+                    <label style="font-size:13px;color:var(--text-hint);">金额（元）</label>
+                    <input type="number" id="tf-amount" class="chat-input" style="width:100%;margin-top:4px;" min="0.01" step="0.01" value="50">
+                </div>
+                <div>
+                    <label style="font-size:13px;color:var(--text-hint);">备注</label>
+                    <input type="text" id="tf-note" class="chat-input" style="width:100%;margin-top:4px;" maxlength="50" placeholder="说点什么…">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeTransferModal()">取消</button>
+                <button class="btn btn-primary" onclick="sendTransfer()">转账</button>
+            </div>
+        </div>
+    </div>
+
     <div class="modal-overlay" id="add-character-modal">
         <div class="modal" style="max-width: 450px;">
             <div class="modal-header">
@@ -2257,18 +2389,24 @@
                 title.textContent = `${currentPrivateGroup.member_names.join('、')} 的私人群聊`;
                 const messages = result.data.messages || [];
                 if (messages.length === 0) {
-                    container.innerHTML = '<div class="empty-state"><div class="empty-state-text">暂无对话，开启心跳后两名角色会随机互聊；也可点下方刷新</div></div>';
+                    container.innerHTML = '<div class="empty-state"><div class="empty-state-text">暂无对话，说句话试试，或者开启心跳后两名角色会随机互聊</div></div>';
                 } else {
                     container.innerHTML = messages.map(msg => {
-                        const isMine = msg.sender_id === currentPrivateGroup.member_ids[0];
-                        const senderName = currentPrivateGroup.member_names[currentPrivateGroup.member_ids.indexOf(msg.sender_id)] || '角色';
+                        const isMine = msg.sender_id === 'user';
+                        const senderName = isMine ? '我' : (currentPrivateGroup.member_names[currentPrivateGroup.member_ids.indexOf(msg.sender_id)] || '角色');
+                        const contentHtml = (msg.message_type === 'red_packet' && msg.red_packet_id)
+                            ? `<div class="red-packet-bubble" onclick="openRedPacket('${msg.red_packet_id}')"><div class="rp-emoji">🧧</div><div class="rp-text"><div class="rp-blessing">${escapeHtml(msg.content || '恭喜发财')}</div><div class="rp-hint">点击领取红包</div></div></div>`
+                            : (msg.message_type === 'transfer'
+                                ? `<div class="transfer-bubble${msg.transfer_status === 'rejected' ? ' rejected' : ''}"><div class="tf-emoji">💸</div><div><div class="tf-amount">¥${Number(msg.transfer_amount || 0).toFixed(2)}</div><div class="tf-note">${escapeHtml(msg.transfer_note || msg.content || '转账')}</div></div></div>`
+                                : escapeHtml(msg.content));
                         return `
-                            <div class="message ${isMine ? 'received' : 'sent'}">
-                                <div class="message-content">${escapeHtml(msg.content)}</div>
+                            <div class="message ${isMine ? 'sent' : 'received'}">
+                                <div class="message-content">${contentHtml}</div>
                                 <div class="message-time">${senderName} · ${formatTime(msg.timestamp)}</div>
                             </div>
                         `;
                     }).join('');
+                    container.scrollTop = container.scrollHeight;
                 }
                 page.classList.add('active');
             } catch (error) {
@@ -2279,6 +2417,149 @@
         function closePrivateGroupPage() {
             document.getElementById('private-group-page').classList.remove('active');
             currentPrivateGroup = null;
+        }
+
+        async function sendPrivateGroupMessage() {
+            if (!currentPrivateGroup) return;
+            const input = document.getElementById('private-group-input');
+            const content = (input.value || '').trim();
+            if (!content) return;
+            input.value = '';
+            try {
+                const resp = await fetch(`${API_BASE}/groups/private/${currentPrivateGroup.id}/send`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ content })
+                });
+                const result = await resp.json();
+                if (!result.success) { alert(result.detail || '发送失败'); return; }
+                const gid = currentPrivateGroup.id;
+                await openPrivateGroup(gid);
+                setTimeout(() => { if (currentPrivateGroup && currentPrivateGroup.id === gid) openPrivateGroup(gid); }, 1800);
+                setTimeout(() => { if (currentPrivateGroup && currentPrivateGroup.id === gid) openPrivateGroup(gid); }, 4500);
+            } catch (e) {
+                alert('发送失败：' + e.message);
+            }
+        }
+
+        // ==================== 红包 ====================
+        var redPacketTargetConv = null;
+
+        function showRedPacketModal() {
+            let convId = null;
+            const gp = document.getElementById('private-group-page');
+            if (currentPrivateGroup && gp && gp.classList.contains('active')) {
+                convId = `group:${currentPrivateGroup.id}`;
+            } else if (currentConversation) {
+                convId = currentConversation;
+            }
+            if (!convId) { showToast('请先进入聊天或群聊'); return; }
+            redPacketTargetConv = convId;
+            document.getElementById('rp-amount').value = '10';
+            document.getElementById('rp-count').value = '3';
+            document.getElementById('rp-blessing').value = '恭喜发财，大吉大利';
+            document.getElementById('red-packet-modal').classList.add('show');
+        }
+
+        function closeRedPacketModal() {
+            document.getElementById('red-packet-modal').classList.remove('show');
+        }
+
+        async function sendRedPacket() {
+            const amount = parseFloat(document.getElementById('rp-amount').value);
+            const count = parseInt(document.getElementById('rp-count').value, 10);
+            const blessing = (document.getElementById('rp-blessing').value || '').trim() || '恭喜发财，大吉大利';
+            if (!(amount > 0)) { showToast('金额要大于 0'); return; }
+            if (!(count >= 1)) { showToast('红包个数至少 1 个'); return; }
+            if (!redPacketTargetConv) { showToast('会话不存在'); return; }
+            try {
+                const resp = await fetch(`${API_BASE}/red-packets`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ conversation_id: redPacketTargetConv, total_amount: amount, count: count, blessing })
+                });
+                const result = await resp.json();
+                if (!result.success) { showToast(result.detail || '发送失败'); return; }
+                closeRedPacketModal();
+                const target = redPacketTargetConv;
+                if (target.startsWith('group:')) {
+                    if (currentPrivateGroup) openPrivateGroup(currentPrivateGroup.id);
+                    setTimeout(() => { if (currentPrivateGroup) openPrivateGroup(currentPrivateGroup.id); }, 2500);
+                } else {
+                    loadMessages(target);
+                    setTimeout(() => loadMessages(target), 2500);
+                }
+            } catch (e) {
+                showToast('发送失败：' + e.message);
+            }
+        }
+
+        async function openRedPacket(packetId) {
+            try {
+                const resp = await fetch(`${API_BASE}/red-packets/${packetId}/claim`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ actor_id: 'user', actor_name: '我' })
+                });
+                const result = await resp.json();
+                if (!result.success) { showToast(result.detail || '领取失败'); return; }
+                showToast(`🧧 抢到 ${Number(result.data.amount).toFixed(2)} 元`);
+                if (currentPrivateGroup) openPrivateGroup(currentPrivateGroup.id);
+                else if (currentConversation) loadMessages(currentConversation);
+            } catch (e) {
+                showToast('领取失败：' + e.message);
+            }
+        }
+
+        // ==================== 转账 / 输入菜单 ====================
+        var transferTargetConv = null;
+
+        function toggleChatMenu() {
+            const m = document.getElementById('chat-menu');
+            if (m) m.classList.toggle('show');
+        }
+
+        function toggleGroupMenu() {
+            const m = document.getElementById('group-chat-menu');
+            if (m) m.classList.toggle('show');
+        }
+
+        function showTransferModal() {
+            const gp = document.getElementById('private-group-page');
+            if (currentPrivateGroup && gp && gp.classList.contains('active')) {
+                showToast('转账仅支持单聊');
+                return;
+            }
+            if (!currentConversation) { showToast('请先进入聊天'); return; }
+            transferTargetConv = currentConversation;
+            document.getElementById('tf-amount').value = '50';
+            document.getElementById('tf-note').value = '';
+            document.getElementById('transfer-modal').classList.add('show');
+        }
+
+        function closeTransferModal() {
+            document.getElementById('transfer-modal').classList.remove('show');
+        }
+
+        async function sendTransfer() {
+            const amount = parseFloat(document.getElementById('tf-amount').value);
+            const note = (document.getElementById('tf-note').value || '').trim();
+            if (!(amount > 0)) { showToast('金额要大于 0'); return; }
+            if (!transferTargetConv) { showToast('会话不存在'); return; }
+            try {
+                const resp = await fetch(`${API_BASE}/transfers`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ conversation_id: transferTargetConv, amount: amount, note: note })
+                });
+                const result = await resp.json();
+                if (!result.success) { showToast(result.detail || '转账失败'); return; }
+                closeTransferModal();
+                if (result.data.status === 'rejected') showToast('对方拒收了');
+                loadMessages(transferTargetConv);
+            } catch (e) {
+                showToast('转账失败：' + e.message);
+            }
         }
 
         function showAddCharacterModal() {
@@ -3625,6 +3906,13 @@
         }
 
         function renderMessageBubble(msg) {
+            if (msg.message_type === 'red_packet' && msg.red_packet_id) {
+                return `<div class="red-packet-bubble" onclick="openRedPacket('${msg.red_packet_id}')"><div class="rp-emoji">🧧</div><div class="rp-text"><div class="rp-blessing">${escapeHtml(msg.content || '恭喜发财，大吉大利')}</div><div class="rp-hint">点击领取红包</div></div></div>`;
+            }
+            if (msg.message_type === 'transfer') {
+                const ref = msg.transfer_status === 'rejected' ? ' rejected' : '';
+                return `<div class="transfer-bubble${ref}"><div class="tf-emoji">💸</div><div><div class="tf-amount">¥${Number(msg.transfer_amount || 0).toFixed(2)}</div><div class="tf-note">${escapeHtml(msg.transfer_note || msg.content || '转账')}</div></div></div>`;
+            }
             if (msg.message_type === 'image' && msg.image_url) {
                 const imgSrc = getAvatarUrl(msg.image_url);
                 return `<div>${escapeHtml(msg.content || '[图片消息]')}</div><img src="${escapeHtml(imgSrc)}" style="margin-top:6px; width: 180px; max-width: 100%; border-radius: 8px;">`;

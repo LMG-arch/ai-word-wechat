@@ -269,64 +269,87 @@ def detect_encounters(window_minutes: int = 5) -> Dict[str, Any]:
     }
 
 
-async def generate_schedule_for_character(character, day_index: int) -> Any:
-    """为角色生成日程"""
-    from storage import get_schedules, save_schedules, get_settings
+def generate_schedule_for_character(character, day_index: int) -> Any:
+    """为角色生成当日日程（规则模板）。
+
+    V4.0 修复：原实现为 `async def` 却被路由同步调用（返回 coroutine 导致 500），
+    且构造 `ScheduleEvent` 时用了不存在的字段（start_hour/end_hour/description/event_type），
+    并漏传 `CharacterSchedule.summary`。此处统一改为同步函数并使用模型真实字段。
+    """
+    from storage import get_schedules, save_schedules
     from models import CharacterSchedule, ScheduleEvent
-    
-    settings = get_settings()
-    world_time = settings.world_elapsed_ms
-    
-    events = []
-    # 根据角色职业和时间生成日程
-    hour = world_hour_of_day(world_time)
-    
+
     schedule_patterns = {
         "程序员": [
-            (9, 12, "work", "办公室", "写代码"),
-            (12, 14, "lunch", "餐厅", "午餐休息"),
-            (14, 18, "work", "办公室", "继续编码"),
-            (18, 20, "leisure", "社交场所", "放松时间"),
+            (9, 12, "办公室", "写代码"),
+            (12, 14, "餐厅", "午餐休息"),
+            (14, 18, "办公室", "继续编码"),
+            (18, 20, "社交场所", "放松时间"),
         ],
         "教师": [
-            (8, 12, "work", "学校", "上课"),
-            (12, 14, "lunch", "餐厅", "午餐"),
-            (14, 17, "work", "学校", "备课/批改作业"),
-            (17, 19, "leisure", "家中", "休息"),
+            (8, 12, "学校", "上课"),
+            (12, 14, "餐厅", "午餐"),
+            (14, 17, "学校", "备课/批改作业"),
+            (17, 19, "家中", "休息"),
+        ],
+        "医生": [
+            (8, 12, "医院", "门诊"),
+            (12, 13, "餐厅", "午餐"),
+            (13, 18, "医院", "查房与手术"),
+            (18, 20, "家中", "休息"),
+        ],
+        "警察": [
+            (8, 12, "警局", "值班"),
+            (12, 13, "餐厅", "午餐"),
+            (13, 18, "街区", "巡逻"),
+            (18, 20, "社交场所", "下班放松"),
+        ],
+        "学生": [
+            (8, 12, "学校", "上课"),
+            (12, 14, "餐厅", "午餐与休息"),
+            (14, 17, "学校", "自习"),
+            (17, 20, "社交场所", "和同学玩"),
+        ],
+        "销售": [
+            (9, 12, "公司", "拜访客户"),
+            (12, 14, "餐厅", "午餐"),
+            (14, 18, "公司", "跟进订单"),
+            (18, 21, "餐厅", "应酬"),
         ],
     }
-    
-    occupation = character.occupation
+
+    occupation = (character.occupation or "").strip()
     patterns = schedule_patterns.get(occupation, [
-        (9, 12, "work", "办公室", "工作"),
-        (12, 14, "lunch", "餐厅", "午餐"),
-        (14, 18, "work", "办公室", "工作"),
-        (18, 20, "leisure", "社交场所", "休闲"),
+        (9, 12, "办公室", "工作"),
+        (12, 14, "餐厅", "午餐"),
+        (14, 18, "办公室", "工作"),
+        (18, 20, "社交场所", "休闲"),
     ])
-    
-    for start_h, end_h, event_type, location, description in patterns:
+
+    events = []
+    for start_h, end_h, location, activity in patterns:
         events.append(ScheduleEvent(
-            start_hour=start_h,
-            end_hour=end_h,
-            event_type=event_type,
+            start_time=f"{start_h:02d}:00",
+            end_time=f"{end_h:02d}:00",
             location=location,
-            description=description,
+            activity=activity,
         ))
-    
+
     schedule = CharacterSchedule(
         character_id=character.id,
-        character_name=character.name,
         day_index=day_index,
+        summary=f"{character.name}（{occupation or '自由职业'}）第 {day_index} 天的安排",
         events=events,
-        generated_at=int(time.time() * 1000),
+        generated_by="rule_engine_v3",
+        created_at=int(time.time() * 1000),
     )
-    
+
     schedules = get_schedules()
-    # 移除旧的
+    # 移除同角色同日的旧日程
     schedules = [s for s in schedules if not (s.character_id == character.id and s.day_index == day_index)]
     schedules.append(schedule)
     save_schedules(schedules)
-    
+
     return schedule
 
 
